@@ -1,0 +1,5 @@
+node_modules
+.env
+backend/.env
+backend/app/__pycache__
+backend/app/migrations/__pycache__
