@@ -1,5 +1,5 @@
-from .user import User
-from .event import Event
-from .ticket import Ticket
-from .registration import Registration
-from .checkin import CheckIn
+from .checkin import CheckIn as CheckIn
+from .event import Event as Event
+from .registration import Registration as Registration
+from .ticket import Ticket as Ticket
+from .user import User as User

@@ -1,8 +1,6 @@
 # backend/app/services/email.py
 
-import base64
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
-from pydantic import EmailStr
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 
 from app.config import settings
 from app.services.qr import generate_qr_base64

@@ -1,21 +1,21 @@
 # backend/app/routers/dashboard.py
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.event import Event
-from app.models.ticket import Ticket
 from app.models.registration import Registration
-from app.models.checkin import CheckIn
-from app.services.auth import get_current_user
+from app.models.ticket import Ticket
 from app.models.user import User
+from app.services.auth import get_current_user
 
 router = APIRouter()
 
 
 # ── GET /api/dashboard/{slug}  (organizer: full event stats) ─────────────────
+
 
 @router.get("/{slug}")
 def event_dashboard(
@@ -23,30 +23,28 @@ def event_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    event = db.query(Event).filter(
-        Event.slug == slug,
-        Event.organizer_id == current_user.id,
-        Event.is_active == True
-    ).first()
+    event = (
+        db.query(Event)
+        .filter(Event.slug == slug, Event.organizer_id == current_user.id, Event.is_active)
+        .first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
     # Total registrations
-    total_registered = db.query(func.count(Registration.id)).filter(
-        Registration.event_id == event.id
-    ).scalar()
+    total_registered = (
+        db.query(func.count(Registration.id)).filter(Registration.event_id == event.id).scalar()
+    )
 
     # Total checked in
-    total_checked_in = db.query(func.count(Registration.id)).filter(
-        Registration.event_id == event.id,
-        Registration.is_checked_in == True
-    ).scalar()
+    total_checked_in = (
+        db.query(func.count(Registration.id))
+        .filter(Registration.event_id == event.id, Registration.is_checked_in)
+        .scalar()
+    )
 
     # Tickets breakdown
-    tickets = db.query(Ticket).filter(
-        Ticket.event_id == event.id,
-        Ticket.is_active == True
-    ).all()
+    tickets = db.query(Ticket).filter(Ticket.event_id == event.id, Ticket.is_active).all()
 
     tickets_breakdown = [
         {
@@ -60,9 +58,13 @@ def event_dashboard(
     ]
 
     # Recent registrations (last 10)
-    recent = db.query(Registration).filter(
-        Registration.event_id == event.id
-    ).order_by(Registration.registered_at.desc()).limit(10).all()
+    recent = (
+        db.query(Registration)
+        .filter(Registration.event_id == event.id)
+        .order_by(Registration.registered_at.desc())
+        .limit(10)
+        .all()
+    )
 
     recent_registrations = [
         {
@@ -99,35 +101,41 @@ def event_dashboard(
 
 # ── GET /api/dashboard/  (organizer: all my events summary) ──────────────────
 
+
 @router.get("/")
 def all_events_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    events = db.query(Event).filter(
-        Event.organizer_id == current_user.id,
-        Event.is_active == True
-    ).order_by(Event.start_date.desc()).all()
+    events = (
+        db.query(Event)
+        .filter(Event.organizer_id == current_user.id, Event.is_active)
+        .order_by(Event.start_date.desc())
+        .all()
+    )
 
     summary = []
     for event in events:
-        total = db.query(func.count(Registration.id)).filter(
-            Registration.event_id == event.id
-        ).scalar()
+        total = (
+            db.query(func.count(Registration.id)).filter(Registration.event_id == event.id).scalar()
+        )
 
-        checked_in = db.query(func.count(Registration.id)).filter(
-            Registration.event_id == event.id,
-            Registration.is_checked_in == True
-        ).scalar()
+        checked_in = (
+            db.query(func.count(Registration.id))
+            .filter(Registration.event_id == event.id, Registration.is_checked_in)
+            .scalar()
+        )
 
-        summary.append({
-            "id": event.id,
-            "title": event.title,
-            "slug": event.slug,
-            "start_date": event.start_date,
-            "is_published": event.is_published,
-            "total_registered": total,
-            "total_checked_in": checked_in,
-        })
+        summary.append(
+            {
+                "id": event.id,
+                "title": event.title,
+                "slug": event.slug,
+                "start_date": event.start_date,
+                "is_published": event.is_published,
+                "total_registered": total,
+                "total_checked_in": checked_in,
+            }
+        )
 
     return summary

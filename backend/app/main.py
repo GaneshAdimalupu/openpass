@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, engine
-from app.models import User, Event, Ticket, Registration, CheckIn  # noqa
+from app.models import CheckIn, Event, Registration, Ticket, User  # noqa
 
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
@@ -26,14 +26,14 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-from app.routers import auth, events, tickets, registrations, checkin, dashboard
+from app.routers import auth, checkin, dashboard, events, registrations, tickets  # noqa: E402
 
-app.include_router(auth.router,          prefix="/api/auth",          tags=["Auth"])
-app.include_router(events.router,        prefix="/api/events",        tags=["Events"])
-app.include_router(tickets.router,       prefix="/api/tickets",       tags=["Tickets"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(events.router, prefix="/api/events", tags=["Events"])
+app.include_router(tickets.router, prefix="/api/tickets", tags=["Tickets"])
 app.include_router(registrations.router, prefix="/api/registrations", tags=["Registrations"])
-app.include_router(checkin.router,       prefix="/api/checkin",       tags=["Check-in"])
-app.include_router(dashboard.router,     prefix="/api/dashboard",     tags=["Dashboard"])
+app.include_router(checkin.router, prefix="/api/checkin", tags=["Check-in"])
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 
 
 @app.get("/")

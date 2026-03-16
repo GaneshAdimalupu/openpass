@@ -1,8 +1,10 @@
 # backend/app/services/qr.py
 
-import qrcode
 import base64
 from io import BytesIO
+
+import qrcode
+
 from app.config import settings
 
 

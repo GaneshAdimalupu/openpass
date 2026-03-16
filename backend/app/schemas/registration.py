@@ -1,29 +1,30 @@
 # backend/app/schemas/registration.py
 
-from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional, Any, Dict
+from typing import Any
+
+from pydantic import BaseModel, EmailStr
 
 
 class RegistrationCreate(BaseModel):
     name: str
     email: EmailStr
-    phone: Optional[str] = None
-    ticket_id: Optional[str] = None
-    extra_fields: Optional[Dict[str, Any]] = None
+    phone: str | None = None
+    ticket_id: str | None = None
+    extra_fields: dict[str, Any] | None = None
 
 
 class RegistrationResponse(BaseModel):
     id: str
     name: str
     email: str
-    phone: Optional[str]
+    phone: str | None
     qr_code: str
     is_checked_in: bool
     ticket_sent: bool
     registered_at: datetime
     event_id: str
-    ticket_id: Optional[str]
+    ticket_id: str | None
 
     class Config:
         from_attributes = True

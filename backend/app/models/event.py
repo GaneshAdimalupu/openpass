@@ -17,7 +17,9 @@ class Event(Base):
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     banner_url = Column(String(500), nullable=True)
-    slug = Column(String(200), unique=True, nullable=False, index=True)  # e.g. "devfest-kerala-2025"
+    slug = Column(
+        String(200), unique=True, nullable=False, index=True
+    )  # e.g. "devfest-kerala-2025"
     is_published = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -29,4 +31,6 @@ class Event(Base):
     # Relationships
     organizer = relationship("User", back_populates="events")
     tickets = relationship("Ticket", back_populates="event", cascade="all, delete-orphan")
-    registrations = relationship("Registration", back_populates="event", cascade="all, delete-orphan")
+    registrations = relationship(
+        "Registration", back_populates="event", cascade="all, delete-orphan"
+    )
