@@ -11,10 +11,10 @@ class Ticket(Base):
     __tablename__ = "tickets"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String(100), nullable=False)          # e.g. "General", "VIP", "Student"
+    name = Column(String(100), nullable=False)  # e.g. "General", "VIP", "Student"
     description = Column(String(300), nullable=True)
-    price = Column(Float, default=0.0)                  # 0.0 = free
-    total_quantity = Column(Integer, nullable=True)     # None = unlimited
+    price = Column(Float, default=0.0)  # 0.0 = free
+    total_quantity = Column(Integer, nullable=True)  # None = unlimited
     registered_count = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

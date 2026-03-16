@@ -1,42 +1,46 @@
 # backend/app/routers/events.py
 
 import re
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.database import get_db
 from app.models.event import Event
 from app.models.ticket import Ticket
-from app.schemas.event import EventCreate, EventUpdate, EventResponse, EventListResponse
+from app.models.user import User
+from app.schemas.event import EventCreate, EventListResponse, EventResponse, EventUpdate
 from app.schemas.ticket import TicketResponse
 from app.services.auth import get_current_user
-from app.models.user import User
 
 router = APIRouter()
 
 
 def slugify(text: str) -> str:
     text = text.lower().strip()
-    text = re.sub(r'[\s]+', '-', text)
-    text = re.sub(r'[^\w-]', '', text)
+    text = re.sub(r"[\s]+", "-", text)
+    text = re.sub(r"[^\w-]", "", text)
     return text
 
 
 # ── GET /api/events  (organizer: my events) ───────────────────────────────────
 
-@router.get("/", response_model=List[EventListResponse])
+
+@router.get("/", response_model=list[EventListResponse])
 def list_my_events(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return db.query(Event).filter(
-        Event.organizer_id == current_user.id,
-        Event.is_active == True
-    ).order_by(Event.start_date.desc()).all()
+    return (
+        db.query(Event)
+        .filter(Event.organizer_id == current_user.id, Event.is_active)
+        .order_by(Event.start_date.desc())
+        .all()
+    )
 
 
 # ── POST /api/events ──────────────────────────────────────────────────────────
+
 
 @router.post("/", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
 def create_event(
@@ -51,7 +55,7 @@ def create_event(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Slug '{slug}' already taken. Try a different one."
+            detail=f"Slug '{slug}' already taken. Try a different one.",
         )
 
     event = Event(
@@ -72,9 +76,10 @@ def create_event(
 
 # ── GET /api/events/{slug}  (public) ─────────────────────────────────────────
 
+
 @router.get("/{slug}", response_model=EventResponse)
 def get_event_by_slug(slug: str, db: Session = Depends(get_db)):
-    event = db.query(Event).filter(Event.slug == slug, Event.is_active == True).first()
+    event = db.query(Event).filter(Event.slug == slug, Event.is_active).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
@@ -82,18 +87,17 @@ def get_event_by_slug(slug: str, db: Session = Depends(get_db)):
 
 # ── GET /api/events/{slug}/tickets  (public) ─────────────────────────────────
 
-@router.get("/{slug}/tickets", response_model=List[TicketResponse])
+
+@router.get("/{slug}/tickets", response_model=list[TicketResponse])
 def get_event_tickets(slug: str, db: Session = Depends(get_db)):
-    event = db.query(Event).filter(Event.slug == slug, Event.is_active == True).first()
+    event = db.query(Event).filter(Event.slug == slug, Event.is_active).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    return db.query(Ticket).filter(
-        Ticket.event_id == event.id,
-        Ticket.is_active == True
-    ).all()
+    return db.query(Ticket).filter(Ticket.event_id == event.id, Ticket.is_active).all()
 
 
 # ── PATCH /api/events/{slug} ──────────────────────────────────────────────────
+
 
 @router.patch("/{slug}", response_model=EventResponse)
 def update_event(
@@ -102,10 +106,9 @@ def update_event(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    event = db.query(Event).filter(
-        Event.slug == slug,
-        Event.organizer_id == current_user.id
-    ).first()
+    event = (
+        db.query(Event).filter(Event.slug == slug, Event.organizer_id == current_user.id).first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
@@ -119,16 +122,16 @@ def update_event(
 
 # ── DELETE /api/events/{slug} ─────────────────────────────────────────────────
 
+
 @router.delete("/{slug}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
     slug: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    event = db.query(Event).filter(
-        Event.slug == slug,
-        Event.organizer_id == current_user.id
-    ).first()
+    event = (
+        db.query(Event).filter(Event.slug == slug, Event.organizer_id == current_user.id).first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 

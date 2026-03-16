@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, JSON, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -14,10 +14,10 @@ class Registration(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(255), nullable=False, index=True)
     phone = Column(String(20), nullable=True)
-    extra_fields = Column(JSON, nullable=True)   # stores custom form answers
+    extra_fields = Column(JSON, nullable=True)  # stores custom form answers
     qr_code = Column(String(100), unique=True, nullable=False)  # unique token for QR
     is_checked_in = Column(Boolean, default=False)
-    ticket_sent = Column(Boolean, default=False) # email sent?
+    ticket_sent = Column(Boolean, default=False)  # email sent?
     registered_at = Column(DateTime, default=datetime.utcnow)
 
     # Foreign Keys

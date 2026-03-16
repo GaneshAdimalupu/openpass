@@ -1,22 +1,24 @@
 # backend/app/routers/registrations.py
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.event import Event
-from app.models.ticket import Ticket
 from app.models.registration import Registration
-from app.schemas.registration import RegistrationCreate, RegistrationResponse
-from app.services.email import send_ticket_email
-from app.services.auth import get_current_user
+from app.models.ticket import Ticket
 from app.models.user import User
+from app.schemas.registration import RegistrationCreate, RegistrationResponse
+from app.services.auth import get_current_user
+from app.services.email import send_ticket_email
 
 router = APIRouter()
 
 
 # ── POST /api/registrations/{slug}  (public — attendee registers) ─────────────
+
 
 @router.post("/{slug}", response_model=RegistrationResponse, status_code=status.HTTP_201_CREATED)
 async def register_for_event(
@@ -26,39 +28,39 @@ async def register_for_event(
     db: Session = Depends(get_db),
 ):
     # Get event
-    event = db.query(Event).filter(
-        Event.slug == slug,
-        Event.is_published == True,
-        Event.is_active == True
-    ).first()
+    event = db.query(Event).filter(Event.slug == slug, Event.is_published, Event.is_active).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found or not yet open")
 
     # Check if already registered
-    existing = db.query(Registration).filter(
-        Registration.event_id == event.id,
-        Registration.email == payload.email
-    ).first()
+    existing = (
+        db.query(Registration)
+        .filter(Registration.event_id == event.id, Registration.email == payload.email)
+        .first()
+    )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This email is already registered for this event"
+            detail="This email is already registered for this event",
         )
 
     # Validate ticket if provided
     ticket = None
     if payload.ticket_id:
-        ticket = db.query(Ticket).filter(
-            Ticket.id == payload.ticket_id,
-            Ticket.event_id == event.id,
-            Ticket.is_active == True
-        ).first()
+        ticket = (
+            db.query(Ticket)
+            .filter(
+                Ticket.id == payload.ticket_id,
+                Ticket.event_id == event.id,
+                Ticket.is_active,
+            )
+            .first()
+        )
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
         if not ticket.is_available:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Sorry, this ticket is sold out"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Sorry, this ticket is sold out"
             )
 
     # Generate unique QR token
@@ -108,6 +110,7 @@ async def register_for_event(
 
 # ── GET /api/registrations/ticket/{qr_token}  (public — view ticket) ─────────
 
+
 @router.get("/ticket/{qr_token}", response_model=RegistrationResponse)
 def get_ticket(qr_token: str, db: Session = Depends(get_db)):
     reg = db.query(Registration).filter(Registration.qr_code == qr_token).first()
@@ -118,19 +121,22 @@ def get_ticket(qr_token: str, db: Session = Depends(get_db)):
 
 # ── GET /api/registrations/{slug}/list  (organizer: all registrations) ────────
 
+
 @router.get("/{slug}/list", response_model=list[RegistrationResponse])
 def list_registrations(
     slug: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    event = db.query(Event).filter(
-        Event.slug == slug,
-        Event.organizer_id == current_user.id
-    ).first()
+    event = (
+        db.query(Event).filter(Event.slug == slug, Event.organizer_id == current_user.id).first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    return db.query(Registration).filter(
-        Registration.event_id == event.id
-    ).order_by(Registration.registered_at.desc()).all()
+    return (
+        db.query(Registration)
+        .filter(Registration.event_id == event.id)
+        .order_by(Registration.registered_at.desc())
+        .all()
+    )
