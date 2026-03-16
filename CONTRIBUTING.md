@@ -8,7 +8,7 @@ Thanks for your interest in contributing! OpenPass is a Kerala-born open-source 
 
 ### 1. Fork & Clone
 ```bash
-git clone https://github.com/YOUR_USERNAME/openpass.git
+git clone https://github.com/GaneshAdimalupu/openpass.git
 cd openpass
 ```
 
@@ -94,7 +94,7 @@ See the full structure in [README.md](./README.md).
 
 ## What to Work On
 
-Check the [Issues](https://github.com/YOUR_USERNAME/openpass/issues) tab for:
+Check the [Issues](https://github.com/GaneshAdimalupu/openpass/issues) tab for:
 - 🐛 `bug` — something broken
 - ✨ `enhancement` — new features
 - 📖 `documentation` — docs improvements
@@ -128,4 +128,4 @@ Check the [Issues](https://github.com/YOUR_USERNAME/openpass/issues) tab for:
 
 ## Need Help?
 
-Open a [Discussion](https://github.com/YOUR_USERNAME/openpass/discussions) or ping us in Issues. We're friendly! 🙌
+Open a [Discussion](https://github.com/GaneshAdimalupu/openpass/discussions) or ping us in Issues. We're friendly! 🙌

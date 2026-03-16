@@ -2,7 +2,7 @@
 
 > Open-source event registration & QR check-in platform. Born in Kerala.
 
-[![CI](https://github.com/YOUR_USERNAME/openpass/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/openpass/actions)
+[![CI](https://github.com/GaneshAdimalupu/openpass/actions/workflows/ci.yml/badge.svg)](https://github.com/GaneshAdimalupu/openpass/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
@@ -50,7 +50,7 @@ Inspired by [MakeMyPass](https://makemypass.com), built open-source.
 
 ### Run in 3 commands
 ```bash
-git clone https://github.com/YOUR_USERNAME/openpass.git
+git clone https://github.com/GaneshAdimalupu/openpass.git
 cd openpass
 cp backend/.env.example backend/.env   # fill in your values
 docker compose up --build
