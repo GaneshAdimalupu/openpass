@@ -25,3 +25,6 @@ build/
 # OS
 .DS_Store
 *.swp
+
+# personal files
+bin/
