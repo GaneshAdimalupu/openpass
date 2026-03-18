@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/GaneshAdimalupu/openpass/compare/v0.1.0...v0.2.0) (2026-03-18)
+
+
+### Features
+
+* add frontend validation and refactor styles ([a4a7e03](https://github.com/GaneshAdimalupu/openpass/commit/a4a7e035b6dc6fd7af42b8bb6ea565963c696328))
+* add frontend validation and refactor styles ([e8c0a7c](https://github.com/GaneshAdimalupu/openpass/commit/e8c0a7cab5fdddc91d0c41afd4b60458176d5464))
+
 ## 0.1.0 (2026-03-16)
 
 
