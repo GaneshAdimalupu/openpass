@@ -1,49 +1,78 @@
-services:
-  db:
-    image: postgres:17
-    container_name: openpass-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: openpass
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+networks:
+  public:
+    driver: bridge
+  internal:
+    driver: bridge
 
-  backend:
-    build: ./backend
-    container_name: openpass-backend
-    restart: unless-stopped
-    env_file: ./backend/.env
+services:
+  # ─── Main Application ───────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openpass-web
+    restart: always
     ports:
-      - "8000:8000"
+      - '3000:3000'
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@db:5432/${DB_NAME:-openpass}?schema=public
+    networks:
+      - public
+      - internal
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      migrator:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 256M
 
-  frontend:
-    build: ./frontend
-    container_name: openpass-frontend
-    restart: unless-stopped
-    ports:
-      - "5173:5173"
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+  # ─── DB Migrations Lifecycle ────────────────────────────────────────────────
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openpass-migrator
+    env_file:
+      - .env
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@db:5432/${DB_NAME:-openpass}?schema=public
+    command: ['pnpm', '--filter', '@openpass/db', 'prisma', 'migrate', 'deploy']
+    networks:
+      - internal
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ─── Database ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: openpass-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-openpass}
+    volumes:
+      - openpass-db-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    # Do not expose ports to public network in advanced setup
+    # expose:
+    #   - "5432"
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-openpass}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
-  postgres_data:
+  openpass-db-data:

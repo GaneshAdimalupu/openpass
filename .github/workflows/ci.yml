@@ -1,88 +1,51 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
-    branches: [main, develop]
+    branches: ['main']
 
 jobs:
-  backend:
-    name: Backend Tests
+  build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: openpass_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    env:
+      SKIP_ENV_VALIDATION: 1
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: backend/requirements.txt
-
-      - name: Install dependencies
-        working-directory: backend
-        run: pip install -r requirements.txt
-
-      - name: Lint with Ruff
-        working-directory: backend
-        run: |
-          pip install ruff
-          ruff check .
-          ruff format --check .
-
-      - name: Run tests
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/openpass_test
-          SECRET_KEY: test-secret-key-for-ci
-          MAIL_USERNAME: test@test.com
-          MAIL_PASSWORD: test
-          MAIL_FROM: test@test.com
-        run: |
-          pip install pytest pytest-asyncio httpx
-          pytest tests/ -v --tb=short || echo "No tests yet"
-
-  frontend:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Setup Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+            .turbo
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        working-directory: frontend
-        run: npm run lint --if-present
+      - name: Generate Database Types
+        run: pnpm turbo run db:generate
 
-      - name: Build
-        working-directory: frontend
-        run: npm run build
-        env:
-          VITE_API_URL: http://localhost:8000
+      - name: Run checks
+        # Turborepo handles running these in parallel across all packages!
+        run: pnpm turbo run check-types lint build

@@ -1,122 +1,159 @@
-# OpenPass 🎟️
+# Turborepo starter
 
-> Open-source event registration & QR check-in platform. Born in Kerala.
+This Turborepo starter is maintained by the Turborepo core team.
 
-[![CI](https://github.com/GaneshAdimalupu/openpass/actions/workflows/ci.yml/badge.svg)](https://github.com/GaneshAdimalupu/openpass/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+## Using this example
 
----
+Run the following command:
 
-## What is OpenPass?
-
-OpenPass lets you create events, collect registrations, send QR ticket emails, and check in attendees by scanning their QR codes — all self-hosted and free.
-
-Inspired by [MakeMyPass](https://makemypass.com), built open-source.
-
----
-
-## Features (v1)
-
-- ✅ Organizer signup & login (JWT)
-- ✅ Create & publish events
-- ✅ Multiple ticket types (free/paid)
-- ✅ Attendee registration form
-- ✅ Auto QR code generation
-- ✅ Email confirmation with QR ticket
-- ✅ QR scanner check-in
-- ✅ Organizer dashboard with stats
-
----
-
-## Tech Stack
-
-| Layer     | Technology              |
-|-----------|-------------------------|
-| Backend   | Python 3.11 + FastAPI   |
-| Database  | PostgreSQL 17           |
-| Frontend  | React 18 + Tailwind CSS |
-| Auth      | JWT (python-jose)       |
-| Email     | fastapi-mail (SMTP)     |
-| QR        | qrcode + Pillow         |
-| Dev       | Docker + Docker Compose |
-
----
-
-## Quick Start
-
-### Prerequisites
-- [Docker](https://docs.docker.com/get-docker/) + Docker Compose
-
-### Run in 3 commands
-```bash
-git clone https://github.com/GaneshAdimalupu/openpass.git
-cd openpass
-cp backend/.env.example backend/.env   # fill in your values
-docker compose up --build
+```sh
+npx create-turbo@latest
 ```
 
-| Service      | URL                          |
-|--------------|------------------------------|
-| Frontend     | http://localhost:5173        |
-| Backend API  | http://localhost:8000        |
-| API Docs     | http://localhost:8000/docs   |
+## What's inside?
 
----
+This Turborepo includes the following packages/apps:
 
-## Local Development (without Docker)
+### Apps and Packages
 
-```bash
-# Backend
-cd backend
-conda create -n openpass python=3.11 && conda activate openpass
-pip install -r requirements.txt
-cp .env.example .env        # fill in values
-uvicorn app.main:app --reload
+- `docs`: a [Next.js](https://nextjs.org/) app
+- `web`: another [Next.js](https://nextjs.org/) app
+- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
+- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
+- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
-# Frontend (new terminal)
-cd frontend
-npm install
-npm run dev
+Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+
+### Utilities
+
+This Turborepo has some additional tools already setup for you:
+
+- [TypeScript](https://www.typescriptlang.org/) for static type checking
+- [ESLint](https://eslint.org/) for code linting
+- [Prettier](https://prettier.io) for code formatting
+
+### Build
+
+To build all apps and packages, run the following command:
+
+With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+
+```sh
+cd my-turborepo
+turbo build
 ```
 
----
+Without global `turbo`, use your package manager:
 
-## Environment Variables
-
-Copy `backend/.env.example` to `backend/.env` and fill in:
-
-| Variable                    | Description                    |
-|-----------------------------|--------------------------------|
-| `DATABASE_URL`              | PostgreSQL connection string   |
-| `SECRET_KEY`                | JWT signing secret             |
-| `MAIL_USERNAME`             | SMTP email address             |
-| `MAIL_PASSWORD`             | SMTP password / app password   |
-| `MAIL_FROM`                 | From address for emails        |
-
----
-
-## Contributing
-
-We love contributions! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) to get started.
-
-```bash
-pip install pre-commit
-pre-commit install   # auto-linting on every commit
+```sh
+cd my-turborepo
+npx turbo build
+yarn dlx turbo build
+pnpm exec turbo build
 ```
 
----
+You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
 
-## Roadmap
+With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
 
-- [ ] v1 — Core (current)
-- [ ] v2 — Payments (Razorpay)
-- [ ] v3 — WhatsApp integration
-- [ ] v4 — Team registrations
-- [ ] v5 — Multi-day events & randomizer
+```sh
+turbo build --filter=docs
+```
 
----
+Without global `turbo`:
 
-## License
+```sh
+npx turbo build --filter=docs
+yarn exec turbo build --filter=docs
+pnpm exec turbo build --filter=docs
+```
 
-MIT © OpenPass Contributors
+### Develop
+
+To develop all apps and packages, run the following command:
+
+With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+
+```sh
+cd my-turborepo
+turbo dev
+```
+
+Without global `turbo`, use your package manager:
+
+```sh
+cd my-turborepo
+npx turbo dev
+yarn exec turbo dev
+pnpm exec turbo dev
+```
+
+You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+
+With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+
+```sh
+turbo dev --filter=web
+```
+
+Without global `turbo`:
+
+```sh
+npx turbo dev --filter=web
+yarn exec turbo dev --filter=web
+pnpm exec turbo dev --filter=web
+```
+
+### Remote Caching
+
+> [!TIP]
+> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+
+Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+
+By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+
+With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+
+```sh
+cd my-turborepo
+turbo login
+```
+
+Without global `turbo`, use your package manager:
+
+```sh
+cd my-turborepo
+npx turbo login
+yarn exec turbo login
+pnpm exec turbo login
+```
+
+This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+
+Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+
+With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+
+```sh
+turbo link
+```
+
+Without global `turbo`:
+
+```sh
+npx turbo link
+yarn exec turbo link
+pnpm exec turbo link
+```
+
+## Useful Links
+
+Learn more about the power of Turborepo:
+
+- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
+- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
+- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
+- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
+- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
+- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
