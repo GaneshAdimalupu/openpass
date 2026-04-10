@@ -1,131 +1,104 @@
-# Contributing to OpenPass 🎟️
+# Contributing to OpenPass V2 🎟️
 
-Thanks for your interest in contributing! OpenPass is a Kerala-born open-source project and we welcome contributions of all kinds.
+Thanks for your interest in contributing! OpenPass V2 is a modernized monorepo designed for high performance and scalability. We welcome contributors of all kinds.
 
 ---
 
-## Quick Start for Contributors
+## Architecture Overview
 
-### 1. Fork & Clone
+V2 uses a **Turborepo** monorepo structure:
+
+- `apps/web`: The main Next.js web application.
+- `apps/api`: Express-based API (refactored to consume shared core logic).
+- `packages/core`: Shared business logic (Event rules, Registrations, etc.).
+- `packages/db`: Database schema (Prisma) and client.
+- `packages/ui`: Shared React components and design system.
+- `packages/types`: Shared TypeScript definitions.
+
+---
+
+## Quick Start
+
+### 1. Requirements
+
+Ensure you have the following installed:
+
+- **Node.js**: >= 20.x
+- **pnpm**: >= 9.x (We use `pnpm` for workspace management)
+- **PostgreSQL**: For database operations.
+
+### 2. Fork & Clone
+
 ```bash
 git clone https://github.com/GaneshAdimalupu/openpass.git
 cd openpass
 ```
 
-### 2. Run with Docker (recommended)
+### 3. Setup
+
 ```bash
-cp backend/.env.example backend/.env
-docker compose up --build
+# Install dependencies
+pnpm install
+
+# Setup environment variables
+cp .env.example .env
+
+# Generate Prisma client
+pnpm --filter @openpass/db generate
 ```
 
-That's it! All three services start together:
-- Frontend → http://localhost:5173
-- Backend API → http://localhost:8000
-- API Docs → http://localhost:8000/docs
+### 4. Development
 
-### 3. Run without Docker
 ```bash
-# Terminal 1 — Backend
-cd backend
-conda create -n openpass python=3.11
-conda activate openpass
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-
-# Terminal 2 — Frontend
-cd frontend
-npm install
-npm run dev
+# Run all apps and packages in parallel
+pnpm dev
 ```
+
+Navigate to `http://localhost:3000` for the web app.
 
 ---
 
 ## Development Workflow
 
 ### Branching
-```
-main          → stable, production-ready
-develop       → integration branch
-feature/xyz   → your feature branch
-fix/xyz       → bug fix branch
-```
 
-Always branch off `develop`, never directly off `main`.
+Follow these naming conventions for branches:
 
-```bash
-git checkout develop
-git checkout -b feature/your-feature-name
-```
+- `feat/xyz` → New features
+- `fix/xyz` → Bug fixes
+- `docs/xyz` → Documentation updates
+- `chore/xyz` → Maintenance
 
-### Pre-commit Hooks
-We use pre-commit to keep code clean automatically:
+### Quality Gates
 
-```bash
-pip install pre-commit
-pre-commit install
-```
+We use automated tools to ensure code quality:
 
-Now every commit automatically runs linting, formatting, and secret scanning.
-
-### Commit Messages
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-feat: add QR scanner page
-fix: registration email not sending
-docs: update setup instructions
-chore: upgrade dependencies
-```
-
----
-
-## Project Structure
-
-```
-openpass/
-├── backend/      FastAPI + PostgreSQL
-├── frontend/     React + Tailwind CSS
-└── docker-compose.yml
-```
-
-See the full structure in [README.md](./README.md).
-
----
-
-## What to Work On
-
-Check the [Issues](https://github.com/GaneshAdimalupu/openpass/issues) tab for:
-- 🐛 `bug` — something broken
-- ✨ `enhancement` — new features
-- 📖 `documentation` — docs improvements
-- 🌱 `good first issue` — great for newcomers
+1. **Pre-commit Hooks**: Automatically formats code via `prettier` and checks staged files.
+2. **Commit Messages**: We strictly follow [Conventional Commits](https://www.conventionalcommits.org/).
+   - Format: `<type>(<scope>): <description>`
+   - Example: `feat(web): add login page`
+3. **Type Checking**: Run `pnpm check-types` across the repo.
+4. **Linting**: Run `pnpm lint` across all packages.
 
 ---
 
 ## Code Style
 
-**Backend (Python)**
-- Formatter: `ruff format`
-- Linter: `ruff check`
-- Run: `cd backend && ruff check . && ruff format .`
-
-**Frontend (JavaScript/React)**
-- Formatter: Prettier
-- Linter: ESLint
-- Run: `cd frontend && npm run lint`
+- **TypeScript**: Mandatory for all logic.
+- **Styling**: Tailwind CSS + `packages/ui`.
+- **Formatting**: Handled by Prettier automatically on commit.
 
 ---
 
 ## Submitting a PR
 
-1. Push your branch to your fork
-2. Open a PR against `develop` (not `main`)
-3. Fill in the PR template
-4. Wait for CI to pass ✅
-5. Request a review
+1. Ensure your code passes `pnpm build`, `pnpm lint`, and `pnpm check-types`.
+2. Push your branch and open a PR.
+3. Use the PR template provided to describe your changes.
+4. Once CI passes and you receive a review, your PR will be merged.
 
 ---
 
 ## Need Help?
 
-Open a [Discussion](https://github.com/GaneshAdimalupu/openpass/discussions) or ping us in Issues. We're friendly! 🙌
+Open an Issue or start a Discussion on GitHub. We're happy to help! 🙌

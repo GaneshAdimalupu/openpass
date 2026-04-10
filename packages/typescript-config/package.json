@@ -1,0 +1,13 @@
+{
+  "name": "@openpass/typescript-config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./base": "./base.json",
+    "./base.json": "./base.json",
+    "./nextjs": "./nextjs.json",
+    "./nextjs.json": "./nextjs.json",
+    "./react-library": "./react-library.json",
+    "./react-library.json": "./react-library.json"
+  }
+}
