@@ -1,6 +1,8 @@
 {
   "name": "@openpass/ui",
   "version": "1.0.0",
+  "description": "Shared React component library for OpenPass.",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "private": true,
   "exports": {

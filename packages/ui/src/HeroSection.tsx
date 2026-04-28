@@ -39,7 +39,7 @@ export function HeroSection() {
               Get Started
             </a>
             <a
-              href="https://github.com/your-org/openpass"
+              href="https://github.com/GaneshAdimalupu/openpass"
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 py-5 bg-transparent border-2 border-white/20 text-white text-lg font-bold rounded-xl hover:border-white/40 hover:bg-white/5 active:scale-95 transition-all font-headline flex items-center gap-2"
