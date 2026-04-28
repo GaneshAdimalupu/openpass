@@ -1,10 +1,15 @@
 {
   "name": "openpass",
+  "version": "1.0.0",
+  "description": "Open source event registration and ticketing platform.",
+  "author": "Ganesh Adimalupu",
+  "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
     "build": "turbo run build",
     "clean": "turbo run clean",
     "dev": "turbo run dev",
+    "bootstrap": "bash scripts/bootstrap.sh",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",

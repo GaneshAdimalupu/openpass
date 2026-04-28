@@ -1,159 +1,130 @@
-# Turborepo starter
+# OpenPass V2 🎟️
 
-This Turborepo starter is maintained by the Turborepo core team.
+[![Turborepo](https://img.shields.io/badge/built%20with-Turborepo-ef4444.svg?style=flat-square&logo=turborepo)](https://turbo.build/)
+[![Next.js](https://img.shields.io/badge/Next.js-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-orange?style=flat-square&logo=pnpm)](https://pnpm.io/)
 
-## Using this example
+OpenPass is a modern, high-performance event management and ticketing platform built with scalability and developer experience in mind. This monorepo houses the entire ecosystem, from the core business logic to the web application.
 
-Run the following command:
+---
 
-```sh
-npx create-turbo@latest
+## ✨ Features
+
+- **Monorepo Architecture**: Powered by Turborepo for lightning-fast builds and task execution.
+- **Type-Safe**: 100% TypeScript across all apps and packages.
+- **Modern UI**: Built with Next.js, Tailwind CSS, and a shared component library.
+- **Robust Auth**: Integrated authentication via `@openpass/auth`.
+- **Database Power**: Prisma ORM with PostgreSQL for reliable data management.
+- **Developer-First**: Automated setup scripts and Docker-ready environment.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Next.js](https://nextjs.org/)
+- **Monorepo Manager**: [Turborepo](https://turbo.build/)
+- **Package Manager**: [pnpm](https://pnpm.io/)
+- **ORM**: [Prisma](https://www.prisma.io/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Component Library**: [Lucide React](https://lucide.dev/), [Framer Motion](https://www.framer.com/motion/)
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Ensure you have the following installed:
+
+- **Node.js**: >= 18.x (Recommended: 20.x+)
+- **pnpm**: >= 9.x
+- **Docker**: For running the database locally.
+
+### Installation & Setup
+
+1. **Clone the repository**:
+
+   ```bash
+   git clone https://github.com/GaneshAdimalupu/openpass.git
+   cd openpass
+   ```
+
+2. **Run the bootstrap script**:
+   This will install dependencies, create your `.env` file, and generate the Prisma client.
+
+   ```bash
+   pnpm bootstrap
+   ```
+
+3. **Configure Environment Variables**:
+   Open the newly created `.env` file and update your credentials (e.g., Google OAuth).
+
+4. **Start the Database**:
+
+   ```bash
+   pnpm docker:up
+   ```
+
+5. **Launch Development Server**:
+   ```bash
+   pnpm dev
+   ```
+   Navigate to `http://localhost:3002` for the web application.
+
+---
+
+## 📁 Project Structure
+
+```text
+.
+├── apps/
+│   └── web/          # Main Next.js application
+├── packages/
+│   ├── auth/         # Authentication logic & providers
+│   ├── core/         # Shared business logic
+│   ├── db/           # Prisma schema & database client
+│   ├── ui/           # Shared React component library
+│   └── types/        # Common TypeScript definitions
+└── scripts/          # Automation and setup scripts
 ```
 
-## What's inside?
+---
 
-This Turborepo includes the following packages/apps:
+## 💾 Database Management
 
-### Apps and Packages
+The project uses **Prisma** for database operations.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- **Generate Client**: `pnpm turbo run db:generate`
+- **Push Schema**: `pnpm --filter @openpass/db prisma db push`
+- **Studio**: `pnpm --filter @openpass/db prisma studio`
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+---
 
-### Utilities
+## 🐳 Docker
 
-This Turborepo has some additional tools already setup for you:
+We use Docker Compose to manage local services (PostgreSQL).
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+- **Up**: `pnpm docker:up`
+- **Down**: `pnpm docker:down`
+- **Logs**: `pnpm docker:logs`
 
-### Build
+---
 
-To build all apps and packages, run the following command:
+## 🤝 Contributing
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+We love contributions! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed instructions on:
 
-```sh
-cd my-turborepo
-turbo build
-```
+- Branching conventions
+- Commit message format (Conventional Commits)
+- Quality gates (Linting, Formatting, Type-checking)
 
-Without global `turbo`, use your package manager:
+---
 
-```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
+## 📄 License
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+This project is licensed under the terms specified in the [LICENSE](./LICENSE) file.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+---
 
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+_Maintained by the OpenPass Core Team._

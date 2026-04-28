@@ -4,7 +4,7 @@
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
   },
-  "description": "",
+  "description": "Database schema and Prisma client for OpenPass.",
   "type": "module",
   "scripts": {
     "clean": "rm -rf .turbo .next dist build",

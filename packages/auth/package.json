@@ -1,6 +1,8 @@
 {
   "name": "@openpass/auth",
   "version": "1.0.0",
+  "description": "Shared authentication logic for OpenPass.",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "private": true,
   "exports": {
