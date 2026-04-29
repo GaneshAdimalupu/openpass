@@ -17,7 +17,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'OpenPass — The Electric Noir Experience',
+  title: 'OpenPass — Open Source Event Management',
   description:
     'Open source event registration and ticketing. Create, manage, and scale experiences with a platform built for the bold.',
 }

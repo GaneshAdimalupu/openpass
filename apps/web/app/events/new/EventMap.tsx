@@ -27,7 +27,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-// ─── Electric Noir custom marker ──────────────────────────────────────────────
+// ─── Electric Open custom marker ──────────────────────────────────────────────
 const electricMarkerIcon =
   typeof window !== 'undefined'
     ? L.divIcon({

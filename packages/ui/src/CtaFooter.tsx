@@ -37,9 +37,17 @@ export function Footer() {
     <footer className="w-full py-12 px-8 bg-transparent">
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
         <div className="flex flex-col items-center md:items-start gap-2">
-          <div className="text-lg font-bold text-white font-headline">OpenPass</div>
+          <div className="flex items-center gap-2 text-lg font-bold text-white font-headline">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/openpass-logo.svg"
+              alt="OpenPass Logo"
+              className="h-12 w-auto opacity-80 hover:opacity-100 transition-opacity"
+            />
+            OpenPass
+          </div>
           <p className="font-body text-xs text-on-surface-variant">
-            © {new Date().getFullYear()} OpenPass. The Electric Noir Experience. AGPL-3.0.
+            © {new Date().getFullYear()} OpenPass. Open Source Event Management. AGPL-3.0.
           </p>
         </div>
 

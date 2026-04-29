@@ -310,7 +310,7 @@ export default function RegisterPage() {
             </Link>
           </div>
           <p className="text-[#adaaaa]">
-            © {new Date().getFullYear()} Open Pass Infrastructure. Built for the Electric Noir.
+            © {new Date().getFullYear()} Open Pass Infrastructure. Built for the Open Community.
           </p>
         </div>
       </footer>

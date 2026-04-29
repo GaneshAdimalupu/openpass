@@ -12,7 +12,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Electric Noir design system
+        // Electric Open design system
         surface: '#0e0e0e',
         'surface-dim': '#0e0e0e',
         'surface-bright': '#2c2c2c',

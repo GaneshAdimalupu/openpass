@@ -34,7 +34,12 @@ export function Navbar() {
     <header className="fixed top-0 w-full z-50 bg-transparent">
       <div className="flex justify-between items-center px-6 lg:px-8 h-20 w-full max-w-[1440px] mx-auto">
         {/* Logo */}
-        <Link href="/" className="text-2xl font-bold tracking-tighter text-white font-headline">
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-2xl font-bold tracking-tighter text-white font-headline"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/openpass-logo.svg" alt="OpenPass Logo" className="h-12 w-auto" />
           OpenPass
         </Link>
 

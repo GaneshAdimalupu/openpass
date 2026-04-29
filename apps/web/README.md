@@ -34,4 +34,4 @@ The app will be available at `http://localhost:3002`.
 
 ## 🎨 Design System
 
-This application follows the "Electric Noir" design system defined in `@openpass/ui`, utilizing a custom dark-mode palette and rich micro-animations.
+This application follows the "Electric Open" design system defined in `@openpass/ui`, utilizing a custom dark-mode palette and rich micro-animations.
