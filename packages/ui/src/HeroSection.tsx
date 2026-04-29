@@ -18,16 +18,16 @@ export function HeroSection() {
           <h1 className="text-6xl md:text-8xl font-black font-headline tracking-tighter leading-[0.9] text-white">
             The{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-tertiary">
-              Electric
+              Ꝋ𐌐𐌄𐌍𐌐𐌀𐌔𐌔
             </span>{' '}
-            Noir Experience.
+            world.
           </h1>
 
           {/* Subheading */}
           <p className="text-on-surface-variant text-xl max-w-xl leading-relaxed">
-            OpenPass redefines event management with cinematic precision. Create, manage, and scale
-            high-octane experiences with a platform built for the bold. Fully open source — own your
-            data.
+            The future of event access. OpenPass redefines event management with cinematic
+            precision. Create, manage, and scale high-octane experiences with a platform built for
+            the bold. Fully open source — own your data.
           </p>
 
           {/* CTAs */}
@@ -58,32 +58,13 @@ export function HeroSection() {
 
         {/* Right: event venue visual */}
         <div className="relative hidden lg:block">
-          <div className="relative rounded-[2rem] overflow-hidden electric-glow">
-            {/* Placeholder gradient image stand-in */}
-            <div className="w-full aspect-[4/3] bg-gradient-to-br from-surface-container-high via-surface-container to-surface-container-low flex items-center justify-center">
-              <div className="text-center space-y-4 opacity-60">
-                <span className="material-symbols-outlined text-8xl text-primary/40">
-                  confirmation_number
-                </span>
-                <p className="text-on-surface-variant text-sm font-label">Event visual</p>
-              </div>
-            </div>
-            {/* Overlay gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-surface/60 via-transparent to-transparent" />
-          </div>
-
-          {/* Floating ticket badge */}
-          <div className="absolute -top-6 -right-6 w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/30 to-tertiary/20 glass-panel flex items-center justify-center rotate-12 hover:rotate-6 transition-transform duration-500">
-            <span
-              className="material-symbols-outlined text-4xl text-primary"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              confirmation_number
-            </span>
-          </div>
-
-          {/* Ambient glow behind ticket */}
-          <div className="absolute -top-4 -right-4 w-40 h-40 bg-primary/30 rounded-full blur-3xl pointer-events-none" />
+          {/* Ticket Image */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/Ticket.svg"
+            alt="OpenPass Ticket"
+            className="w-full h-auto relative z-10 drop-shadow-2xl hover:scale-[1.02] transition-transform duration-500"
+          />
         </div>
       </div>
     </section>
