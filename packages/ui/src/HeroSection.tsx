@@ -20,7 +20,7 @@ export function HeroSection() {
           <h1 className="text-6xl md:text-8xl font-black font-headline tracking-tighter leading-[0.9] text-white">
             The{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-tertiary">
-              OpenPass
+              Ꝋ𐌐𐌄𐌍𐌐𐌀𐌔𐌔
             </span>{' '}
             world.
           </h1>
