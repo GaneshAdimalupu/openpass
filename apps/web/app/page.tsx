@@ -5,7 +5,7 @@ export default function HomePage() {
   return (
     <>
       <Navbar />
-      <main className="pt-20 pb-20 md:pb-0">
+      <main className="pb-24 md:pb-0">
         <HeroSection />
         <FeaturesSection />
         <CtaFooter />

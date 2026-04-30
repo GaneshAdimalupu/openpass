@@ -1,6 +1,8 @@
 export function HeroSection() {
   return (
-    <section className="relative min-h-[921px] flex flex-col items-center justify-center overflow-hidden px-6 py-20">
+    // 1. Removed `overflow-hidden` to stop the bottom glow from being cut off.
+    // 2. Added `overflow-x-clip` to prevent horizontal scrolling from the side glows.
+    <section className="relative min-h-[921px] flex flex-col items-center justify-center overflow-x-clip px-6 py-20">
       {/* Background atmosphere glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-tertiary/10 rounded-full blur-[120px] pointer-events-none z-0" />
@@ -18,7 +20,7 @@ export function HeroSection() {
           <h1 className="text-6xl md:text-8xl font-black font-headline tracking-tighter leading-[0.9] text-white">
             The{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-tertiary">
-              Ꝋ𐌐𐌄𐌍𐌐𐌀𐌔𐌔
+              OpenPass
             </span>{' '}
             world.
           </h1>
@@ -52,7 +54,7 @@ export function HeroSection() {
           {/* OSS trust signal */}
           <div className="flex items-center gap-3 text-sm text-on-surface-variant pt-2">
             <span className="material-symbols-outlined text-base text-primary">lock_open</span>
-            Free &amp; open source · AGPL-3.0 · Self-hostable
+            Free &amp; open source • AGPL-3.0 • Self-hostable
           </div>
         </div>
 
