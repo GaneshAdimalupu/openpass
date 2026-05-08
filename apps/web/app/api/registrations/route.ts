@@ -35,9 +35,9 @@ export async function POST(req: Request) {
     if (error.message === 'EVENT_NOT_FOUND') {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
-    if (error.message === 'EVENT_FULL') {
-      return NextResponse.json({ error: 'Event has reached maximum capacity' }, { status: 400 })
-    }
+    // if (error.message === 'EVENT_FULL') {
+    //   return NextResponse.json({ error: 'Event has reached maximum capacity' }, { status: 400 })
+    // }
 
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }

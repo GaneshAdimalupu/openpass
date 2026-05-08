@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import QRCode from 'qrcode'
 import { render } from '@react-email/render'
-import { TicketConfirmationEmail } from '@openpass/email'
+import { TicketConfirmationEmail, WaitlistEmail } from '@openpass/email'
 
 // Lazily initialise the client so module-level import does not throw
 // when RESEND_API_KEY is absent in local dev.
@@ -72,5 +72,42 @@ export async function sendTicketConfirmationEmail({
 
   if (error) {
     console.error('[sendTicketConfirmation] Resend error:', error)
+  }
+}
+
+export async function sendWaitlistEmail({
+  to,
+  userName,
+  eventTitle,
+  eventStartAt,
+  eventEndAt,
+  eventVenue,
+}: {
+  to: string
+  userName: string
+  eventTitle: string
+  eventStartAt: Date
+  eventEndAt: Date
+  eventVenue: string | null
+}) {
+  const html = await render(
+    WaitlistEmail({
+      userName,
+      eventTitle,
+      eventDate: formatDate(eventStartAt),
+      eventTime: formatTime(eventStartAt, eventEndAt),
+      eventVenue,
+    })
+  )
+
+  const { error } = await getResendClient().emails.send({
+    from: process.env.EMAIL_FROM ?? 'OpenPass <tickets@openpass.app>',
+    to,
+    subject: `You're on the waitlist for ${eventTitle} ✓`,
+    html,
+  })
+
+  if (error) {
+    console.error('[sendWaitlistEmail] Resend error:', error)
   }
 }

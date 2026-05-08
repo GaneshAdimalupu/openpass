@@ -62,6 +62,12 @@ model Event {
   createdAt     DateTime @default(now())
 }
 
+enum RegistrationStatus {
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+}
+
 model Registration {
   id          String   @id @default(cuid())
   event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -70,6 +76,7 @@ model Registration {
   userId      String
   formData    Json?
   qrCode      String   @unique
+  status RegistrationStatus @default(CONFIRMED)
   checkedIn   Boolean  @default(false)
   checkedInAt DateTime?
   deletedAt   DateTime?

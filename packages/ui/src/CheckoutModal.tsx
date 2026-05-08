@@ -27,10 +27,14 @@ export function CheckoutModal({
 }) {
   const { data: session, isPending } = authClient.useSession()
   const router = useRouter()
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [formData, setFormData] = useState<Record<string, any>>({})
+
   const [loading, setLoading] = useState(false)
   const [qrCode, setQrCode] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [registrationStatus, setRegistrationStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const schema: AttendeeField[] = Array.isArray(formSchema) ? formSchema : []
@@ -42,14 +46,20 @@ export function CheckoutModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     setLoading(true)
     setError(null)
+
     try {
       const data = await apiFetch('/registrations', {
         method: 'POST',
         body: JSON.stringify({ eventId, formData }),
       })
+
       setQrCode(data.qrImage)
+      setMessage(data.message)
+      setRegistrationStatus(data.registration.status)
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message)
@@ -65,10 +75,13 @@ export function CheckoutModal({
       <div className="fixed inset-0 z-[9999] bg-[#0e0e0e]/90 flex items-center justify-center p-4 backdrop-blur-md">
         <div className="bg-[#1a1919] border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
           <span className="material-symbols-outlined text-4xl text-[#ff716c] mb-4">lock</span>
+
           <h2 className="text-xl font-headline font-bold text-white mb-2">Restricted Access</h2>
+
           <p className="text-[#adaaaa] font-body text-sm mb-6">
             You must create a free OpenPass account to attend events.
           </p>
+
           <div className="flex gap-4">
             <button
               onClick={onClose}
@@ -76,6 +89,7 @@ export function CheckoutModal({
             >
               Cancel
             </button>
+
             <button
               onClick={() => router.push('/auth/login')}
               className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#85adff] to-[#0070eb] text-[#002c65] font-bold font-headline text-sm hover:scale-105 transition-all"
@@ -95,8 +109,10 @@ export function CheckoutModal({
         <div className="bg-[#201f1f] px-6 py-5 border-b border-white/5 flex items-center justify-between">
           <div>
             <h2 className="font-headline font-bold text-white text-lg">Event Registration</h2>
+
             <p className="font-body text-[#adaaaa] text-xs mt-1">{title}</p>
           </div>
+
           <button
             onClick={onClose}
             className="text-[#85adff] hover:text-white transition-colors bg-[#85adff]/10 p-2 rounded-full"
@@ -105,31 +121,60 @@ export function CheckoutModal({
           </button>
         </div>
 
-        {/* Content Body */}
+        {/* Content */}
         <div className="p-6">
-          {qrCode ? (
+          {registrationStatus ? (
             <div className="text-center py-6">
-              <div className="w-16 h-16 rounded-full bg-[#85adff]/20 flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-4xl text-[#85adff]">task_alt</span>
-              </div>
-              <h3 className="text-3xl font-headline font-black text-white mb-2 tracking-tighter">
-                Your Ticket is Ready
-              </h3>
-              <p className="text-[#adaaaa] font-body text-sm mb-6">
-                Present this QR code at the entrance.
-              </p>
+              {registrationStatus === 'CONFIRMED' ? (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-[#85adff]/20 flex items-center justify-center mx-auto mb-4">
+                    <span className="material-symbols-outlined text-4xl text-[#85adff]">
+                      task_alt
+                    </span>
+                  </div>
 
-              <div className="bg-white p-4 rounded-xl inline-block shadow-lg mx-auto border-4 border-white">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrCode} alt="Ticket QR" className="w-56 h-56 object-contain" />
-              </div>
+                  <h3 className="text-3xl font-headline font-black text-white mb-2 tracking-tighter">
+                    Your Ticket is Ready
+                  </h3>
+
+                  <p className="text-[#adaaaa] font-body text-sm mb-6">{message}</p>
+
+                  {qrCode && (
+                    <div className="bg-white p-4 rounded-xl inline-block shadow-lg mx-auto border-4 border-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrCode} alt="Ticket QR" className="w-56 h-56 object-contain" />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
+                    <span className="material-symbols-outlined text-4xl text-yellow-400">
+                      hourglass_top
+                    </span>
+                  </div>
+
+                  <h3 className="text-3xl font-headline font-black text-white mb-2 tracking-tighter">
+                    You&apos;re Waitlisted
+                  </h3>
+
+                  <p className="text-[#adaaaa] font-body text-sm mb-6 max-w-sm mx-auto">
+                    {message}
+                  </p>
+
+                  <div className="bg-[#262626] border border-white/10 rounded-xl p-4 text-sm text-[#d1d1d1]">
+                    If a spot becomes available, you&apos;ll receive an email confirmation
+                    automatically.
+                  </div>
+                </>
+              )}
 
               <div className="mt-8 flex gap-3">
                 <button
                   onClick={() => router.push('/dashboard')}
                   className="w-full py-4 bg-[#262626] text-white font-headline text-sm font-bold rounded-xl hover:bg-[#2c2c2c] transition-all"
                 >
-                  Go to Tickets
+                  Go to Dashboard
                 </button>
               </div>
             </div>
@@ -140,7 +185,9 @@ export function CheckoutModal({
                   <span className="material-symbols-outlined text-4xl text-[#85adff]/50 mb-3">
                     airplane_ticket
                   </span>
+
                   <p className="text-white font-headline font-bold">Fast Checkout</p>
+
                   <p className="text-[#adaaaa] text-xs font-body max-w-xs mx-auto mt-2">
                     The organizer has not strictly required any custom forms. Confirm your spot
                     instantly.
@@ -151,7 +198,9 @@ export function CheckoutModal({
               {schema.map((field) => (
                 <div key={field.id} className="space-y-2 text-left">
                   <label className="block text-xs font-bold tracking-widest text-[#85adff] uppercase font-headline">
-                    {field.label} {field.required && <span className="text-[#ff716c]">*</span>}
+                    {field.label}
+
+                    {field.required && <span className="text-[#ff716c]">*</span>}
                   </label>
 
                   {field.type === 'text' && (
@@ -179,6 +228,7 @@ export function CheckoutModal({
                       className="w-full bg-[#0e0e0e] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-[#85adff]"
                     >
                       <option value="">Select an option</option>
+
                       {field.options?.split(',').map((opt) => (
                         <option key={opt.trim()} value={opt.trim()}>
                           {opt.trim()}
@@ -195,6 +245,7 @@ export function CheckoutModal({
                         onChange={(e) => updateForm(field.id, e.target.checked)}
                         className="w-5 h-5 rounded border-white/20 text-[#0070eb] focus:ring-[#0070eb] focus:ring-offset-0 bg-[#262626]"
                       />
+
                       <span className="text-sm text-white font-body">Yes, I agree.</span>
                     </div>
                   )}
@@ -204,6 +255,7 @@ export function CheckoutModal({
               {error && (
                 <div className="bg-[#ff716c]/10 border border-[#ff716c]/20 rounded-xl p-3 flex items-start gap-3 text-left">
                   <span className="material-symbols-outlined text-[#ff716c] text-lg">error</span>
+
                   <p className="text-[#ff716c] text-sm font-body font-bold mt-0.5">{error}</p>
                 </div>
               )}

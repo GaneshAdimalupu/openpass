@@ -1,8 +1,8 @@
-import { prisma, Prisma } from '@openpass/db'
+import { prisma, Prisma, RegistrationStatus } from '@openpass/db'
 import { CreateRegistrationInput } from '@openpass/types'
 import qrcode from 'qrcode'
 import crypto from 'crypto'
-import { sendTicketConfirmationEmail } from './email'
+import { sendTicketConfirmationEmail, sendWaitlistEmail } from './email'
 
 export async function createRegistration(data: CreateRegistrationInput, userId: string) {
   // Check if already registered
@@ -27,9 +27,15 @@ export async function createRegistration(data: CreateRegistrationInput, userId: 
 
       if (!event) throw new Error('EVENT_NOT_FOUND')
 
-      if (event.capacity && event._count.registrations >= event.capacity) {
-        throw new Error('EVENT_FULL')
-      }
+      const confirmedCount = await tx.registration.count({
+        where: {
+          eventId: data.eventId,
+          deletedAt: null,
+          status: RegistrationStatus.CONFIRMED,
+        },
+      })
+      const isFull =
+        event.capacity !== null && event.capacity !== undefined && confirmedCount >= event.capacity
 
       const registration = await tx.registration.create({
         data: {
@@ -37,6 +43,7 @@ export async function createRegistration(data: CreateRegistrationInput, userId: 
           userId,
           formData: data.formData || {},
           qrCode: qrCodeRaw,
+          status: isFull ? RegistrationStatus.WAITLISTED : RegistrationStatus.CONFIRMED,
         },
       })
 
@@ -49,21 +56,39 @@ export async function createRegistration(data: CreateRegistrationInput, userId: 
   })
 
   if (user?.email && event) {
-    sendTicketConfirmationEmail({
-      to: user.email,
-      userName: user.name ?? user.email,
-      eventTitle: event.title,
-      eventStartAt: event.startAt,
-      eventEndAt: event.endAt,
-      eventVenue: event.venue,
-      qrCode: qrCodeRaw,
-      registrationId: registration.id,
-    }).catch((err) => {
-      console.error('[EMAIL ERROR]', err)
-    })
+    if (registration.status === RegistrationStatus.CONFIRMED) {
+      await sendTicketConfirmationEmail({
+        to: user.email,
+        userName: user.name ?? user.email,
+        eventTitle: event.title,
+        eventStartAt: event.startAt,
+        eventEndAt: event.endAt,
+        eventVenue: event.venue,
+        qrCode: qrCodeRaw,
+        registrationId: registration.id,
+      }).catch((err) => {
+        console.error('[EMAIL ERROR]', err)
+      })
+    } else {
+      await sendWaitlistEmail({
+        to: user.email,
+        userName: user.name ?? user.email,
+        eventTitle: event.title,
+        eventStartAt: event.startAt,
+        eventEndAt: event.endAt,
+        eventVenue: event.venue,
+      })
+    }
   }
 
-  return { registration, qrImage: qrCodeDataUrl }
+  return {
+    registration,
+    qrImage: registration.status === RegistrationStatus.CONFIRMED ? qrCodeDataUrl : null,
+    message:
+      registration.status === RegistrationStatus.WAITLISTED
+        ? 'Event is full. You have been added to the waitlist.'
+        : 'Registration successful',
+  }
 }
 
 export async function checkInRegistration(qrCode: string, checkerUserId: string) {
