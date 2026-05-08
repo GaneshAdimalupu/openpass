@@ -42,6 +42,7 @@ model Event {
   longitude     Float?
   capacity      Int?
   isPublished   Boolean  @default(false)
+  isFlagship    Boolean  @default(false)
   deletedAt     DateTime?
 
   // Custom Form Builder

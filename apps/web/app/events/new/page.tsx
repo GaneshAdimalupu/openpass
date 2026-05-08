@@ -25,8 +25,10 @@ interface EventForm {
   // Step 1
   title: string
   category: string
+  customCategory: string
   organization: string
   description: string
+  isFlagship: boolean
   // Step 2
   startDate: string
   startTime: string
@@ -74,12 +76,11 @@ const EventMap = dynamic(() => import('./EventMap'), {
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
-const STEPS = [
-  { id: 1, label: 'Basic Info', icon: 'edit' },
-  { id: 2, label: 'Date & Venue', icon: 'location_on' },
-  { id: 3, label: 'Attendee Experience', icon: 'confirmation_number' },
-  { id: 4, label: 'Promotion', icon: 'campaign' },
-  { id: 5, label: 'Review', icon: 'visibility' },
+const SECTIONS = [
+  { id: 'core-details', label: 'Core Details', icon: 'info' },
+  { id: 'logistics', label: 'Date & Venue', icon: 'event_available' },
+  { id: 'registration', label: 'Registration', icon: 'how_to_reg' },
+  { id: 'promotion', label: 'Promotion & Links', icon: 'campaign' },
 ]
 
 const CATEGORIES = [
@@ -128,13 +129,13 @@ function buildSlug(title: string) {
 // ─── Main page ──────────────────────────────────────────────────────────────────
 
 export default function CreateEventPage() {
-  const [step, setStep] = useState(1)
-
   const defaultForm: EventForm = {
     title: '',
     category: 'Hackathon',
+    customCategory: '',
     organization: '',
     description: '',
+    isFlagship: false,
     startDate: '',
     startTime: '09:00',
     endDate: '',
@@ -182,8 +183,7 @@ export default function CreateEventPage() {
       const raw = localStorage.getItem(DRAFT_KEY)
       if (raw) {
         const parsed = JSON.parse(raw)
-        setForm(parsed.form ?? defaultForm)
-        setStep(parsed.step ?? 1)
+        setForm(parsed.form ? { ...defaultForm, ...parsed.form } : defaultForm)
         setDraftTime(parsed.savedAt ?? null)
       }
     } catch {
@@ -213,14 +213,14 @@ export default function CreateEventPage() {
   const saveDraft = useCallback(() => {
     try {
       const savedAt = new Date().toLocaleTimeString()
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ form, step, savedAt }))
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ form, savedAt }))
       setDraftTime(savedAt)
       setDraftSaved(true)
       setTimeout(() => setDraftSaved(false), 2000)
     } catch {
       /* ignore */
     }
-  }, [form, step])
+  }, [form])
 
   // Auto-save every 30 s
   useEffect(() => {
@@ -308,8 +308,7 @@ export default function CreateEventPage() {
 
   // ── Publish ──
   const handlePublish = async () => {
-    if (!form.title.trim()) {
-      setStep(1)
+    if (!form.title.trim() || !form.startDate) {
       return
     }
     setPublishing(true)
@@ -324,8 +323,12 @@ export default function CreateEventPage() {
         endTime: form.endTime,
         venue: form.isVirtual ? 'Virtual Event' : form.venueSearch || '',
         location: form.isVirtual ? null : form.location,
-        category: form.category,
+        category:
+          form.category === 'Other' && form.customCategory.trim() !== ''
+            ? form.customCategory.trim()
+            : form.category,
         organization: form.organization,
+        isFlagship: form.isFlagship,
         capacity: form.capacity ? parseInt(form.capacity) : null,
         registrationDeadline: form.registrationDeadline || null,
         requireApproval: form.requireApproval,
@@ -353,12 +356,11 @@ export default function CreateEventPage() {
     }
   }
 
-  // ── Validation per step ──
-  const stepValid = () => {
-    if (step === 1) return form.title.trim().length > 0
-    if (step === 2) return form.startDate.length > 0 && (form.isVirtual || form.location !== null)
-    return true
-  }
+  // ── Validation ──
+  const formValid =
+    form.title.trim().length > 0 &&
+    form.startDate.length > 0 &&
+    (form.isVirtual || form.location !== null)
 
   // ─── Published success screen ───────────────────────────────────────────────
   if (published) {
@@ -401,178 +403,72 @@ export default function CreateEventPage() {
 
   // ─── Main render ────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0e0e0e] text-white selection:bg-[#0070eb]/30">
-      {/* ── Top Bar ── */}
-      <header className="fixed top-0 w-full z-50 bg-[#0e0e0e]/90 backdrop-blur-xl border-b border-white/5 h-16 flex items-center justify-between px-6 md:px-8">
-        <Link href="/" className="text-xl font-black tracking-tighter text-white font-headline">
-          OpenPass
-        </Link>
-        <nav className="hidden md:flex items-center gap-8">
-          {['Events', 'Analytics', 'Settings', 'Help'].map((item) => (
-            <Link
-              key={item}
-              href="#"
-              className="text-[#adaaaa] hover:text-white transition-colors font-headline text-sm"
-            >
-              {item}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3">
-          {draftTime && (
-            <span className="hidden md:block text-[10px] text-[#494847] font-mono">
-              Draft saved {draftTime}
-            </span>
-          )}
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#85adff] to-[#0070eb] flex items-center justify-center text-[#002c65] font-black text-sm">
-            J
-          </div>
-        </div>
-      </header>
-
-      {/* ── Side Nav ── */}
-      <aside className="hidden lg:flex fixed left-0 top-16 bottom-0 w-60 bg-[#0e0e0e] border-r border-white/5 flex-col z-40">
-        <div className="px-5 py-5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#85adff]/10 border border-[#85adff]/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#85adff] text-lg">
-                auto_fix_high
-              </span>
-            </div>
-            <div>
-              <p className="text-white font-black text-sm font-headline">Event Wizard</p>
-              <p className="text-[#adaaaa] text-xs font-body">Step {step} of 5</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1">
-          {STEPS.map((s) => {
-            const active = s.id === step
-            const done = s.id < step
-            const locked = s.id > step
-            return (
-              <button
-                key={s.id}
-                onClick={() => !locked && setStep(s.id)}
-                className={[
-                  'w-full flex items-center gap-3 py-3.5 px-5 text-sm transition-all text-left',
-                  active
-                    ? 'bg-gradient-to-r from-[#85adff]/10 to-transparent text-[#85adff] border-r-2 border-[#0070eb]'
-                    : done
-                      ? 'text-[#adaaaa] hover:text-white hover:bg-white/3'
-                      : locked
-                        ? 'text-[#2c2c2c] cursor-not-allowed'
-                        : '',
-                ].join(' ')}
-              >
-                <span
-                  className="material-symbols-outlined text-base shrink-0"
-                  style={active || done ? { fontVariationSettings: "'FILL' 1" } : undefined}
-                >
-                  {done ? 'check_circle' : s.icon}
-                </span>
-                <span className="font-headline font-semibold">{s.label}</span>
-              </button>
-            )
-          })}
-        </nav>
-
-        <div className="p-5 border-t border-white/5 space-y-2">
-          <button
-            onClick={saveDraft}
-            className={[
-              'w-full py-3 rounded-xl font-semibold text-sm font-headline transition-all flex items-center justify-center gap-2',
-              draftSaved
-                ? 'bg-[#85adff]/20 text-[#85adff]'
-                : 'bg-[#262626] text-white hover:bg-[#2c2c2c]',
-            ].join(' ')}
-          >
-            <span className="material-symbols-outlined text-base">
-              {draftSaved ? 'check' : 'save'}
-            </span>
-            {draftSaved ? 'Saved!' : 'Save Draft'}
-          </button>
-          {draftTime && (
-            <p className="text-[10px] text-[#494847] text-center font-mono">
-              Last saved {draftTime}
-            </p>
-          )}
-        </div>
-      </aside>
-
+    <div className="min-h-screen bg-background text-on-surface selection:bg-primary/30">
       {/* ── Main ── */}
-      <main className="lg:ml-60 pt-16 min-h-screen flex flex-col pb-28">
+      <main className="min-h-screen flex flex-col">
         {/* Page header */}
         <section className="px-6 md:px-12 pt-10 pb-6">
           <div className="max-w-6xl mx-auto">
-            <h1
-              className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter mb-6
-              bg-gradient-to-r from-white to-[#adaaaa] bg-clip-text text-transparent"
-            >
-              Launch Your Movement
-            </h1>
-            <p className="text-[#adaaaa] text-base font-body mb-8">
-              Every great open source project starts with a community gathering. Set up your free
-              event in minutes.
-            </p>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter mb-3 text-on-surface">
+                  Create Your Event
+                </h1>
+                <p className="text-on-surface-variant text-base font-body max-w-xl leading-relaxed">
+                  Design a premium experience. Define the core parameters of your gathering, from
+                  atmospheric details to logistical realities.
+                </p>
+              </div>
+              <div className="hidden md:flex items-center gap-3">
+                {draftTime && (
+                  <span className="text-[10px] text-outline font-mono">Saved {draftTime}</span>
+                )}
+                <button
+                  onClick={saveDraft}
+                  className={[
+                    'px-4 py-2 rounded-xl font-semibold text-sm font-headline transition-all flex items-center gap-2',
+                    draftSaved
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-surface-container-highest text-on-surface hover:bg-surface-bright',
+                  ].join(' ')}
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {draftSaved ? 'check' : 'save'}
+                  </span>
+                  {draftSaved ? 'Saved!' : 'Save Draft'}
+                </button>
+              </div>
+            </div>
 
-            {/* Stepper */}
+            {/* Section quick-nav pills */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              {[
-                { n: 1, label: 'Basic Info' },
-                { n: 2, label: 'Date & Venue' },
-                { n: 3, label: 'Attendee Experience' },
-              ].map((s, i, arr) => (
-                <div key={s.n} className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => s.n <= step && setStep(s.n)}
-                    className="flex items-center gap-2 group"
-                  >
-                    <div
-                      className={[
-                        'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all',
-                        s.n < step
-                          ? 'bg-[#85adff]/20 border border-[#85adff]/40'
-                          : s.n === step
-                            ? 'bg-[#85adff] ring-4 ring-[#85adff]/20'
-                            : 'bg-[#201f1f] border border-white/5',
-                      ].join(' ')}
-                    >
-                      {s.n < step ? (
-                        <span className="material-symbols-outlined text-[#85adff] text-sm">
-                          check
-                        </span>
-                      ) : (
-                        <span className={s.n === step ? 'text-[#002c65]' : 'text-[#494847]'}>
-                          {s.n}
-                        </span>
-                      )}
-                    </div>
-                    <span
-                      className={[
-                        'text-sm font-semibold font-headline transition-colors',
-                        s.n === step ? 'text-white' : 'text-[#494847]',
-                      ].join(' ')}
-                    >
-                      {s.label}
-                    </span>
-                  </button>
-                  {i < arr.length - 1 && <div className="h-px w-8 bg-[#262626]" />}
-                </div>
+              {SECTIONS.map((s) => (
+                <a
+                  key={s.id}
+                  href={`#${s.id}`}
+                  className="flex items-center gap-2 shrink-0 px-4 py-2 rounded-xl bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-all text-sm font-headline font-medium"
+                >
+                  <span className="material-symbols-outlined text-base text-primary">{s.icon}</span>
+                  {s.label}
+                </a>
               ))}
             </div>
           </div>
         </section>
 
         {/* Form + Preview */}
-        <section className="px-6 md:px-12 flex-1">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
-            {/* ── LEFT: Steps ── */}
-            <div className="lg:col-span-7 space-y-8">
-              {/* ── STEP 1: Basic Info ── */}
-              {step === 1 && (
-                <div className="space-y-7">
+        <section className="px-6 md:px-12 flex-1 pb-16">
+          <div className="max-w-6xl mx-auto flex gap-10 flex-col xl:flex-row">
+            {/* ── LEFT: All Form Sections ── */}
+            <div className="flex-1 max-w-3xl space-y-16">
+              {/* ── Section 1: Core Details ── */}
+              <section id="core-details" className="scroll-mt-24 relative">
+                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-surface-container-low rounded-full" />
+                <h3 className="font-headline text-2xl font-bold mb-8 text-on-surface flex items-center gap-3">
+                  <span className="text-primary material-symbols-outlined">info</span>
+                  Core Details
+                </h3>
+                <div className="bg-surface-container-low rounded-xl p-8 space-y-7 electric-glow">
                   <div>
                     <label className={labelCls}>Event Title *</label>
                     <input
@@ -607,6 +503,16 @@ export default function CreateEventPage() {
                           expand_more
                         </span>
                       </div>
+                      {form.category === 'Other' && (
+                        <div className="mt-3">
+                          <input
+                            className={inputCls}
+                            placeholder="Please specify..."
+                            value={form.customCategory || ''}
+                            onChange={(e) => update('customCategory', e.target.value)}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className={labelCls}>Organization</label>
@@ -617,6 +523,29 @@ export default function CreateEventPage() {
                         onChange={(e) => update('organization', e.target.value)}
                       />
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-5 rounded-xl border border-white/5 bg-white/5">
+                    <div>
+                      <p className="font-headline font-bold text-white mb-1">Flagship Event</p>
+                      <p className="text-xs text-[#adaaaa] font-body">
+                        Mark this as your community&apos;s main annual or flagship gathering
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => update('isFlagship', !form.isFlagship)}
+                      className={[
+                        'w-12 h-6 rounded-full transition-colors relative',
+                        form.isFlagship ? 'bg-[#85adff]' : 'bg-[#2c2c2c]',
+                      ].join(' ')}
+                    >
+                      <div
+                        className={[
+                          'w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform',
+                          form.isFlagship ? 'translate-x-6' : 'translate-x-0.5',
+                        ].join(' ')}
+                      />
+                    </button>
                   </div>
 
                   <div>
@@ -633,11 +562,16 @@ export default function CreateEventPage() {
                     </p>
                   </div>
                 </div>
-              )}
+              </section>
 
-              {/* ── STEP 2: Date & Venue ── */}
-              {step === 2 && (
-                <div className="space-y-8">
+              {/* ── Section 2: Date & Venue ── */}
+              <section id="logistics" className="scroll-mt-24 relative">
+                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-surface-container-low rounded-full" />
+                <h3 className="font-headline text-2xl font-bold mb-8 text-on-surface flex items-center gap-3">
+                  <span className="text-primary material-symbols-outlined">event_available</span>
+                  Logistics & Schedule
+                </h3>
+                <div className="bg-surface-container-low rounded-xl p-8 space-y-8 electric-glow">
                   {/* Date & Time */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
@@ -670,17 +604,24 @@ export default function CreateEventPage() {
                         <div key={key}>
                           <label className={labelCls}>{label}</label>
                           <div className="bg-[#262626] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:ring-1 focus-within:ring-[#0070eb]/40 transition-all group">
-                            <input
-                              type={type}
-                              className="bg-transparent border-none focus:ring-0 focus:outline-none text-white w-full text-sm font-body [color-scheme:dark]"
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              value={(form as any)[key]}
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              onChange={(e) => update(key as any, e.target.value)}
-                            />
                             <span className="material-symbols-outlined text-[#adaaaa] group-focus-within:text-[#85adff] transition-colors text-lg shrink-0">
                               {icon}
                             </span>
+                            <input
+                              type={type}
+                              className="bg-transparent border-none focus:ring-0 focus:outline-none text-white w-full text-sm font-body [color-scheme:dark] cursor-pointer"
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              value={(form as any)[key]}
+                              onClick={(e) => {
+                                try {
+                                  ;(e.target as HTMLInputElement).showPicker()
+                                } catch {
+                                  /* ignore */
+                                }
+                              }}
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              onChange={(e) => update(key as any, e.target.value)}
+                            />
                           </div>
                         </div>
                       ))}
@@ -856,11 +797,16 @@ export default function CreateEventPage() {
                     )}
                   </div>
                 </div>
-              )}
+              </section>
 
-              {/* ── STEP 3: Attendee Experience ── */}
-              {step === 3 && (
-                <div className="space-y-7">
+              {/* ── Section 3: Registration ── */}
+              <section id="registration" className="scroll-mt-24 relative">
+                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-surface-container-low rounded-full" />
+                <h3 className="font-headline text-2xl font-bold mb-8 text-on-surface flex items-center gap-3">
+                  <span className="text-primary material-symbols-outlined">how_to_reg</span>
+                  Registration Settings
+                </h3>
+                <div className="bg-surface-container-low rounded-xl p-8 space-y-7 electric-glow">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className={labelCls}>Max Capacity</label>
@@ -876,15 +822,22 @@ export default function CreateEventPage() {
                     <div>
                       <label className={labelCls}>Registration Deadline</label>
                       <div className="bg-[#262626] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:ring-1 focus-within:ring-[#0070eb]/40 transition-all">
-                        <input
-                          type="date"
-                          className="bg-transparent border-none focus:ring-0 focus:outline-none text-white w-full text-sm font-body [color-scheme:dark]"
-                          value={form.registrationDeadline}
-                          onChange={(e) => update('registrationDeadline', e.target.value)}
-                        />
                         <span className="material-symbols-outlined text-[#adaaaa] text-lg shrink-0">
                           event_available
                         </span>
+                        <input
+                          type="date"
+                          className="bg-transparent border-none focus:ring-0 focus:outline-none text-white w-full text-sm font-body [color-scheme:dark] cursor-pointer"
+                          value={form.registrationDeadline}
+                          onClick={(e) => {
+                            try {
+                              ;(e.target as HTMLInputElement).showPicker()
+                            } catch {
+                              /* ignore */
+                            }
+                          }}
+                          onChange={(e) => update('registrationDeadline', e.target.value)}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1061,11 +1014,16 @@ export default function CreateEventPage() {
                     )}
                   </div>
                 </div>
-              )}
+              </section>
 
-              {/* ── STEP 4: Promotion ── */}
-              {step === 4 && (
-                <div className="space-y-7">
+              {/* ── Section 4: Promotion & Links ── */}
+              <section id="promotion" className="scroll-mt-24 relative">
+                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-surface-container-low rounded-full" />
+                <h3 className="font-headline text-2xl font-bold mb-8 text-on-surface flex items-center gap-3">
+                  <span className="text-primary material-symbols-outlined">campaign</span>
+                  Promotion &amp; Links
+                </h3>
+                <div className="bg-surface-container-low rounded-xl p-8 space-y-7 electric-glow">
                   <div>
                     <label className={labelCls}>Event Website</label>
                     <input
@@ -1105,12 +1063,17 @@ export default function CreateEventPage() {
                   <div>
                     <label className={labelCls}>Accent Color</label>
                     <div className="flex items-center gap-4">
-                      <input
-                        type="color"
-                        className="w-12 h-12 rounded-xl cursor-pointer bg-transparent border-none"
-                        value={form.bannerColor}
-                        onChange={(e) => update('bannerColor', e.target.value)}
-                      />
+                      <div
+                        className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/10 relative shrink-0 cursor-pointer"
+                        style={{ backgroundColor: form.bannerColor }}
+                      >
+                        <input
+                          type="color"
+                          className="absolute inset-0 w-[150%] h-[150%] -translate-x-1/4 -translate-y-1/4 opacity-0 cursor-pointer"
+                          value={form.bannerColor}
+                          onChange={(e) => update('bannerColor', e.target.value)}
+                        />
+                      </div>
                       <div>
                         <p className="text-sm text-white font-body">{form.bannerColor}</p>
                         <p className="text-xs text-[#494847] font-body">
@@ -1120,71 +1083,67 @@ export default function CreateEventPage() {
                     </div>
                   </div>
                 </div>
-              )}
+              </section>
 
-              {/* ── STEP 5: Review ── */}
-              {step === 5 && (
-                <div className="space-y-5">
-                  <p className="text-[#adaaaa] font-body text-sm">
-                    Review your event details before publishing.
-                  </p>
-
-                  {publishError && (
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center gap-3 text-red-400 text-sm font-body">
-                      <span className="material-symbols-outlined text-base">error</span>
-                      {publishError}
-                    </div>
-                  )}
-
-                  {[
-                    { label: 'Title', value: form.title || '—' },
-                    { label: 'Category', value: form.category },
-                    { label: 'Organization', value: form.organization || '—' },
-                    {
-                      label: 'Start',
-                      value: form.startDate ? `${form.startDate} ${form.startTime}` : '—',
-                    },
-                    { label: 'End', value: form.endDate ? `${form.endDate} ${form.endTime}` : '—' },
-                    {
-                      label: 'Venue',
-                      value: form.isVirtual
-                        ? 'Virtual Event'
-                        : form.location?.address.split(',').slice(0, 2).join(', ') || '—',
-                    },
-                    {
-                      label: 'Capacity',
-                      value: form.capacity ? `${form.capacity} attendees` : 'Unlimited',
-                    },
-                    {
-                      label: 'Approval',
-                      value: form.requireApproval ? 'Manual approval' : 'Auto-approve',
-                    },
-                    {
-                      label: 'Custom Fields',
-                      value: form.customFields.length
-                        ? `${form.customFields.length} question(s)`
-                        : 'None',
-                    },
-                    { label: 'Tags', value: form.tags || 'None' },
-                  ].map(({ label, value }) => (
-                    <div
-                      key={label}
-                      className="flex items-start gap-4 py-3 border-b border-white/5"
-                    >
-                      <span className="text-xs font-bold text-[#494847] uppercase tracking-widest w-32 shrink-0 pt-0.5 font-headline">
-                        {label}
-                      </span>
-                      <span className="text-sm text-white font-body">{value}</span>
-                    </div>
-                  ))}
+              {/* ── Publish Error ── */}
+              {publishError && (
+                <div className="bg-error/10 border border-error/20 rounded-xl p-4 flex items-center gap-3 text-error text-sm font-body">
+                  <span className="material-symbols-outlined text-base">error</span>
+                  {publishError}
                 </div>
               )}
+
+              {/* ── Validation hint ── */}
+              {!formValid && (
+                <div className="bg-error/10 border border-error/20 rounded-xl p-4 flex items-center gap-2 text-error text-xs font-body">
+                  <span className="material-symbols-outlined text-base">warning</span>
+                  Fill in the required fields: event title, start date, and venue (or toggle
+                  virtual).
+                </div>
+              )}
+
+              {/* ── Launch CTA ── */}
+              <div className="pt-4 pb-8 flex items-center gap-4">
+                <button
+                  onClick={handlePublish}
+                  disabled={publishing || !formValid}
+                  className={[
+                    'px-8 py-4 rounded-2xl font-extrabold text-sm font-headline transition-all flex items-center gap-2',
+                    'bg-gradient-to-br from-primary to-primary-dim text-on-primary',
+                    'shadow-lg shadow-primary/20 hover:shadow-primary/40',
+                    'hover:scale-[1.02] active:scale-[0.98]',
+                    'disabled:opacity-40 disabled:pointer-events-none',
+                  ].join(' ')}
+                >
+                  {publishing ? (
+                    <>
+                      <span className="material-symbols-outlined text-lg animate-spin">
+                        progress_activity
+                      </span>
+                      Publishing…
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-lg">rocket_launch</span>
+                      Launch Event
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={saveDraft}
+                  className="px-6 py-4 rounded-2xl font-semibold text-sm font-headline bg-surface-container-highest text-on-surface hover:bg-surface-bright transition-all flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-base">save</span>
+                  Save Draft
+                </button>
+              </div>
             </div>
 
             {/* ── RIGHT: Live Preview ── */}
-            <div className="lg:col-span-5">
+            <aside className="hidden xl:block w-[400px] shrink-0">
               <div className="sticky top-24 space-y-5">
-                <p className="text-[10px] font-bold text-[#adaaaa] tracking-[0.2em] uppercase font-headline">
+                <p className="text-[10px] font-bold text-on-surface-variant tracking-[0.2em] uppercase font-headline flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary-dim animate-pulse" />
                   Live Preview
                 </p>
 
@@ -1212,7 +1171,7 @@ export default function CreateEventPage() {
                           border: `1px solid ${form.bannerColor}30`,
                         }}
                       >
-                        {step === 5 ? 'Ready to Publish' : 'Preview'}
+                        {formValid ? 'Ready to Publish' : 'Preview'}
                       </div>
                       <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -1221,14 +1180,22 @@ export default function CreateEventPage() {
                           border: '1px solid rgba(73,72,71,0.2)',
                         }}
                       >
-                        <span
-                          className="material-symbols-outlined text-[#85adff]"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          confirmation_number
-                        </span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/openpass-logo.svg"
+                          alt="OpenPass Logo"
+                          className="w-28 h-20 opacity-90"
+                        />
                       </div>
                     </div>
+
+                    {form.isFlagship && (
+                      <div className="mb-3 inline-block px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+                        <p className="text-[10px] font-bold text-amber-400 tracking-widest uppercase font-headline">
+                          Flagship Event
+                        </p>
+                      </div>
+                    )}
 
                     <h3 className="font-headline text-xl font-extrabold leading-tight mb-5 text-white">
                       {form.title || 'Your Event Title'}
@@ -1336,80 +1303,18 @@ export default function CreateEventPage() {
                   </div>
                 </div>
 
-                {/* Step validation hint */}
-                {!stepValid() && (
-                  <div className="bg-[#ff716c]/10 border border-[#ff716c]/20 rounded-xl p-3 flex items-center gap-2 text-[#ff716c] text-xs font-body">
+                {/* Validation hint */}
+                {!formValid && (
+                  <div className="bg-error/10 border border-error/20 rounded-xl p-3 flex items-center gap-2 text-error text-xs font-body">
                     <span className="material-symbols-outlined text-base">warning</span>
-                    {step === 1
-                      ? 'Add an event title to continue.'
-                      : step === 2
-                        ? 'Pick a start date and a venue to continue.'
-                        : 'Fill in required fields.'}
+                    Add an event title, start date, and venue to publish.
                   </div>
                 )}
               </div>
-            </div>
+            </aside>
           </div>
         </section>
       </main>
-
-      {/* ── Footer actions ── */}
-      <footer className="fixed bottom-0 right-0 left-0 lg:left-60 bg-[#0e0e0e]/95 backdrop-blur-md border-t border-white/5 py-4 px-8 z-50">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <button
-            onClick={() => (step === 1 ? undefined : setStep((s) => s - 1))}
-            disabled={step === 1}
-            className="flex items-center gap-2 text-[#adaaaa] font-bold hover:text-white transition-colors group disabled:opacity-30 font-headline text-sm"
-          >
-            <span className="material-symbols-outlined group-hover:-translate-x-1 transition-transform text-lg">
-              arrow_back
-            </span>
-            {step === 1 ? 'Discard Draft' : `Back: ${STEPS[step - 2]?.label}`}
-          </button>
-
-          <div className="flex items-center gap-4">
-            {/* Mobile save draft */}
-            <button
-              onClick={saveDraft}
-              className="lg:hidden flex items-center gap-1.5 text-[#adaaaa] hover:text-white transition-colors text-sm font-headline"
-            >
-              <span className="material-symbols-outlined text-base">save</span>
-              Save
-            </button>
-
-            <button
-              onClick={() => (step < 5 ? setStep((s) => s + 1) : handlePublish())}
-              disabled={publishing || (step < 5 && !stepValid())}
-              className={[
-                'px-7 py-3 rounded-2xl font-extrabold text-sm font-headline transition-all flex items-center gap-2',
-                'bg-gradient-to-br from-[#85adff] to-[#0070eb] text-[#002c65]',
-                'shadow-lg shadow-[#85adff]/20 hover:shadow-[#85adff]/40',
-                'hover:scale-[1.02] active:scale-[0.98]',
-                'disabled:opacity-40 disabled:pointer-events-none',
-              ].join(' ')}
-            >
-              {publishing ? (
-                <>
-                  <span className="material-symbols-outlined text-lg animate-spin">
-                    progress_activity
-                  </span>
-                  Publishing…
-                </>
-              ) : step === 5 ? (
-                <>
-                  Publish Event{' '}
-                  <span className="material-symbols-outlined text-lg">rocket_launch</span>
-                </>
-              ) : (
-                <>
-                  Next: {STEPS[step]?.label}{' '}
-                  <span className="material-symbols-outlined text-lg">arrow_forward</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

@@ -80,6 +80,13 @@ export default function EventMap({ location, onLocationSelect }: EventMapProps) 
     const map = L.map(mapContainerRef.current, {
       center: location ? [location.lat, location.lng] : defaultCenter,
       zoom: location ? 15 : 5,
+      minZoom: 2,
+      maxBounds: [
+        [-90, -180],
+        [90, 180],
+      ],
+      maxBoundsViscosity: 1.0,
+      worldCopyJump: false,
       zoomControl: false,
       attributionControl: false,
       dragging: !!onLocationSelect,
@@ -91,6 +98,7 @@ export default function EventMap({ location, onLocationSelect }: EventMapProps) 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       subdomains: 'abcd',
       maxZoom: 20,
+      noWrap: true,
     }).addTo(map)
 
     mapInstanceRef.current = map

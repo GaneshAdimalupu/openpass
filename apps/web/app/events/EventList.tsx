@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { getEventsAction } from '../actions/event'
 
@@ -9,7 +9,9 @@ export type EventWithIncludes = {
   title: string
   slug: string
   venue: string | null
+  category?: string
   startAt: Date
+  endAt?: Date
   organiser: {
     name: string | null
     image: string | null
@@ -19,7 +21,21 @@ export type EventWithIncludes = {
   }
 }
 
-export function EventList({ initialEvents }: { initialEvents: EventWithIncludes[] }) {
+type EventListProps = {
+  initialEvents: EventWithIncludes[]
+  activeCategory?: string
+  searchQuery?: string
+  highlightedEventId?: string | null
+  onEventHover?: (eventId: string | null) => void
+}
+
+export function EventList({
+  initialEvents,
+  activeCategory = 'All',
+  searchQuery = '',
+  highlightedEventId,
+  onEventHover,
+}: EventListProps) {
   const [events, setEvents] = useState<EventWithIncludes[]>(initialEvents)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(initialEvents.length >= 10)
@@ -41,14 +57,40 @@ export function EventList({ initialEvents }: { initialEvents: EventWithIncludes[
     }
   }
 
-  if (events.length === 0) {
+  // Client-side filter by category and search
+  const filteredEvents = useMemo(() => {
+    let result = events
+    if (activeCategory !== 'All') {
+      result = result.filter(
+        (e) => (e.category || '').toLowerCase() === activeCategory.toLowerCase()
+      )
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(
+        (e) =>
+          e.title.toLowerCase().includes(q) ||
+          (e.venue || '').toLowerCase().includes(q) ||
+          (e.category || '').toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [events, activeCategory, searchQuery])
+
+  if (filteredEvents.length === 0) {
     return (
       <div className="w-full py-24 flex flex-col items-center justify-center bg-surface-container-low/50 rounded-2xl border border-outline-variant/10">
         <span className="material-symbols-outlined text-5xl text-outline-variant mb-4">
           event_busy
         </span>
-        <h3 className="text-xl font-headline font-bold text-white mb-2">No active events</h3>
-        <p className="text-on-surface-variant">Check back later for new events.</p>
+        <h3 className="text-xl font-headline font-bold text-white mb-2">No events found</h3>
+        <p className="text-on-surface-variant">
+          {searchQuery
+            ? 'Try a different search term.'
+            : activeCategory !== 'All'
+              ? `No ${activeCategory} events right now.`
+              : 'Check back later for new events.'}
+        </p>
       </div>
     )
   }
@@ -56,16 +98,26 @@ export function EventList({ initialEvents }: { initialEvents: EventWithIncludes[
   return (
     <>
       <div className="space-y-px overflow-hidden rounded-2xl border border-outline-variant/10">
-        {events.map((event) => {
+        {filteredEvents.map((event) => {
           const startDate = new Date(event.startAt)
           const month = startDate.toLocaleDateString('en-US', { month: 'short' })
           const day = startDate.toLocaleDateString('en-US', { day: '2-digit' })
           const time = startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          const isHighlighted = highlightedEventId === event.id
+          const isLive =
+            event.endAt &&
+            Date.now() >= startDate.getTime() &&
+            Date.now() <= new Date(event.endAt).getTime()
 
           return (
             <div
               key={event.id}
-              className="group flex flex-col md:flex-row md:items-center justify-between p-6 bg-surface-container-low hover:bg-surface-container-highest transition-all duration-300"
+              id={`event-row-${event.id}`}
+              className={`group flex flex-col md:flex-row md:items-center justify-between p-6 bg-surface-container-low hover:bg-surface-container-highest transition-all duration-300 ${
+                isHighlighted ? 'ring-2 ring-primary/60 bg-surface-container-highest' : ''
+              }`}
+              onMouseEnter={() => onEventHover?.(event.id)}
+              onMouseLeave={() => onEventHover?.(null)}
             >
               <div className="flex items-center gap-6">
                 {/* Date Box */}
@@ -79,16 +131,31 @@ export function EventList({ initialEvents }: { initialEvents: EventWithIncludes[
                 {/* Event Info */}
                 <div>
                   <div className="flex items-center gap-3 mb-1">
+                    {isLive && (
+                      <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-error/15 text-error">
+                        <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+                        Live
+                      </span>
+                    )}
                     <Link
                       href={`/events/${event.slug}`}
                       className="text-lg font-bold text-on-surface group-hover:text-primary transition-colors"
                     >
                       {event.title}
                     </Link>
-                    {/* Placeholder Tag */}
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-secondary-container text-on-secondary-container">
-                      Event
-                    </span>
+                    {event.category && (
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          event.category === 'Music'
+                            ? 'bg-tertiary-container/30 text-tertiary'
+                            : event.category === 'Workshop'
+                              ? 'bg-outline-variant/20 text-on-surface-variant'
+                              : 'bg-secondary-container text-on-secondary-container'
+                        }`}
+                      >
+                        {event.category}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-on-surface-variant">
                     <span className="flex items-center gap-1">
@@ -144,7 +211,7 @@ export function EventList({ initialEvents }: { initialEvents: EventWithIncludes[
       </div>
 
       {/* Load More */}
-      {hasMore && (
+      {hasMore && activeCategory === 'All' && !searchQuery && (
         <div className="mt-12 flex justify-center">
           <button
             onClick={handleLoadMore}

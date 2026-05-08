@@ -1,15 +1,19 @@
 # OpenPass Architecture Guide
 
 ## Introduction
+
 OpenPass is built as a monorepo using Turborepo. This structure allows multiple applications and shared packages to live in a single repository, improving code reuse and development efficiency.
 
 ## Apps Directory
+
 The `apps/` directory contains the main applications of the project.
 
 ### apps/web
+
 This is the primary frontend application built with Next.js. It handles user interactions, UI rendering, and communicates with backend logic.
 
 ## Packages Directory
+
 The `packages/` directory contains shared and modular code used across the project.
 
 - **@openpass/core**  
@@ -27,6 +31,7 @@ The `packages/` directory contains shared and modular code used across the proje
 These packages promote modularity and code reuse across the application.
 
 ## Data Flow
+
 The application follows a structured data flow:
 
 1. The Next.js frontend (apps/web) handles user interactions.
@@ -37,6 +42,7 @@ The application follows a structured data flow:
 This layered approach ensures separation of concerns and maintainability.
 
 ## Contribution Guide
+
 1. Clone the repository
 2. Install dependencies using `pnpm install`
 3. Run the development server

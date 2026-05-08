@@ -26,6 +26,7 @@ export type CreateEventInput = {
   capacity?: number | null
   registrationDeadline?: string | null
   requireApproval: boolean
+  isFlagship?: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formSchema: any[]
   websiteUrl?: string | null

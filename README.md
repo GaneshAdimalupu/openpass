@@ -33,15 +33,15 @@ OpenPass is a modern, high-performance event management and ticketing platform b
 
 ## 🛠️ Tech Stack
 
-| Layer             | Technology                                              |
-|-------------------|---------------------------------------------------------|
-| Framework         | [Next.js](https://nextjs.org/)                          |
-| Monorepo Manager  | [Turborepo](https://turbo.build/)                       |
-| Package Manager   | [pnpm](https://pnpm.io/)                                |
-| ORM               | [Prisma](https://www.prisma.io/)                        |
-| Styling           | [Tailwind CSS](https://tailwindcss.com/)                |
-| Components        | [Lucide React](https://lucide.dev/)                     |
-| Animations        | [Framer Motion](https://www.framer.com/motion/)         |
+| Layer            | Technology                                      |
+| ---------------- | ----------------------------------------------- |
+| Framework        | [Next.js](https://nextjs.org/)                  |
+| Monorepo Manager | [Turborepo](https://turbo.build/)               |
+| Package Manager  | [pnpm](https://pnpm.io/)                        |
+| ORM              | [Prisma](https://www.prisma.io/)                |
+| Styling          | [Tailwind CSS](https://tailwindcss.com/)        |
+| Components       | [Lucide React](https://lucide.dev/)             |
+| Animations       | [Framer Motion](https://www.framer.com/motion/) |
 
 ---
 
@@ -113,11 +113,11 @@ Ensure you have the following installed:
 
 The project uses **Prisma** for database operations.
 
-| Command              | Script                                              |
-|----------------------|-----------------------------------------------------|
-| Generate Client      | `pnpm turbo run db:generate`                        |
-| Push Schema          | `pnpm --filter @openpass/db prisma db push`         |
-| Open Prisma Studio   | `pnpm --filter @openpass/db prisma studio`          |
+| Command            | Script                                      |
+| ------------------ | ------------------------------------------- |
+| Generate Client    | `pnpm turbo run db:generate`                |
+| Push Schema        | `pnpm --filter @openpass/db prisma db push` |
+| Open Prisma Studio | `pnpm --filter @openpass/db prisma studio`  |
 
 ---
 
@@ -125,11 +125,11 @@ The project uses **Prisma** for database operations.
 
 We use Docker Compose to manage local services (PostgreSQL).
 
-| Command | Script              |
-|---------|---------------------|
-| Up      | `pnpm docker:up`    |
-| Down    | `pnpm docker:down`  |
-| Logs    | `pnpm docker:logs`  |
+| Command | Script             |
+| ------- | ------------------ |
+| Up      | `pnpm docker:up`   |
+| Down    | `pnpm docker:down` |
+| Logs    | `pnpm docker:logs` |
 
 ---
 
