@@ -1,12 +1,12 @@
 {
-  "apps/web": "1.0.0",
+  "apps/web": "1.1.0",
   "apps/api": "1.0.0",
-  "packages/core": "1.0.0",
-  "packages/db": "1.0.0",
-  "packages/ui": "1.0.0",
-  "packages/types": "1.0.0",
-  "packages/typescript-config": "1.0.0",
-  "packages/eslint-config": "1.0.0",
-  "packages/prettier-config": "1.0.0",
-  "packages/commitlint-config": "1.0.0"
+  "packages/core": "1.1.0",
+  "packages/db": "1.1.0",
+  "packages/ui": "1.1.0",
+  "packages/types": "1.1.0",
+  "packages/typescript-config": "1.1.0",
+  "packages/eslint-config": "1.1.0",
+  "packages/prettier-config": "1.1.0",
+  "packages/commitlint-config": "1.1.0"
 }
