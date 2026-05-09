@@ -9,7 +9,14 @@
     "build": {
       "dependsOn": ["^build", "^db:generate"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "env": ["NODE_ENV", "SKIP_ENV_VALIDATION", "RESEND_API_KEY", "EMAIL_FROM"],
+      "env": [
+        "NODE_ENV",
+        "SKIP_ENV_VALIDATION",
+        "RESEND_API_KEY",
+        "EMAIL_FROM",
+        "DATABASE_URL",
+        "DIRECT_URL"
+      ],
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {
@@ -20,6 +27,7 @@
         "GOOGLE_CLIENT_SECRET",
         "NEXT_PUBLIC_APP_URL",
         "DATABASE_URL",
+        "DIRECT_URL",
         "RESEND_API_KEY",
         "EMAIL_FROM"
       ]
