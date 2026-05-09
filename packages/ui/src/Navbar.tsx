@@ -91,8 +91,17 @@ export function Navbar() {
 
                 {/* Avatar */}
                 <div className="relative group">
-                  <button className="w-9 h-9 rounded-full bg-gradient-to-br from-[#85adff] to-[#0070eb] flex items-center justify-center text-[#002c65] font-bold text-sm shadow-lg hover:scale-105 transition-transform">
-                    {session.user.name?.[0]?.toUpperCase() ?? 'U'}
+                  <button className="w-9 h-9 rounded-full bg-gradient-to-br from-[#85adff] to-[#0070eb] flex items-center justify-center text-[#002c65] font-bold text-sm shadow-lg hover:scale-105 transition-transform overflow-hidden p-0.5">
+                    {session.user.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={session.user.image}
+                        alt="Profile"
+                        className="w-full h-full rounded-full object-cover bg-[#0e0e0e]"
+                      />
+                    ) : (
+                      (session.user.name?.[0]?.toUpperCase() ?? 'U')
+                    )}
                   </button>
 
                   {/* Dropdown */}

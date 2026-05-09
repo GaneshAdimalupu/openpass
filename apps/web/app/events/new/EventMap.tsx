@@ -99,7 +99,7 @@ export default function EventMap({ location, onLocationSelect }: EventMapProps) 
       subdomains: 'abcd',
       maxZoom: 20,
       noWrap: true,
-      className: 'brightness-[1.25] contrast-[1.1]',
+      className: 'brightness-[1.8] contrast-[1.15]',
     }).addTo(map)
 
     mapInstanceRef.current = map

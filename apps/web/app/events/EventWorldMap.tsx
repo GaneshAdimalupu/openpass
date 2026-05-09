@@ -142,6 +142,7 @@ export function EventWorldMap({
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       subdomains: 'abcd',
       noWrap: true, // prevent tile repeating horizontally
+      className: 'brightness-[1.8] contrast-[1.15]',
     }).addTo(map)
 
     mapInstanceRef.current = map
