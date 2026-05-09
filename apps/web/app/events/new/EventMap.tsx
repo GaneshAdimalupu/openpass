@@ -28,10 +28,10 @@ if (typeof window !== 'undefined') {
 }
 
 // ─── Electric Open custom marker ──────────────────────────────────────────────
-const electricMarkerIcon =
+const getElectricMarkerIcon = () =>
   typeof window !== 'undefined'
     ? L.divIcon({
-        className: '',
+        className: 'custom-marker',
         html: `
     <div style="
       width:32px;height:32px;
@@ -54,7 +54,7 @@ const electricMarkerIcon =
         iconAnchor: [16, 32],
         popupAnchor: [0, -36],
       })
-    : null
+    : undefined
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function EventMap({ location, onLocationSelect }: EventMapProps) {
@@ -99,9 +99,18 @@ export default function EventMap({ location, onLocationSelect }: EventMapProps) 
       subdomains: 'abcd',
       maxZoom: 20,
       noWrap: true,
+      className: 'brightness-[1.25] contrast-[1.1]',
     }).addTo(map)
 
     mapInstanceRef.current = map
+
+    // ─── Place initial marker if location is already set ─────────────────
+    if (location) {
+      const icon = getElectricMarkerIcon()
+      markerInstanceRef.current = L.marker([location.lat, location.lng], {
+        ...(icon && { icon }),
+      }).addTo(map)
+    }
 
     // ─── Event Listeners ────────────────────────────────────────────────────
     if (onLocationSelect) {
@@ -143,9 +152,10 @@ export default function EventMap({ location, onLocationSelect }: EventMapProps) 
     if (location) {
       if (markerInstanceRef.current) {
         markerInstanceRef.current.setLatLng([location.lat, location.lng])
-      } else if (electricMarkerIcon) {
+      } else {
+        const icon = getElectricMarkerIcon()
         markerInstanceRef.current = L.marker([location.lat, location.lng], {
-          icon: electricMarkerIcon,
+          ...(icon && { icon }),
         }).addTo(map)
       }
 
