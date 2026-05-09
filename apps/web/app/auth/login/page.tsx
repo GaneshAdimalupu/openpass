@@ -51,7 +51,12 @@ export default function LoginPage() {
       {/* Navbar */}
       <header className="fixed top-0 w-full z-50 bg-[#0e0e0e]/80 backdrop-blur-xl border-b border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
         <nav className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
-          <Link href="/" className="text-2xl font-bold tracking-tighter text-white font-headline">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-2xl font-bold tracking-tighter text-white font-headline hover:opacity-80 transition-opacity"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/openpass-logo.svg" alt="OpenPass Logo" className="h-12 w-auto" />
             OpenPass
           </Link>
           <Link
@@ -76,12 +81,8 @@ export default function LoginPage() {
               <div className="w-20 h-20 mb-6 relative group">
                 <div className="absolute inset-0 bg-primary-dim/20 rounded-2xl blur-xl group-hover:bg-primary/30 transition-all" />
                 <div className="relative bg-surface-container-highest w-full h-full rounded-2xl flex items-center justify-center border border-outline-variant/30">
-                  <span
-                    className="material-symbols-outlined text-4xl text-primary"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    confirmation_number
-                  </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/openpass-logo.svg" alt="OpenPass Icon" className="w-16 h-16" />
                 </div>
               </div>
               <h1 className="text-3xl font-extrabold font-headline tracking-tight text-on-surface mb-2">

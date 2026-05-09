@@ -59,8 +59,13 @@ export default function RegisterPage() {
       {/* TopAppBar */}
       <header className="fixed top-0 w-full z-50 bg-[#0e0e0e]/80 backdrop-blur-xl border-b border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
         <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto font-headline tracking-tight">
-          <Link href="/" className="text-2xl font-bold tracking-tighter text-[#ffffff]">
-            Open Pass
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-2xl font-bold tracking-tighter text-[#ffffff] font-headline hover:opacity-80 transition-opacity"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/openpass-logo.svg" alt="OpenPass Logo" className="h-12 w-auto" />
+            OpenPass
           </Link>
           <div className="flex items-center gap-4">
             <button className="text-[#adaaaa] hover:text-[#85adff] transition-colors duration-300">
@@ -90,12 +95,8 @@ export default function RegisterPage() {
               <div className="relative glass-panel rounded-[2rem] p-8 electric-glow transform rotate-3 hover:rotate-0 transition-transform duration-700 bg-surface-container-highest/40 backdrop-blur-xl border border-outline-variant/15">
                 <div className="flex flex-col gap-6">
                   <div className="flex justify-between items-start">
-                    <span
-                      className="material-symbols-outlined text-primary text-5xl"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      confirmation_number
-                    </span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/openpass-logo.svg" alt="OpenPass Icon" className="w-16 h-16" />
                     <div className="text-right">
                       <p className="text-[0.6rem] uppercase tracking-widest text-on-surface-variant font-bold">
                         Access Protocol
