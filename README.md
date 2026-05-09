@@ -14,9 +14,14 @@
   <a href="https://pnpm.io/">
     <img src="https://img.shields.io/badge/pnpm-orange?style=flat-square&logo=pnpm" alt="pnpm" />
   </a>
+  <a href="https://getopenpass.vercel.app">
+    <img src="https://img.shields.io/badge/Deployed_on-Vercel-black?style=flat-square&logo=vercel" alt="Deployed on Vercel" />
+  </a>
 </div>
 
 OpenPass is a modern, high-performance event management and ticketing platform built with scalability and developer experience in mind. This monorepo houses the entire ecosystem, from the core business logic to the web application.
+
+**🟢 Live Deployment:** [https://getopenpass.vercel.app](https://getopenpass.vercel.app)
 
 ---
 
@@ -26,7 +31,7 @@ OpenPass is a modern, high-performance event management and ticketing platform b
 - **Type-Safe**: 100% TypeScript across all apps and packages.
 - **Modern UI**: Built with Next.js, Tailwind CSS, and a shared component library.
 - **Robust Auth**: Integrated authentication via `@openpass/auth`.
-- **Database Power**: Prisma ORM with PostgreSQL for reliable data management.
+- **Database Power**: Prisma ORM with PostgreSQL (hosted on [Supabase](https://supabase.com)).
 - **Developer-First**: Automated setup scripts and Docker-ready environment.
 
 ---
@@ -39,9 +44,11 @@ OpenPass is a modern, high-performance event management and ticketing platform b
 | Monorepo Manager | [Turborepo](https://turbo.build/)               |
 | Package Manager  | [pnpm](https://pnpm.io/)                        |
 | ORM              | [Prisma](https://www.prisma.io/)                |
+| Database         | [Supabase](https://supabase.com/) (PostgreSQL)  |
 | Styling          | [Tailwind CSS](https://tailwindcss.com/)        |
 | Components       | [Lucide React](https://lucide.dev/)             |
 | Animations       | [Framer Motion](https://www.framer.com/motion/) |
+| Deployment       | [Vercel](https://vercel.com)                    |
 
 ---
 
@@ -53,7 +60,7 @@ Ensure you have the following installed:
 
 - **Node.js**: >= 18.x (Recommended: 20.x+)
 - **pnpm**: >= 9.x
-- **Docker**: For running the database locally.
+- **Docker**: For running the database locally (optional if using hosted Supabase).
 
 ### Installation & Setup
 
@@ -74,15 +81,23 @@ Ensure you have the following installed:
 
 3. **Configure Environment Variables**:
 
-   Open the `.env` file and update your credentials (e.g., Google OAuth).
+   Open the `.env` file and update your credentials (e.g., Google OAuth, Supabase Connection strings).
 
-4. **Start the Database**:
+4. **Start the Database (Local dev only)**:
+
+   _Skip this step if you are connecting directly to your hosted Supabase instance._
 
    ```bash
    pnpm docker:up
    ```
 
-5. **Launch Development Server**:
+5. **Sync Database Schema**:
+
+   ```bash
+   pnpm turbo run db:push
+   ```
+
+6. **Launch Development Server**:
 
    ```bash
    pnpm dev
@@ -111,7 +126,7 @@ Ensure you have the following installed:
 
 ## 💾 Database Management
 
-The project uses **Prisma** for database operations.
+The project uses **Prisma** for database operations and **Supabase** for PostgreSQL hosting in production.
 
 | Command            | Script                                      |
 | ------------------ | ------------------------------------------- |
@@ -123,7 +138,7 @@ The project uses **Prisma** for database operations.
 
 ## 🐳 Docker
 
-We use Docker Compose to manage local services (PostgreSQL).
+We use Docker Compose to manage local services (PostgreSQL). If you use a remote Supabase database, you can bypass this entirely.
 
 | Command | Script             |
 | ------- | ------------------ |
