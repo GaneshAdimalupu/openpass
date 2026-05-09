@@ -11,9 +11,9 @@ export function CheckoutButton({ event }: { event: any }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-full md:w-auto px-12 py-5 bg-gradient-to-r from-[#85adff] to-[#0070eb] text-[#002c65] font-black font-headline text-lg rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_40px_rgba(133,173,255,0.3)] shadow-[#0070eb]/20 flex items-center justify-center gap-3"
+        className="w-full bg-gradient-to-r from-[#85adff] to-[#0070eb] py-5 rounded-2xl text-[#002c65] font-bold text-lg shadow-[0_0_20px_rgba(0,112,235,0.4)] active:scale-95 transition-all duration-200 uppercase tracking-tight font-headline flex items-center justify-center gap-3"
       >
-        <span>Secure Your Spot</span>
+        <span>RSVP NOW</span>
         <span className="material-symbols-outlined text-xl">arrow_forward</span>
       </button>
 
