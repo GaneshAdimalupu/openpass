@@ -25,6 +25,20 @@ OpenPass is a modern, high-performance event management and ticketing platform b
 
 ---
 
+## 🌍 Our Mission
+
+OpenPass isn't just a ticketing platform; it is built to be the bridge for the open-source and tech community. We believe that discovering, hosting, and attending tech events should be entirely frictionless.
+
+Our goal is to build an ecosystem where:
+
+- **🔍 Anyone can Discover:** Whether you are in a major tech hub or a small town, you can instantly see daily and upcoming open-source events happening around you.
+- **🎟️ Seamless Registration & Entry:** Attendees can register with a single click and instantly receive dynamic, QR-coded digital passes delivered straight to their inboxes.
+- **🎓 Beyond the Door:** The experience doesn't end when the event starts. OpenPass seamlessly handles post-event engagement, automating participation certificates and collecting valuable community feedback.
+
+By eliminating the friction of event management, OpenPass empowers community leaders to focus on what actually matters: sharing knowledge, building connections, and writing great software.
+
+---
+
 ## ✨ Features
 
 - **Monorepo Architecture**: Powered by Turborepo for lightning-fast builds and task execution.
