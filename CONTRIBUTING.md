@@ -1,4 +1,4 @@
-# Contributing to OpenPass V2 🎟️
+# Contributing to OpenPass
 
 Thanks for your interest in contributing! OpenPass V2 is a modernized monorepo designed for high performance and scalability. We welcome contributors of all kinds.
 

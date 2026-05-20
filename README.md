@@ -164,18 +164,10 @@ We use Docker Compose to manage local services (PostgreSQL). If you use a remote
 
 ## 🤝 Contributing
 
-We love contributions! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed instructions on:
-
-- Branching conventions
-- Commit message format (Conventional Commits)
-- Quality gates (Linting, Formatting, Type-checking)
+We love contributions! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed instructions.
 
 ---
 
 ## 📄 License
 
 This project is licensed under the terms specified in the [LICENSE](./LICENSE) file.
-
----
-
-_Maintained by the OpenPass Core Team._
