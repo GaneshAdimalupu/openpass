@@ -113,7 +113,7 @@ export function Navbar() {
                       </p>
                     </div>
                     <Link
-                      href="/profile"
+                      href="/me"
                       className="block px-4 py-3 text-sm text-[#adaaaa] hover:text-white hover:bg-[#262626] transition-colors"
                     >
                       Profile
