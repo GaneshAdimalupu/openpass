@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useSession, signOut } from '@openpass/auth/client'
+import { useSession } from '@openpass/auth/client'
 import { useRouter } from 'next/navigation' // Added useRouter
 
 export function Navbar() {
@@ -41,11 +41,6 @@ export function Navbar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const handleSignOut = async () => {
-    await signOut()
-    window.location.href = '/'
-  }
-
   return (
     // THE MAC DOCK EFFECT: Floating, centered, rounded-full, frosted glass
     <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl bg-[#0e0e0e]/70 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-full transition-all duration-300">
@@ -68,22 +63,6 @@ export function Navbar() {
           >
             Explore
           </Link>
-          {mounted && isLoggedIn && (
-            <>
-              <Link
-                href="/tickets"
-                className="text-sm font-medium text-on-surface-variant hover:text-white transition-colors font-headline"
-              >
-                My Tickets
-              </Link>
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-on-surface-variant hover:text-white transition-colors font-headline"
-              >
-                Dashboard
-              </Link>
-            </>
-          )}
         </nav>
 
         {/* Right Side */}
@@ -173,30 +152,7 @@ export function Navbar() {
           >
             Explore
           </Link>
-          {mounted && isLoggedIn ? (
-            <>
-              <Link
-                href="/tickets"
-                className="text-lg font-headline font-semibold text-on-surface-variant hover:text-white"
-                onClick={() => setMobileOpen(false)}
-              >
-                My Tickets
-              </Link>
-              <Link
-                href="/dashboard"
-                className="text-lg font-headline font-semibold text-on-surface-variant hover:text-white"
-                onClick={() => setMobileOpen(false)}
-              >
-                Dashboard
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="text-left pt-4 mt-2 border-t border-white/10 text-lg font-semibold text-[#ff716c]"
-              >
-                Sign out
-              </button>
-            </>
-          ) : mounted ? (
+          {mounted && isLoggedIn ? null : mounted ? (
             <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-white/10">
               <Link
                 href="/auth/login"
