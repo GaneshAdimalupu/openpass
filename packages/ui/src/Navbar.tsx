@@ -3,17 +3,32 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useSession, signOut } from '@openpass/auth/client'
+import { useRouter } from 'next/navigation' // Added useRouter
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const router = useRouter() // Initialize router
 
   const { data: session, isPending } = useSession()
   const isLoggedIn = !!session?.user
 
+  // SMARTER LOADING: Only show skeleton if it is actively fetching AND we don't have cached session data yet.
+  const isLoading = !mounted || (isPending && session === undefined)
+
   useEffect(() => {
     setMounted(true)
-  }, [])
+
+    // BFCache Fix: Force Next.js to unfreeze and refresh the router if the user navigates via the Back/Forward buttons.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        router.refresh()
+      }
+    }
+
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [router])
 
   // Close mobile menu when switching to desktop
   useEffect(() => {
@@ -75,7 +90,7 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-4">
-            {!mounted || isPending ? (
+            {isLoading ? (
               <>
                 <div className="w-10 h-10 rounded-full bg-surface-container-high animate-pulse" />
                 <div className="w-24 h-10 rounded-full bg-surface-container-high animate-pulse" />
@@ -90,48 +105,21 @@ export function Navbar() {
                 </button>
 
                 {/* Avatar */}
-                <div className="relative group">
-                  <button className="w-9 h-9 rounded-full bg-gradient-to-br from-[#85adff] to-[#0070eb] flex items-center justify-center text-[#002c65] font-bold text-sm shadow-lg hover:scale-105 transition-transform overflow-hidden p-0.5">
-                    {session.user.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={session.user.image}
-                        alt="Profile"
-                        className="w-full h-full rounded-full object-cover bg-[#0e0e0e]"
-                      />
-                    ) : (
-                      (session.user.name?.[0]?.toUpperCase() ?? 'U')
-                    )}
-                  </button>
-
-                  {/* Dropdown */}
-                  <div className="absolute right-0 top-14 w-48 bg-[#1a1919] border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-white/5 bg-[#201f1f]/50">
-                      <p className="text-sm font-bold text-white truncate">{session.user.name}</p>
-                      <p className="text-xs text-on-surface-variant truncate">
-                        {session.user.email}
-                      </p>
-                    </div>
-                    <Link
-                      href="/me"
-                      className="block px-4 py-3 text-sm text-[#adaaaa] hover:text-white hover:bg-[#262626] transition-colors"
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/dashboard"
-                      className="block px-4 py-3 text-sm text-[#adaaaa] hover:text-white hover:bg-[#262626] transition-colors"
-                    >
-                      Dashboard
-                    </Link>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left px-4 py-3 text-sm text-[#ff716c] border-t border-white/5 hover:bg-[#ff716c]/10 transition-colors"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                </div>
+                <Link
+                  href="/me"
+                  className="w-9 h-9 rounded-full bg-gradient-to-br from-[#85adff] to-[#0070eb] flex items-center justify-center text-[#002c65] font-bold text-sm shadow-lg hover:scale-105 transition-transform overflow-hidden p-0.5"
+                >
+                  {session.user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={session.user.image}
+                      alt="Profile"
+                      className="w-full h-full rounded-full object-cover bg-[#0e0e0e]"
+                    />
+                  ) : (
+                    (session.user.name?.[0]?.toUpperCase() ?? 'U')
+                  )}
+                </Link>
 
                 <Link
                   href="/events/new"
@@ -171,7 +159,7 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown (Matches the pill aesthetic) */}
+      {/* Mobile Menu Dropdown */}
       <div
         className={`lg:hidden absolute top-20 left-0 w-full transition-all duration-300 ${
           mobileOpen ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'

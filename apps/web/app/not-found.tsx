@@ -16,7 +16,14 @@ export default function NotFound() {
 
     let width = 0
     let height = 0
-    let stars: any[] = []
+    let stars: {
+      x: number
+      y: number
+      size: number
+      opacity: number
+      speed: number
+      color: string
+    }[] = []
     const STAR_COUNT = 450
     let animationFrameId: number
     let starTimeoutId: NodeJS.Timeout
