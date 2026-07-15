@@ -157,7 +157,7 @@ export function ScheduleManager({ event, initialItems }: { event: any; initialIt
       title: item.title,
       type: item.type,
       venue: item.venue || '',
-      date: start.toISOString().split('T')[0],
+      date: start.toISOString().split('T')[0] || '',
       startTime: start.toTimeString().slice(0, 5),
       endTime: end.toTimeString().slice(0, 5),
       proposalId: item.proposalId || '',
