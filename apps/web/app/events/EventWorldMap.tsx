@@ -31,9 +31,9 @@ function getCategoryColor(category: string): string {
     Tech: '#85adff',
     Music: '#fab0ff',
     Workshop: '#6c9fff',
-    Other: '#adaaaa',
+    Other: '#BFC9D1',
   }
-  return map[category] ?? '#adaaaa'
+  return map[category] ?? '#BFC9D1'
 }
 
 function createMarkerIcon(event: MapEvent): L.DivIcon {
@@ -207,15 +207,15 @@ export function EventWorldMap({
   }, [highlightedEventId, events])
 
   return (
-    <div className="relative w-full h-[400px] md:h-[480px] rounded-2xl overflow-hidden border border-outline-variant/20 shadow-inner bg-[#131313]">
-      <div ref={containerRef} className="w-full h-full z-0" style={{ background: '#131313' }} />
+    <div className="relative w-full h-[400px] md:h-[480px] rounded-2xl overflow-hidden border border-outline-variant/20 shadow-inner bg-[#25343F]">
+      <div ref={containerRef} className="w-full h-full z-0" style={{ background: '#25343F' }} />
 
       {/* Map Legend */}
-      <div className="absolute bottom-4 right-4 z-[500] bg-[#0e0e0e]/90 backdrop-blur-md border border-outline-variant/20 rounded-xl px-4 py-3 flex items-center gap-6 shadow-lg">
+      <div className="absolute bottom-4 right-4 z-[500] bg-[#19242d]/90 backdrop-blur-md border border-outline-variant/20 rounded-xl px-4 py-3 flex items-center gap-6 shadow-lg">
         <div className="flex items-center gap-2.5">
           <div className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#85adff] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#85adff] shadow-[0_0_10px_rgba(133,173,255,0.8)]"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#85adff] shadow-[0_0_10px_rgba(133, 173, 255,0.8)]"></span>
           </div>
           <span className="text-[10px] font-bold text-on-surface uppercase tracking-widest">
             Live Now
@@ -230,8 +230,8 @@ export function EventWorldMap({
       </div>
 
       {/* Subtle gradient overlays for depth */}
-      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#131313] to-transparent pointer-events-none z-[400]"></div>
-      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#131313] to-transparent pointer-events-none z-[400]"></div>
+      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#25343F] to-transparent pointer-events-none z-[400]"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#25343F] to-transparent pointer-events-none z-[400]"></div>
     </div>
   )
 }

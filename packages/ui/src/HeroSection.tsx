@@ -2,7 +2,7 @@ import React from 'react'
 
 export function HeroSection() {
   return (
-    <section className="relative pt-32 md:pt-40 pb-16 px-6 overflow-x-clip">
+    <section className="relative pt-32 md:pt-40 pb-16 px-6 md:px-8 overflow-x-clip">
       {/* Custom Styles for the infinite Tech Stack Ticker */}
       <style>{`
         @keyframes scroll {
@@ -17,7 +17,7 @@ export function HeroSection() {
       {/* Background atmosphere glows */}
       <div className="absolute top-[20%] left-[50%] -translate-x-1/2 w-[60%] h-[50%] bg-primary/20 rounded-full blur-[120px] pointer-events-none z-0" />
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center">
+      <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center text-center">
         {/* Main Editorial Headline */}
         <h1 className="text-[2.75rem] leading-[1.1] sm:text-6xl md:text-7xl lg:text-[5.5rem] font-black font-headline tracking-tighter text-white w-full">
           {/* LINE 1 */}
@@ -47,7 +47,7 @@ export function HeroSection() {
 
           {/* LINE 3 */}
           <span className="mt-2 md:mt-3 flex flex-col md:flex-row flex-wrap items-center justify-center gap-3 md:gap-5">
-            <span className="inline-flex items-center justify-center px-5 py-2 md:py-2.5 rounded-full bg-[#1a1919]/80 border border-white/10 backdrop-blur-xl text-xl md:text-3xl text-primary font-bold tracking-widest shadow-[0_0_30px_rgba(133,173,255,0.15)] shrink-0 whitespace-nowrap">
+            <span className="inline-flex items-center justify-center px-5 py-2 md:py-2.5 rounded-full bg-[#25343F]/80 border border-white/10 backdrop-blur-xl text-xl md:text-3xl text-primary font-bold tracking-widest shadow-[0_0_30px_rgba(133, 173, 255,0.15)] shrink-0 whitespace-nowrap">
               <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse mr-3 shrink-0" />
               AGPL-3.0
             </span>

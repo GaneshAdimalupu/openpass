@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useSession } from '@openpass/auth/client'
 import { useRouter } from 'next/navigation' // Added useRouter
@@ -43,8 +44,8 @@ export function Navbar() {
 
   return (
     // THE MAC DOCK EFFECT: Floating, centered, rounded-full, frosted glass
-    <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl bg-[#0e0e0e]/70 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-full transition-all duration-300">
-      <div className="flex justify-between items-center px-6 lg:px-8 h-16 w-full mx-auto">
+    <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-7xl bg-[#19242d]/70 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-full transition-all duration-300">
+      <div className="flex justify-between items-center px-6 md:px-8 h-16 w-full mx-auto">
         {/* Logo */}
         <Link
           href="/"
@@ -54,16 +55,6 @@ export function Navbar() {
           <img src="/openpass-logo.svg" alt="OpenPass Logo" className="h-8 w-auto" />
           OpenPass
         </Link>
-
-        {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-8">
-          <Link
-            href="/events"
-            className="text-sm font-medium text-on-surface-variant hover:text-white transition-colors font-headline"
-          >
-            Explore
-          </Link>
-        </nav>
 
         {/* Right Side */}
         <div className="flex items-center gap-4">
@@ -86,14 +77,17 @@ export function Navbar() {
                 {/* Avatar */}
                 <Link
                   href="/me"
-                  className="w-9 h-9 rounded-full bg-gradient-to-br from-[#85adff] to-[#0070eb] flex items-center justify-center text-[#002c65] font-bold text-sm shadow-lg hover:scale-105 transition-transform overflow-hidden p-0.5"
+                  className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-dim flex items-center justify-center text-on-primary font-bold text-sm shadow-lg hover:scale-105 transition-transform overflow-hidden p-0.5"
                 >
                   {session.user.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={session.user.image}
                       alt="Profile"
-                      className="w-full h-full rounded-full object-cover bg-[#0e0e0e]"
+                      width={36}
+                      height={36}
+                      sizes="36px"
+                      priority
+                      className="w-full h-full rounded-full object-cover bg-[#19242d]"
                     />
                   ) : (
                     (session.user.name?.[0]?.toUpperCase() ?? 'U')
@@ -102,7 +96,7 @@ export function Navbar() {
 
                 <Link
                   href="/events/new"
-                  className="bg-gradient-to-br from-[#85adff] to-[#0070eb] text-[#002c65] px-5 py-2 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-[#0070eb]/20"
+                  className="bg-gradient-to-br from-primary to-primary-dim text-on-primary px-5 py-2 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-primary-dim/20"
                 >
                   Create Event
                 </Link>
@@ -117,7 +111,7 @@ export function Navbar() {
                 </Link>
                 <Link
                   href="/auth/register"
-                  className="bg-gradient-to-br from-[#85adff] to-[#0070eb] text-[#002c65] px-5 py-2 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-[#0070eb]/20"
+                  className="bg-gradient-to-br from-primary to-primary-dim text-on-primary px-5 py-2 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-primary-dim/20"
                 >
                   Get Started
                 </Link>
@@ -144,26 +138,19 @@ export function Navbar() {
           mobileOpen ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'
         }`}
       >
-        <div className="bg-[#1a1919]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-6 mx-4 shadow-2xl flex flex-col gap-4">
-          <Link
-            href="/events"
-            className="text-lg font-headline font-semibold text-on-surface-variant hover:text-white transition"
-            onClick={() => setMobileOpen(false)}
-          >
-            Explore
-          </Link>
+        <div className="bg-[#25343F]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-6 mx-4 shadow-2xl flex flex-col gap-4">
           {mounted && isLoggedIn ? null : mounted ? (
             <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-white/10">
               <Link
                 href="/auth/login"
-                className="py-3 text-center rounded-xl bg-[#262626] text-white font-semibold"
+                className="py-3 text-center rounded-xl bg-[#314655] text-white font-semibold"
                 onClick={() => setMobileOpen(false)}
               >
                 Log in
               </Link>
               <Link
                 href="/auth/register"
-                className="py-3 text-center bg-gradient-to-br from-[#85adff] to-[#0070eb] text-[#002c65] rounded-xl font-bold"
+                className="py-3 text-center bg-gradient-to-br from-primary to-primary-dim text-on-primary rounded-xl font-bold"
                 onClick={() => setMobileOpen(false)}
               >
                 Get Started

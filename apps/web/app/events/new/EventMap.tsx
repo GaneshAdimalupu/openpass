@@ -39,7 +39,7 @@ const getElectricMarkerIcon = () =>
       border-radius:50% 50% 50% 0;
       transform:rotate(-45deg);
       border:3px solid white;
-      box-shadow:0 0 20px rgba(133,173,255,0.5);
+      box-shadow:0 0 20px rgba(133, 173, 255,0.5);
       position:relative;
     ">
       <div style="
@@ -91,7 +91,7 @@ export default function EventMap({ location, onLocationSelect }: EventMapProps) 
       attributionControl: false,
       dragging: !!onLocationSelect,
       scrollWheelZoom: !!onLocationSelect,
-      background: '#0e0e0e',
+      background: '#19242d',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
 
@@ -178,14 +178,14 @@ export default function EventMap({ location, onLocationSelect }: EventMapProps) 
         className="absolute inset-0 pointer-events-none rounded-2xl"
         style={{
           background:
-            'linear-gradient(to bottom, rgba(14,14,14,0.3) 0%, transparent 25%, transparent 75%, rgba(14,14,14,0.4) 100%)',
+            'linear-gradient(to bottom, rgba(37, 52, 63,0.3) 0%, transparent 25%, transparent 75%, rgba(37, 52, 63,0.4) 100%)',
           zIndex: 1,
         }}
       />
 
       {onLocationSelect && (
         <div
-          className="absolute top-3 left-3 bg-[#0e0e0e]/80 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/10 pointer-events-none"
+          className="absolute top-3 left-3 bg-[#19242d]/80 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/10 pointer-events-none"
           style={{ zIndex: 2 }}
         >
           <p className="text-[10px] font-bold text-[#85adff] uppercase tracking-widest font-headline">
@@ -194,11 +194,11 @@ export default function EventMap({ location, onLocationSelect }: EventMapProps) 
         </div>
       )}
 
-      <div ref={mapContainerRef} style={{ height: '100%', width: '100%', background: '#0e0e0e' }} />
+      <div ref={mapContainerRef} style={{ height: '100%', width: '100%', background: '#19242d' }} />
 
       {/* Attribution */}
       <div className="absolute bottom-2 right-2 pointer-events-none" style={{ zIndex: 2 }}>
-        <span className="text-[9px] text-[#494847] font-mono">© OpenStreetMap · CartoDB</span>
+        <span className="text-[9px] text-[#a8b3bc] font-mono">© OpenStreetMap · CartoDB</span>
       </div>
     </div>
   )

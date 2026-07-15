@@ -69,7 +69,7 @@ export default async function MePage() {
     <div className="bg-background text-on-surface font-body antialiased min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-grow pt-32 pb-20 px-4 md:px-8 max-w-screen-xl mx-auto w-full">
+      <main className="flex-grow pt-32 pb-20 px-6 md:px-8 max-w-7xl mx-auto w-full">
         {/* Pass real database records down to the client component */}
         <MePageClient user={session.user} tickets={myTickets} hostedEvents={hostedEvents} />
       </main>

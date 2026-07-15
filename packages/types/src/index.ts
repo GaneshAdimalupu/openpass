@@ -32,6 +32,9 @@ export type CreateEventInput = {
   websiteUrl?: string | null
   twitterHandle?: string | null
   tags: string[]
+  scheduleHalls?: string[]
+  scheduleDates?: string[]
+  showSchedule?: boolean
 }
 
 export const createRegistrationSchema = z.object({

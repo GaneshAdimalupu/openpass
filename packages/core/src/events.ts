@@ -40,6 +40,54 @@ export async function createEvent(data: CreateEventInput, userId: string) {
   return event
 }
 
+export async function updateEvent(id: string, data: Partial<CreateEventInput>, userId: string) {
+  // Verify ownership
+  const event = await prisma.event.findFirst({
+    where: { id, organiserId: userId, deletedAt: null },
+  })
+  if (!event) throw new Error('Event not found or unauthorized')
+
+  const updateData: any = {
+    title: data.title,
+    description: data.description,
+    venue: data.location?.address || data.venue,
+    latitude: data.location?.lat,
+    longitude: data.location?.lng,
+    category: data.category,
+    organization: data.organization,
+    capacity: data.capacity,
+    requireApproval: data.requireApproval,
+    formSchema: data.formSchema,
+    websiteUrl: data.websiteUrl,
+    twitterHandle: data.twitterHandle,
+    tags: data.tags,
+    scheduleHalls: data.scheduleHalls,
+    scheduleDates: data.scheduleDates,
+    showSchedule: data.showSchedule,
+    isFlagship: data.isFlagship,
+  }
+
+  if (data.startDate && data.startTime) {
+    updateData.startAt = new Date(`${data.startDate}T${data.startTime}`)
+  }
+  if (data.endDate && data.endTime) {
+    updateData.endAt = new Date(`${data.endDate}T${data.endTime}`)
+  }
+  if (data.registrationDeadline) {
+    updateData.registrationDeadline = new Date(data.registrationDeadline)
+  }
+
+  // Remove undefined fields
+  Object.keys(updateData).forEach((key) => updateData[key] === undefined && delete updateData[key])
+
+  const updatedEvent = await prisma.event.update({
+    where: { id },
+    data: updateData,
+  })
+
+  return updatedEvent
+}
+
 export async function getEvents(skip: number = 0, take: number = 10) {
   const events = await prisma.event.findMany({
     where: {
@@ -56,7 +104,11 @@ export async function getEvents(skip: number = 0, take: number = 10) {
         select: { name: true, image: true },
       },
       _count: {
-        select: { registrations: true },
+        select: {
+          registrations: {
+            where: { status: 'CONFIRMED', deletedAt: null },
+          },
+        },
       },
     },
   })
@@ -105,7 +157,11 @@ export async function getEventBySlug(slug: string) {
         select: { name: true, image: true },
       },
       _count: {
-        select: { registrations: true },
+        select: {
+          registrations: {
+            where: { status: 'CONFIRMED', deletedAt: null },
+          },
+        },
       },
     },
   })

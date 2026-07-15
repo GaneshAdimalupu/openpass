@@ -2,7 +2,7 @@ const footerLinks: string[] = []
 
 export function Footer() {
   return (
-    <footer className="w-full py-12 px-8 bg-transparent">
+    <footer className="w-full py-12 px-6 md:px-8 bg-transparent">
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
         <div className="flex flex-col items-center md:items-start gap-2">
           <div className="flex items-center gap-2 text-lg font-bold text-white font-headline">

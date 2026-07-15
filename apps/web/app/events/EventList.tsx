@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { getEventsAction } from '../actions/event'
 
 export type EventWithIncludes = {
@@ -97,7 +98,7 @@ export function EventList({
 
   return (
     <>
-      <div className="space-y-px overflow-hidden rounded-2xl border border-outline-variant/10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredEvents.map((event) => {
           const startDate = new Date(event.startAt)
           const month = startDate.toLocaleDateString('en-US', { month: 'short' })
@@ -113,39 +114,36 @@ export function EventList({
             <div
               key={event.id}
               id={`event-row-${event.id}`}
-              className={`group flex flex-col md:flex-row md:items-center justify-between p-6 bg-surface-container-low hover:bg-surface-container-highest transition-all duration-300 ${
-                isHighlighted ? 'ring-2 ring-primary/60 bg-surface-container-highest' : ''
+              className={`group relative flex flex-col h-full bg-surface-container-low border border-outline-variant/10 rounded-3xl overflow-hidden hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300 ${
+                isHighlighted
+                  ? 'ring-2 ring-primary/60 bg-surface-container-highest scale-[1.02]'
+                  : ''
               }`}
               onMouseEnter={() => onEventHover?.(event.id)}
               onMouseLeave={() => onEventHover?.(null)}
             >
-              <div className="flex items-center gap-6">
-                {/* Date Box */}
-                <div className="hidden sm:flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-surface-container-highest border border-outline-variant/10 group-hover:border-primary/30 transition-colors">
-                  <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                    {month}
-                  </span>
-                  <span className="text-xl font-black text-on-surface">{day}</span>
-                </div>
+              {/* Top Section */}
+              <div className="p-6 flex-grow flex flex-col relative z-10">
+                <div className="flex items-start justify-between mb-4">
+                  {/* Date Badge */}
+                  <div className="flex flex-col items-center justify-center min-w-[3.5rem] w-14 h-14 rounded-2xl bg-surface-container-highest border border-outline-variant/10 group-hover:border-primary/30 group-hover:bg-primary/5 transition-colors shadow-sm">
+                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest group-hover:text-primary transition-colors">
+                      {month}
+                    </span>
+                    <span className="text-xl font-black text-on-surface">{day}</span>
+                  </div>
 
-                {/* Event Info */}
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
+                  {/* Badges (Live, Category) */}
+                  <div className="flex flex-col items-end gap-2">
                     {isLive && (
-                      <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-error/15 text-error">
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-error/15 text-error shadow-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
                         Live
                       </span>
                     )}
-                    <Link
-                      href={`/events/${event.slug}`}
-                      className="text-lg font-bold text-on-surface group-hover:text-primary transition-colors"
-                    >
-                      {event.title}
-                    </Link>
                     {event.category && (
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${
                           event.category === 'Music'
                             ? 'bg-tertiary-container/30 text-tertiary'
                             : event.category === 'Workshop'
@@ -157,54 +155,74 @@ export function EventList({
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-on-surface-variant">
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">
+                </div>
+
+                {/* Title & Info */}
+                <div className="mt-2 mb-6">
+                  <h3 className="text-xl font-headline font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+                    {event.title}
+                  </h3>
+
+                  <div className="flex flex-col gap-2.5 mt-5 text-sm text-on-surface-variant">
+                    <span className="flex items-center gap-2.5">
+                      <span className="material-symbols-outlined text-[18px] opacity-70">
                         {event.venue ? 'location_on' : 'videocam'}
                       </span>
-                      {event.venue || 'Virtual'}
+                      <span className="line-clamp-1">{event.venue || 'Virtual Event'}</span>
                     </span>
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">schedule</span>
-                      {time}
+                    <span className="flex items-center gap-2.5">
+                      <span className="material-symbols-outlined text-[18px] opacity-70">
+                        schedule
+                      </span>
+                      <span>{time}</span>
                     </span>
                   </div>
                 </div>
+
+                <div className="flex-grow"></div>
               </div>
 
-              {/* Actions & Avatars */}
-              <div className="mt-4 md:mt-0 flex items-center gap-6 justify-between md:justify-end">
-                <div className="flex -space-x-2">
-                  {/* Show Organiser Avatar */}
-                  {event.organiser.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      alt={event.organiser.name || 'Organiser'}
-                      className="w-8 h-8 rounded-full border-2 border-surface-container-low object-cover"
-                      src={event.organiser.image}
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-surface-container-highest flex items-center justify-center text-[10px] font-bold text-white uppercase">
-                      {event.organiser.name?.substring(0, 2) || 'OP'}
-                    </div>
-                  )}
+              {/* Footer Section */}
+              <div className="px-6 py-4 bg-surface-container-highest/50 border-t border-outline-variant/10 flex items-center justify-between group-hover:bg-primary/5 transition-colors relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {/* Show Organiser Avatar */}
+                    {event.organiser.image ? (
+                      <Image
+                        alt={event.organiser.name || 'Organiser'}
+                        className="w-8 h-8 rounded-full border-2 border-surface-container-low object-cover z-10"
+                        src={event.organiser.image}
+                        width={32}
+                        height={32}
+                        sizes="32px"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-surface-container-highest flex items-center justify-center text-[10px] font-bold text-white uppercase z-10">
+                        {event.organiser.name?.substring(0, 2) || 'OP'}
+                      </div>
+                    )}
 
-                  {/* Show Registration Count if > 0 */}
-                  {event._count.registrations > 0 && (
-                    <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-surface-container-highest flex items-center justify-center text-[10px] font-bold text-on-surface-variant">
-                      +{event._count.registrations}
-                    </div>
-                  )}
+                    {/* Show Registration Count if > 0 */}
+                    {event._count.registrations > 0 && (
+                      <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-surface-container-highest flex items-center justify-center text-[10px] font-bold text-on-surface-variant z-0 relative group-hover:text-primary transition-colors">
+                        +{event._count.registrations}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <Link
-                  href={`/events/${event.slug}`}
-                  className="flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all duration-200"
-                >
-                  View Details{' '}
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </Link>
+                <div className="flex items-center gap-1.5 text-sm font-bold text-on-surface-variant group-hover:text-primary transition-colors">
+                  Details
+                  <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">
+                    arrow_forward
+                  </span>
+                </div>
               </div>
+
+              {/* Full card clickable overlay */}
+              <Link href={`/events/${event.slug}`} className="absolute inset-0 z-20">
+                <span className="sr-only">View {event.title}</span>
+              </Link>
             </div>
           )
         })}

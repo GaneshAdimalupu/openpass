@@ -16,7 +16,7 @@ interface Location {
 interface AttendeeField {
   id: string
   label: string
-  type: 'text' | 'email' | 'select' | 'checkbox'
+  type: 'text' | 'email' | 'select' | 'checkbox' | 'textarea' | 'url'
   required: boolean
   options?: string
 }
@@ -63,12 +63,12 @@ interface NominatimResult {
 const EventMap = dynamic(() => import('./EventMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-64 rounded-2xl bg-[#131313] flex items-center justify-center border border-white/5">
+    <div className="h-64 rounded-2xl bg-[#25343F] flex items-center justify-center border border-white/5">
       <div className="flex flex-col items-center gap-3">
         <span className="material-symbols-outlined text-4xl text-[#85adff]/40 animate-pulse">
           map
         </span>
-        <span className="text-sm text-[#adaaaa] font-body">Loading map…</span>
+        <span className="text-sm text-[#BFC9D1] font-body">Loading map…</span>
       </div>
     </div>
   ),
@@ -97,13 +97,30 @@ const CATEGORIES = [
 
 const DRAFT_KEY = 'openpass_event_draft'
 
+const FOSS_PRESETS = [
+  {
+    label: 'Dietary Preferences',
+    type: 'select' as const,
+    options: 'None, Vegetarian, Non-Vegetarian, Vegan, Jain',
+    required: true,
+  },
+  { label: 'T-Shirt Size', type: 'select' as const, options: 'S, M, L, XL, XXL', required: true },
+  { label: 'GitHub / LinkedIn Profile', type: 'url' as const, required: false },
+  { label: 'Why do you want to attend?', type: 'textarea' as const, required: true },
+  {
+    label: 'I agree to the Community Guidelines & Code of Conduct',
+    type: 'checkbox' as const,
+    required: true,
+  },
+]
+
 // ─── Shared styles ──────────────────────────────────────────────────────────────
 
 const inputCls = [
-  'w-full bg-[#201f1f] border border-transparent',
+  'w-full bg-[#2b3d4a] border border-transparent',
   'focus:border-[#0070eb]/50 focus:ring-0 focus:outline-none',
   'rounded-xl py-4 px-5 text-white',
-  'placeholder:text-[#494847] transition-all font-body text-sm',
+  'placeholder:text-[#a8b3bc] transition-all font-body text-sm',
 ].join(' ')
 
 const labelCls =
@@ -365,7 +382,7 @@ export default function CreateEventPage() {
   // ─── Published success screen ───────────────────────────────────────────────
   if (published) {
     return (
-      <div className="min-h-screen bg-[#0e0e0e] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-[#19242d] flex items-center justify-center px-6">
         <div className="text-center space-y-6 max-w-md">
           <div className="w-20 h-20 rounded-full bg-[#85adff]/20 flex items-center justify-center mx-auto">
             <span
@@ -378,20 +395,20 @@ export default function CreateEventPage() {
           <h1 className="text-4xl font-black font-headline tracking-tighter text-white">
             Event Live!
           </h1>
-          <p className="text-[#adaaaa] font-body">
+          <p className="text-[#BFC9D1] font-body">
             <span className="text-white font-bold">{form.title}</span> has been published. Attendees
             can now register.
           </p>
           <div className="flex gap-4 justify-center">
             <Link
               href="/dashboard"
-              className="px-6 py-3 bg-[#201f1f] text-white rounded-xl font-bold font-headline text-sm hover:bg-[#262626] transition-all"
+              className="px-6 py-3 bg-[#2b3d4a] text-white rounded-xl font-bold font-headline text-sm hover:bg-[#314655] transition-all"
             >
               Go to Dashboard
             </Link>
             <Link
-              href="/events"
-              className="px-6 py-3 bg-gradient-to-br from-[#85adff] to-[#0070eb] text-[#002c65] rounded-xl font-bold font-headline text-sm hover:scale-105 transition-all"
+              href="/"
+              className="px-6 py-3 bg-gradient-to-br from-[#85adff] to-[#0070eb] text-on-primary rounded-xl font-bold font-headline text-sm hover:scale-105 transition-all"
             >
               View Event
             </Link>
@@ -407,8 +424,8 @@ export default function CreateEventPage() {
       {/* ── Main ── */}
       <main className="min-h-screen flex flex-col">
         {/* Page header */}
-        <section className="px-6 md:px-12 pt-10 pb-6">
-          <div className="max-w-6xl mx-auto">
+        <section className="px-6 md:px-8 pt-10 pb-6">
+          <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter mb-3 text-on-surface">
@@ -457,8 +474,8 @@ export default function CreateEventPage() {
         </section>
 
         {/* Form + Preview */}
-        <section className="px-6 md:px-12 flex-1 pb-16">
-          <div className="max-w-6xl mx-auto flex gap-10 flex-col xl:flex-row">
+        <section className="px-6 md:px-8 flex-1 pb-16">
+          <div className="max-w-7xl mx-auto flex gap-10 flex-col xl:flex-row">
             {/* ── LEFT: All Form Sections ── */}
             <div className="flex-1 max-w-3xl space-y-16">
               {/* ── Section 1: Core Details ── */}
@@ -478,7 +495,7 @@ export default function CreateEventPage() {
                       onChange={(e) => update('title', e.target.value)}
                     />
                     {form.title && (
-                      <p className="text-[10px] text-[#494847] mt-1.5 font-mono">
+                      <p className="text-[10px] text-[#a8b3bc] mt-1.5 font-mono">
                         slug: {buildSlug(form.title)}
                       </p>
                     )}
@@ -494,12 +511,12 @@ export default function CreateEventPage() {
                           onChange={(e) => update('category', e.target.value)}
                         >
                           {CATEGORIES.map((c) => (
-                            <option key={c} value={c} className="bg-[#201f1f]">
+                            <option key={c} value={c} className="bg-[#2b3d4a]">
                               {c}
                             </option>
                           ))}
                         </select>
-                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#adaaaa] pointer-events-none text-lg">
+                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#BFC9D1] pointer-events-none text-lg">
                           expand_more
                         </span>
                       </div>
@@ -528,7 +545,7 @@ export default function CreateEventPage() {
                   <div className="flex items-center justify-between p-5 rounded-xl border border-white/5 bg-white/5">
                     <div>
                       <p className="font-headline font-bold text-white mb-1">Flagship Event</p>
-                      <p className="text-xs text-[#adaaaa] font-body">
+                      <p className="text-xs text-[#BFC9D1] font-body">
                         Mark this as your community&apos;s main annual or flagship gathering
                       </p>
                     </div>
@@ -557,7 +574,7 @@ export default function CreateEventPage() {
                       value={form.description}
                       onChange={(e) => update('description', e.target.value)}
                     />
-                    <p className="text-[10px] text-[#494847] mt-1.5 text-right font-mono">
+                    <p className="text-[10px] text-[#a8b3bc] mt-1.5 text-right font-mono">
                       {form.description.length} chars
                     </p>
                   </div>
@@ -603,8 +620,8 @@ export default function CreateEventPage() {
                       ).map(({ label, key, type, icon }) => (
                         <div key={key}>
                           <label className={labelCls}>{label}</label>
-                          <div className="bg-[#262626] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:ring-1 focus-within:ring-[#0070eb]/40 transition-all group">
-                            <span className="material-symbols-outlined text-[#adaaaa] group-focus-within:text-[#85adff] transition-colors text-lg shrink-0">
+                          <div className="bg-[#314655] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:ring-1 focus-within:ring-[#0070eb]/40 transition-all group">
+                            <span className="material-symbols-outlined text-[#BFC9D1] group-focus-within:text-[#85adff] transition-colors text-lg shrink-0">
                               {icon}
                             </span>
                             <input
@@ -641,7 +658,7 @@ export default function CreateEventPage() {
                       </div>
                       {/* Virtual toggle */}
                       <label className="flex items-center gap-3 cursor-pointer select-none">
-                        <span className="text-xs font-bold text-[#adaaaa] uppercase tracking-widest font-headline">
+                        <span className="text-xs font-bold text-[#BFC9D1] uppercase tracking-widest font-headline">
                           Virtual
                         </span>
                         <div
@@ -650,7 +667,7 @@ export default function CreateEventPage() {
                           onClick={() => update('isVirtual', !form.isVirtual)}
                           className={[
                             'w-11 h-6 rounded-full relative transition-all duration-300 cursor-pointer',
-                            form.isVirtual ? 'bg-[#0070eb]' : 'bg-[#262626]',
+                            form.isVirtual ? 'bg-[#0070eb]' : 'bg-[#314655]',
                           ].join(' ')}
                         >
                           <div
@@ -675,23 +692,23 @@ export default function CreateEventPage() {
                             onChange={(e) => update('meetingLink', e.target.value)}
                           />
                         </div>
-                        <div className="h-36 rounded-2xl bg-[#131313] flex flex-col items-center justify-center gap-2 border border-dashed border-white/10">
+                        <div className="h-36 rounded-2xl bg-[#25343F] flex flex-col items-center justify-center gap-2 border border-dashed border-white/10">
                           <span className="material-symbols-outlined text-4xl text-[#85adff]/30">
                             videocam
                           </span>
-                          <p className="text-[#494847] text-sm font-body">No physical venue</p>
+                          <p className="text-[#a8b3bc] text-sm font-body">No physical venue</p>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {/* Search with dropdown */}
                         <div ref={searchRef} className="relative z-50">
-                          <div className="bg-[#262626] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:ring-1 focus-within:ring-[#0070eb]/40 transition-all">
-                            <span className="material-symbols-outlined text-[#adaaaa] text-lg">
+                          <div className="bg-[#314655] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:ring-1 focus-within:ring-[#0070eb]/40 transition-all">
+                            <span className="material-symbols-outlined text-[#BFC9D1] text-lg">
                               search
                             </span>
                             <input
-                              className="bg-transparent border-none focus:ring-0 focus:outline-none text-white w-full text-sm font-body placeholder:text-[#494847]"
+                              className="bg-transparent border-none focus:ring-0 focus:outline-none text-white w-full text-sm font-body placeholder:text-[#a8b3bc]"
                               placeholder="Type a venue name, city, or address…"
                               value={venueQuery}
                               onChange={(e) => handleVenueInput(e.target.value)}
@@ -716,12 +733,12 @@ export default function CreateEventPage() {
 
                           {/* Dropdown results */}
                           {showResults && searchResults.length > 0 && (
-                            <div className="absolute z-[9999] w-full mt-1.5 bg-[#1a1919] border border-white/10 rounded-xl overflow-hidden shadow-2xl shadow-black/60">
+                            <div className="absolute z-[9999] w-full mt-1.5 bg-[#25343F] border border-white/10 rounded-xl overflow-hidden shadow-2xl shadow-black/60">
                               {searchResults.map((r, i) => (
                                 <button
                                   key={i}
                                   onClick={() => selectResult(r)}
-                                  className="w-full text-left px-4 py-3 text-sm text-white hover:bg-[#262626] border-b border-white/5 last:border-0 font-body transition-colors flex items-start gap-3 group"
+                                  className="w-full text-left px-4 py-3 text-sm text-white hover:bg-[#314655] border-b border-white/5 last:border-0 font-body transition-colors flex items-start gap-3 group"
                                 >
                                   <span className="material-symbols-outlined text-[#85adff]/50 group-hover:text-[#85adff] transition-colors text-base mt-0.5 shrink-0">
                                     location_on
@@ -731,8 +748,8 @@ export default function CreateEventPage() {
                                   </span>
                                 </button>
                               ))}
-                              <div className="px-4 py-2 bg-[#131313] flex items-center gap-2">
-                                <span className="text-[10px] text-[#494847] font-mono">
+                              <div className="px-4 py-2 bg-[#25343F] flex items-center gap-2">
+                                <span className="text-[10px] text-[#a8b3bc] font-mono">
                                   Powered by OpenStreetMap
                                 </span>
                               </div>
@@ -743,9 +760,9 @@ export default function CreateEventPage() {
                             searchResults.length === 0 &&
                             !geocoding &&
                             venueQuery.length >= 3 && (
-                              <div className="absolute z-[9999] w-full mt-1.5 bg-[#1a1919] border border-white/10 rounded-xl overflow-hidden">
-                                <div className="px-4 py-4 text-sm text-[#adaaaa] font-body flex items-center gap-3">
-                                  <span className="material-symbols-outlined text-[#494847] text-lg">
+                              <div className="absolute z-[9999] w-full mt-1.5 bg-[#25343F] border border-white/10 rounded-xl overflow-hidden">
+                                <div className="px-4 py-4 text-sm text-[#BFC9D1] font-body flex items-center gap-3">
+                                  <span className="material-symbols-outlined text-[#a8b3bc] text-lg">
                                     search_off
                                   </span>
                                   No results for &quot;{venueQuery}&quot;. Try a different search.
@@ -762,7 +779,7 @@ export default function CreateEventPage() {
 
                         {/* Selected location chip */}
                         {form.location && (
-                          <div className="bg-[#131313] rounded-xl p-4 border border-[#85adff]/20 flex items-start gap-3">
+                          <div className="bg-[#25343F] rounded-xl p-4 border border-[#85adff]/20 flex items-start gap-3">
                             <span
                               className="material-symbols-outlined text-[#85adff] text-lg mt-0.5 shrink-0"
                               style={{ fontVariationSettings: "'FILL' 1" }}
@@ -777,7 +794,7 @@ export default function CreateEventPage() {
                                 {form.location.address}
                               </p>
                               <div className="flex items-center gap-3 mt-1.5">
-                                <span className="text-[10px] font-mono text-[#494847]">
+                                <span className="text-[10px] font-mono text-[#a8b3bc]">
                                   {form.location.lat.toFixed(6)}, {form.location.lng.toFixed(6)}
                                 </span>
                               </div>
@@ -787,7 +804,7 @@ export default function CreateEventPage() {
                                 update('location', null)
                                 setVenueQuery('')
                               }}
-                              className="text-[#494847] hover:text-white transition-colors shrink-0"
+                              className="text-[#a8b3bc] hover:text-white transition-colors shrink-0"
                             >
                               <span className="material-symbols-outlined text-base">close</span>
                             </button>
@@ -813,7 +830,7 @@ export default function CreateEventPage() {
                       <input
                         className={inputCls}
                         type="number"
-                        min={1}
+                        min="1"
                         placeholder="Unlimited"
                         value={form.capacity}
                         onChange={(e) => update('capacity', e.target.value)}
@@ -821,8 +838,8 @@ export default function CreateEventPage() {
                     </div>
                     <div>
                       <label className={labelCls}>Registration Deadline</label>
-                      <div className="bg-[#262626] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:ring-1 focus-within:ring-[#0070eb]/40 transition-all">
-                        <span className="material-symbols-outlined text-[#adaaaa] text-lg shrink-0">
+                      <div className="bg-[#314655] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:ring-1 focus-within:ring-[#0070eb]/40 transition-all">
+                        <span className="material-symbols-outlined text-[#BFC9D1] text-lg shrink-0">
                           event_available
                         </span>
                         <input
@@ -843,10 +860,10 @@ export default function CreateEventPage() {
                   </div>
 
                   {/* Require Approval toggle */}
-                  <div className="flex items-center justify-between p-5 bg-[#201f1f] rounded-2xl">
+                  <div className="flex items-center justify-between p-5 bg-[#2b3d4a] rounded-2xl">
                     <div>
                       <p className="font-bold text-white text-sm font-headline">Require Approval</p>
-                      <p className="text-xs text-[#adaaaa] font-body mt-0.5">
+                      <p className="text-xs text-[#BFC9D1] font-body mt-0.5">
                         Manually approve each registration before confirming
                       </p>
                     </div>
@@ -856,7 +873,7 @@ export default function CreateEventPage() {
                       onClick={() => update('requireApproval', !form.requireApproval)}
                       className={[
                         'w-11 h-6 rounded-full relative transition-all duration-300 cursor-pointer shrink-0',
-                        form.requireApproval ? 'bg-[#0070eb]' : 'bg-[#262626]',
+                        form.requireApproval ? 'bg-[#0070eb]' : 'bg-[#314655]',
                       ].join(' ')}
                     >
                       <div
@@ -869,14 +886,39 @@ export default function CreateEventPage() {
                   </div>
 
                   {/* Custom fields */}
-                  <div className="space-y-3">
-                    <label className={labelCls}>Custom Registration Questions</label>
+                  <div className="space-y-4">
+                    <div>
+                      <label className={labelCls}>Custom Registration Questions</label>
+                      <p className="text-[#BFC9D1] text-xs font-body mb-3">
+                        Build your own questions, or use our standard open-source event presets:
+                      </p>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {FOSS_PRESETS.map((preset, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              update('customFields', [
+                                ...form.customFields,
+                                { ...preset, id: uid() },
+                              ])
+                            }}
+                            className="px-3 py-1.5 bg-[#2b3d4a] hover:bg-[#314655] border border-white/5 rounded-lg text-xs text-[#85adff] font-headline font-semibold transition-all flex items-center gap-1.5 hover:scale-105 active:scale-95"
+                          >
+                            <span className="material-symbols-outlined text-sm">add</span>
+                            {preset.label.length > 20
+                              ? preset.label.slice(0, 20) + '...'
+                              : preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     {form.customFields.length > 0 && (
                       <div className="space-y-2">
                         {form.customFields.map((f) => (
                           <div
                             key={f.id}
-                            className="flex items-center justify-between bg-[#201f1f] rounded-xl px-4 py-3 group"
+                            className="flex items-center justify-between bg-[#2b3d4a] rounded-xl px-4 py-3 group"
                           >
                             <div className="flex items-center gap-3">
                               <span className="material-symbols-outlined text-[#85adff] text-base">
@@ -884,11 +926,15 @@ export default function CreateEventPage() {
                                   ? 'check_box'
                                   : f.type === 'select'
                                     ? 'list'
-                                    : 'short_text'}
+                                    : f.type === 'textarea'
+                                      ? 'notes'
+                                      : f.type === 'url'
+                                        ? 'link'
+                                        : 'short_text'}
                               </span>
                               <div>
                                 <p className="text-sm text-white font-body">{f.label}</p>
-                                <p className="text-[10px] text-[#494847] font-mono uppercase">
+                                <p className="text-[10px] text-[#a8b3bc] font-mono uppercase">
                                   {f.type}
                                   {f.required ? ' · required' : ''}
                                 </p>
@@ -896,7 +942,7 @@ export default function CreateEventPage() {
                             </div>
                             <button
                               onClick={() => removeField(f.id)}
-                              className="text-[#494847] hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                              className="text-[#a8b3bc] hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                             >
                               <span className="material-symbols-outlined text-base">delete</span>
                             </button>
@@ -907,7 +953,7 @@ export default function CreateEventPage() {
 
                     {/* Add field modal-lite */}
                     {addingField ? (
-                      <div className="bg-[#131313] rounded-2xl p-5 border border-[#85adff]/20 space-y-4">
+                      <div className="bg-[#25343F] rounded-2xl p-5 border border-[#85adff]/20 space-y-4">
                         <p className="text-xs font-bold text-[#85adff] uppercase tracking-widest font-headline">
                           New Field
                         </p>
@@ -935,16 +981,22 @@ export default function CreateEventPage() {
                                 }))
                               }
                             >
-                              <option value="text" className="bg-[#201f1f]">
+                              <option value="text" className="bg-[#2b3d4a]">
                                 Short Text
                               </option>
-                              <option value="email" className="bg-[#201f1f]">
+                              <option value="textarea" className="bg-[#2b3d4a]">
+                                Long Text
+                              </option>
+                              <option value="email" className="bg-[#2b3d4a]">
                                 Email
                               </option>
-                              <option value="select" className="bg-[#201f1f]">
+                              <option value="url" className="bg-[#2b3d4a]">
+                                Link / URL
+                              </option>
+                              <option value="select" className="bg-[#2b3d4a]">
                                 Dropdown
                               </option>
-                              <option value="checkbox" className="bg-[#201f1f]">
+                              <option value="checkbox" className="bg-[#2b3d4a]">
                                 Checkbox
                               </option>
                             </select>
@@ -957,7 +1009,7 @@ export default function CreateEventPage() {
                                 }
                                 className={[
                                   'w-9 h-5 rounded-full relative transition-all duration-200 cursor-pointer',
-                                  newField.required ? 'bg-[#0070eb]' : 'bg-[#262626]',
+                                  newField.required ? 'bg-[#0070eb]' : 'bg-[#314655]',
                                 ].join(' ')}
                               >
                                 <div
@@ -967,7 +1019,7 @@ export default function CreateEventPage() {
                                   ].join(' ')}
                                 />
                               </div>
-                              <span className="text-xs text-[#adaaaa] font-body">Required</span>
+                              <span className="text-xs text-[#BFC9D1] font-body">Required</span>
                             </label>
                           </div>
                           {newField.type === 'select' && (
@@ -988,13 +1040,13 @@ export default function CreateEventPage() {
                           <button
                             onClick={addCustomField}
                             disabled={!newField.label.trim()}
-                            className="px-5 py-2 bg-gradient-to-br from-[#85adff] to-[#0070eb] text-[#002c65] rounded-xl font-bold text-sm font-headline disabled:opacity-40 transition-all hover:scale-105 active:scale-95"
+                            className="px-5 py-2 bg-gradient-to-br from-[#85adff] to-[#0070eb] text-on-primary rounded-xl font-bold text-sm font-headline disabled:opacity-40 transition-all hover:scale-105 active:scale-95"
                           >
                             Add Field
                           </button>
                           <button
                             onClick={() => setAddingField(false)}
-                            className="px-5 py-2 bg-[#262626] text-[#adaaaa] rounded-xl font-bold text-sm font-headline hover:text-white transition-all"
+                            className="px-5 py-2 bg-[#314655] text-[#BFC9D1] rounded-xl font-bold text-sm font-headline hover:text-white transition-all"
                           >
                             Cancel
                           </button>
@@ -1003,11 +1055,11 @@ export default function CreateEventPage() {
                     ) : (
                       <button
                         onClick={() => setAddingField(true)}
-                        className="w-full border border-dashed border-white/10 rounded-2xl p-5 flex flex-col items-center gap-2 text-[#adaaaa] hover:border-[#85adff]/30 hover:text-[#85adff] transition-all"
+                        className="w-full border border-dashed border-white/10 rounded-2xl p-5 flex flex-col items-center gap-2 text-[#BFC9D1] hover:border-[#85adff]/30 hover:text-[#85adff] transition-all"
                       >
                         <span className="material-symbols-outlined text-3xl">add_circle</span>
                         <p className="text-sm font-body">Add a custom question</p>
-                        <p className="text-xs text-[#494847] font-body">
+                        <p className="text-xs text-[#a8b3bc] font-body">
                           GitHub handle, T-shirt size, dietary restrictions…
                         </p>
                       </button>
@@ -1037,7 +1089,7 @@ export default function CreateEventPage() {
                   <div>
                     <label className={labelCls}>Twitter / X Handle</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#494847] font-body text-sm">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#a8b3bc] font-body text-sm">
                         @
                       </span>
                       <input
@@ -1056,7 +1108,7 @@ export default function CreateEventPage() {
                       value={form.tags}
                       onChange={(e) => update('tags', e.target.value)}
                     />
-                    <p className="text-[10px] text-[#494847] mt-1.5 font-body">
+                    <p className="text-[10px] text-[#a8b3bc] mt-1.5 font-body">
                       Comma-separated — helps attendees discover your event
                     </p>
                   </div>
@@ -1076,7 +1128,7 @@ export default function CreateEventPage() {
                       </div>
                       <div>
                         <p className="text-sm text-white font-body">{form.bannerColor}</p>
-                        <p className="text-xs text-[#494847] font-body">
+                        <p className="text-xs text-[#a8b3bc] font-body">
                           Used on your event page header
                         </p>
                       </div>
@@ -1190,8 +1242,8 @@ export default function CreateEventPage() {
                     </div>
 
                     {form.isFlagship && (
-                      <div className="mb-3 inline-block px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
-                        <p className="text-[10px] font-bold text-amber-400 tracking-widest uppercase font-headline">
+                      <div className="mb-3 inline-block px-2 py-0.5 rounded-md bg-gradient-to-r from-primary/20 to-primary-dim/20 border border-primary/30">
+                        <p className="text-[10px] font-bold text-primary tracking-widest uppercase font-headline">
                           Flagship Event
                         </p>
                       </div>
@@ -1202,13 +1254,13 @@ export default function CreateEventPage() {
                     </h3>
 
                     {form.description && (
-                      <p className="text-[#adaaaa] text-xs font-body leading-relaxed mb-4 line-clamp-3">
+                      <p className="text-[#BFC9D1] text-xs font-body leading-relaxed mb-4 line-clamp-3">
                         {form.description}
                       </p>
                     )}
 
                     <div className="space-y-2.5">
-                      <div className="flex items-center gap-3 text-[#adaaaa]">
+                      <div className="flex items-center gap-3 text-[#BFC9D1]">
                         <span
                           className="material-symbols-outlined text-base"
                           style={{ color: form.bannerColor, opacity: 0.7 }}
@@ -1224,7 +1276,7 @@ export default function CreateEventPage() {
                           {form.startTime && <p className="text-[10px]">{form.startTime} START</p>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-[#adaaaa]">
+                      <div className="flex items-center gap-3 text-[#BFC9D1]">
                         <span
                           className="material-symbols-outlined text-base"
                           style={{ color: form.bannerColor, opacity: 0.7 }}
@@ -1240,7 +1292,7 @@ export default function CreateEventPage() {
                         </p>
                       </div>
                       {form.capacity && (
-                        <div className="flex items-center gap-3 text-[#adaaaa]">
+                        <div className="flex items-center gap-3 text-[#BFC9D1]">
                           <span
                             className="material-symbols-outlined text-base"
                             style={{ color: form.bannerColor, opacity: 0.7 }}
@@ -1254,14 +1306,14 @@ export default function CreateEventPage() {
 
                     {/* Tear line */}
                     <div className="my-5 flex items-center gap-1">
-                      <div className="w-4 h-4 rounded-full bg-[#0e0e0e] -ml-9" />
+                      <div className="w-4 h-4 rounded-full bg-[#19242d] -ml-9" />
                       <div className="flex-1 border-t-2 border-dashed border-white/10" />
-                      <div className="w-4 h-4 rounded-full bg-[#0e0e0e] -mr-9" />
+                      <div className="w-4 h-4 rounded-full bg-[#19242d] -mr-9" />
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] text-[#adaaaa] font-bold tracking-widest uppercase font-headline">
+                        <p className="text-[10px] text-[#BFC9D1] font-bold tracking-widest uppercase font-headline">
                           Access
                         </p>
                         <p
@@ -1272,10 +1324,10 @@ export default function CreateEventPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-[#adaaaa] font-bold tracking-widest uppercase font-headline mb-1">
+                        <p className="text-[10px] text-[#BFC9D1] font-bold tracking-widest uppercase font-headline mb-1">
                           Category
                         </p>
-                        <p className="text-xs font-mono text-[#adaaaa]">{form.category}</p>
+                        <p className="text-xs font-mono text-[#BFC9D1]">{form.category}</p>
                       </div>
                     </div>
                   </div>
@@ -1287,7 +1339,7 @@ export default function CreateEventPage() {
                   style={{
                     background: 'rgba(38,38,38,0.4)',
                     backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(133,173,255,0.1)',
+                    border: '1px solid rgba(133, 173, 255,0.1)',
                   }}
                 >
                   <div className="w-10 h-10 bg-[#85adff]/20 rounded-xl flex items-center justify-center shrink-0">
@@ -1297,7 +1349,7 @@ export default function CreateEventPage() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold font-headline">Dynamic QR Generation</h4>
-                    <p className="text-xs text-[#adaaaa] font-body mt-0.5">
+                    <p className="text-xs text-[#BFC9D1] font-body mt-0.5">
                       Each attendee gets a unique QR-coded entry pass.
                     </p>
                   </div>
