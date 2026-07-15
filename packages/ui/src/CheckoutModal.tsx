@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { authClient } from '@openpass/auth/client'
 import { apiFetch } from '@openpass/core'
 import { useRouter } from 'next/navigation'
@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 interface AttendeeField {
   id: string
   label: string
-  type: 'text' | 'email' | 'select' | 'checkbox'
+  type: 'text' | 'email' | 'select' | 'checkbox' | 'textarea' | 'url'
   required: boolean
   options?: string
 }
@@ -38,6 +38,29 @@ export function CheckoutModal({
   const [error, setError] = useState<string | null>(null)
 
   const schema: AttendeeField[] = Array.isArray(formSchema) ? formSchema : []
+
+  // Prefill known data for zero-friction
+  useEffect(() => {
+    if (session?.user && schema.length > 0) {
+      setFormData((prev) => {
+        if (Object.keys(prev).length > 0) return prev
+        const initialData: Record<string, any> = {}
+        let hasData = false
+        schema.forEach((field) => {
+          const label = field.label.toLowerCase()
+          if (field.type === 'email' || label.includes('email')) {
+            initialData[field.id] = session.user.email
+            hasData = true
+          } else if (label.includes('name')) {
+            initialData[field.id] = session.user.name || ''
+            hasData = true
+          }
+        })
+        return hasData ? initialData : prev
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, formSchema])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateForm = (id: string, val: any) => {
@@ -72,27 +95,27 @@ export function CheckoutModal({
 
   if (!session) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-[#0e0e0e]/90 flex items-center justify-center p-4 backdrop-blur-md">
-        <div className="bg-[#1a1919] border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+      <div className="fixed inset-0 z-[9999] bg-[#19242d]/90 flex items-center justify-center p-4 backdrop-blur-md">
+        <div className="bg-[#25343F] border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
           <span className="material-symbols-outlined text-4xl text-[#ff716c] mb-4">lock</span>
 
           <h2 className="text-xl font-headline font-bold text-white mb-2">Restricted Access</h2>
 
-          <p className="text-[#adaaaa] font-body text-sm mb-6">
+          <p className="text-[#BFC9D1] font-body text-sm mb-6">
             You must create a free OpenPass account to attend events.
           </p>
 
           <div className="flex gap-4">
             <button
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-white/10 text-white font-headline text-sm hover:bg-[#201f1f] transition-all"
+              className="flex-1 py-3 rounded-xl border border-white/10 text-white font-headline text-sm hover:bg-[#2b3d4a] transition-all"
             >
               Cancel
             </button>
 
             <button
               onClick={() => router.push('/auth/login')}
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#85adff] to-[#0070eb] text-[#002c65] font-bold font-headline text-sm hover:scale-105 transition-all"
+              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#85adff] to-[#0070eb] text-on-primary font-bold font-headline text-sm hover:scale-105 transition-all"
             >
               Sign In
             </button>
@@ -103,14 +126,14 @@ export function CheckoutModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#0e0e0e]/80 flex flex-col items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-[#1a1919] border border-white/10 shadow-2xl rounded-3xl w-full max-w-lg overflow-hidden my-auto relative shrink-0">
+    <div className="fixed inset-0 z-[9999] bg-[#19242d]/80 flex flex-col items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-[#25343F] border border-white/10 shadow-2xl rounded-3xl w-full max-w-lg overflow-hidden my-auto relative shrink-0">
         {/* Header */}
-        <div className="bg-[#201f1f] px-6 py-5 border-b border-white/5 flex items-center justify-between">
+        <div className="bg-[#2b3d4a] px-6 py-5 border-b border-white/5 flex items-center justify-between">
           <div>
             <h2 className="font-headline font-bold text-white text-lg">Event Registration</h2>
 
-            <p className="font-body text-[#adaaaa] text-xs mt-1">{title}</p>
+            <p className="font-body text-[#BFC9D1] text-xs mt-1">{title}</p>
           </div>
 
           <button
@@ -137,7 +160,7 @@ export function CheckoutModal({
                     Your Ticket is Ready
                   </h3>
 
-                  <p className="text-[#adaaaa] font-body text-sm mb-6">{message}</p>
+                  <p className="text-[#BFC9D1] font-body text-sm mb-6">{message}</p>
 
                   {qrCode && (
                     <div className="bg-white p-4 rounded-xl inline-block shadow-lg mx-auto border-4 border-white">
@@ -158,11 +181,11 @@ export function CheckoutModal({
                     You&apos;re Waitlisted
                   </h3>
 
-                  <p className="text-[#adaaaa] font-body text-sm mb-6 max-w-sm mx-auto">
+                  <p className="text-[#BFC9D1] font-body text-sm mb-6 max-w-sm mx-auto">
                     {message}
                   </p>
 
-                  <div className="bg-[#262626] border border-white/10 rounded-xl p-4 text-sm text-[#d1d1d1]">
+                  <div className="bg-[#314655] border border-white/10 rounded-xl p-4 text-sm text-[#EAEFEF]">
                     If a spot becomes available, you&apos;ll receive an email confirmation
                     automatically.
                   </div>
@@ -172,7 +195,7 @@ export function CheckoutModal({
               <div className="mt-8 flex gap-3">
                 <button
                   onClick={() => router.push('/dashboard')}
-                  className="w-full py-4 bg-[#262626] text-white font-headline text-sm font-bold rounded-xl hover:bg-[#2c2c2c] transition-all"
+                  className="w-full py-4 bg-[#314655] text-white font-headline text-sm font-bold rounded-xl hover:bg-[#2c2c2c] transition-all"
                 >
                   Go to Dashboard
                 </button>
@@ -188,7 +211,7 @@ export function CheckoutModal({
 
                   <p className="text-white font-headline font-bold">Fast Checkout</p>
 
-                  <p className="text-[#adaaaa] text-xs font-body max-w-xs mx-auto mt-2">
+                  <p className="text-[#BFC9D1] text-xs font-body max-w-xs mx-auto mt-2">
                     The organizer has not strictly required any custom forms. Confirm your spot
                     instantly.
                   </p>
@@ -207,8 +230,9 @@ export function CheckoutModal({
                     <input
                       type="text"
                       required={field.required}
+                      value={formData[field.id] || ''}
                       onChange={(e) => updateForm(field.id, e.target.value)}
-                      className="w-full bg-[#0e0e0e] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-[#494847] focus:ring-1 focus:ring-[#85adff]"
+                      className="w-full bg-[#19242d] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-[#a8b3bc] focus:ring-1 focus:ring-[#85adff]"
                     />
                   )}
 
@@ -216,16 +240,39 @@ export function CheckoutModal({
                     <input
                       type="email"
                       required={field.required}
+                      value={formData[field.id] || ''}
                       onChange={(e) => updateForm(field.id, e.target.value)}
-                      className="w-full bg-[#0e0e0e] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-[#494847] focus:ring-1 focus:ring-[#85adff]"
+                      className="w-full bg-[#19242d] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-[#a8b3bc] focus:ring-1 focus:ring-[#85adff]"
+                    />
+                  )}
+
+                  {field.type === 'textarea' && (
+                    <textarea
+                      required={field.required}
+                      rows={3}
+                      value={formData[field.id] || ''}
+                      onChange={(e) => updateForm(field.id, e.target.value)}
+                      className="w-full bg-[#19242d] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-[#a8b3bc] focus:ring-1 focus:ring-[#85adff] resize-none"
+                    />
+                  )}
+
+                  {field.type === 'url' && (
+                    <input
+                      type="url"
+                      placeholder="https://"
+                      required={field.required}
+                      value={formData[field.id] || ''}
+                      onChange={(e) => updateForm(field.id, e.target.value)}
+                      className="w-full bg-[#19242d] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-[#a8b3bc] focus:ring-1 focus:ring-[#85adff]"
                     />
                   )}
 
                   {field.type === 'select' && (
                     <select
                       required={field.required}
+                      value={formData[field.id] || ''}
                       onChange={(e) => updateForm(field.id, e.target.value)}
-                      className="w-full bg-[#0e0e0e] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-[#85adff]"
+                      className="w-full bg-[#19242d] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-[#85adff]"
                     >
                       <option value="">Select an option</option>
 
@@ -238,12 +285,13 @@ export function CheckoutModal({
                   )}
 
                   {field.type === 'checkbox' && (
-                    <div className="flex items-center gap-3 bg-[#0e0e0e] p-3 rounded-xl border border-white/10 text-left">
+                    <div className="flex items-center gap-3 bg-[#19242d] p-3 rounded-xl border border-white/10 text-left">
                       <input
                         type="checkbox"
                         required={field.required}
+                        checked={!!formData[field.id]}
                         onChange={(e) => updateForm(field.id, e.target.checked)}
-                        className="w-5 h-5 rounded border-white/20 text-[#0070eb] focus:ring-[#0070eb] focus:ring-offset-0 bg-[#262626]"
+                        className="w-5 h-5 rounded border-white/20 text-[#0070eb] focus:ring-[#0070eb] focus:ring-offset-0 bg-[#314655]"
                       />
 
                       <span className="text-sm text-white font-body">Yes, I agree.</span>
@@ -263,7 +311,7 @@ export function CheckoutModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-gradient-to-r from-[#85adff] to-[#0070eb] text-[#002c65] font-black font-headline text-sm rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-[#85adff] to-[#0070eb] text-on-primary font-black font-headline text-sm rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <span className="material-symbols-outlined animate-spin">progress_activity</span>

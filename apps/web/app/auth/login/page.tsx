@@ -49,8 +49,8 @@ export default function LoginPage() {
   return (
     <div className="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col mesh-gradient">
       {/* Navbar */}
-      <header className="fixed top-0 w-full z-50 bg-[#0e0e0e]/80 backdrop-blur-xl border-b border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-        <nav className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
+      <header className="fixed top-0 w-full z-50 bg-[#19242d]/80 backdrop-blur-xl border-b border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+        <nav className="flex justify-between items-center px-6 md:px-8 py-4 max-w-7xl mx-auto">
           <Link
             href="/"
             className="flex items-center gap-2 text-2xl font-bold tracking-tighter text-white font-headline hover:opacity-80 transition-opacity"
@@ -242,7 +242,7 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-12 px-6 bg-[#131313]">
+      <footer className="w-full py-12 px-6 md:px-8 bg-[#25343F]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
             <span className="text-lg font-black text-white font-headline">OpenPass</span>

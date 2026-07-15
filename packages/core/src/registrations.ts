@@ -37,13 +37,18 @@ export async function createRegistration(data: CreateRegistrationInput, userId: 
       const isFull =
         event.capacity !== null && event.capacity !== undefined && confirmedCount >= event.capacity
 
+      let initialStatus: RegistrationStatus = RegistrationStatus.CONFIRMED
+      if (isFull || event.requireApproval) {
+        initialStatus = RegistrationStatus.WAITLISTED
+      }
+
       const registration = await tx.registration.create({
         data: {
           eventId: data.eventId,
           userId,
           formData: data.formData || {},
           qrCode: qrCodeRaw,
-          status: isFull ? RegistrationStatus.WAITLISTED : RegistrationStatus.CONFIRMED,
+          status: initialStatus,
         },
       })
 

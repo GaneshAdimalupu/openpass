@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { signOut } from '@openpass/auth/client'
 
 export function MePageClient({
@@ -47,10 +48,13 @@ export function MePageClient({
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 bg-surface-container-low p-6 md:p-8 rounded-3xl border border-outline-variant/30 shadow-sm gap-6">
         <div className="flex items-center gap-6">
           {user.image ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
+            <Image
               src={user.image}
               alt={user.name || 'User Profile Image'}
+              width={80}
+              height={80}
+              sizes="80px"
+              priority
               className="h-20 w-20 rounded-full shadow-lg object-cover"
             />
           ) : (
@@ -122,7 +126,7 @@ export function MePageClient({
                 <p className="text-on-surface-variant font-body">
                   You haven&apos;t registered for any events yet.
                 </p>
-                <Link href="/events" className="text-primary font-bold mt-2 block hover:underline">
+                <Link href="/" className="text-primary font-bold mt-2 block hover:underline">
                   Browse Events
                 </Link>
               </div>

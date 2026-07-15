@@ -15,7 +15,13 @@
         "RESEND_API_KEY",
         "EMAIL_FROM",
         "DATABASE_URL",
-        "DIRECT_URL"
+        "DIRECT_URL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "BETTER_AUTH_URL",
+        "BETTER_AUTH_SECRET",
+        "Supabase_pd",
+        "NEXT_PUBLIC_APP_URL"
       ],
       "outputs": [".next/**", "!.next/cache/**"]
     },

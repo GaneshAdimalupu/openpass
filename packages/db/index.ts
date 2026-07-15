@@ -6,4 +6,5 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({ log: ['error'
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-export * from '@prisma/client'
+export { PrismaClient, Prisma, RegistrationStatus } from '@prisma/client'
+export type { Event, User, Registration, Role } from '@prisma/client'

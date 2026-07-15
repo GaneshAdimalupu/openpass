@@ -57,18 +57,18 @@ export default function RegisterPage() {
   return (
     <div className="bg-surface text-on-surface font-body selection:bg-primary/30 min-h-screen flex flex-col antialiased">
       {/* TopAppBar */}
-      <header className="fixed top-0 w-full z-50 bg-[#0e0e0e]/80 backdrop-blur-xl border-b border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-        <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto font-headline tracking-tight">
+      <header className="fixed top-0 w-full z-50 bg-[#19242d]/80 backdrop-blur-xl border-b border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+        <div className="flex justify-between items-center px-6 md:px-8 py-4 max-w-7xl mx-auto font-headline tracking-tight">
           <Link
             href="/"
-            className="flex items-center gap-2 text-2xl font-bold tracking-tighter text-[#ffffff] font-headline hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 text-2xl font-bold tracking-tighter text-[#EAEFEF] font-headline hover:opacity-80 transition-opacity"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/openpass-logo.svg" alt="OpenPass Logo" className="h-12 w-auto" />
             OpenPass
           </Link>
           <div className="flex items-center gap-4">
-            <button className="text-[#adaaaa] hover:text-[#85adff] transition-colors duration-300">
+            <button className="text-[#BFC9D1] hover:text-[#85adff] transition-colors duration-300">
               <span className="material-symbols-outlined">help_outline</span>
             </button>
             <Link
@@ -293,24 +293,24 @@ export default function RegisterPage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-12 px-6 bg-[#131313] border-t border-white/5">
+      <footer className="w-full py-12 px-6 md:px-8 bg-[#25343F] border-t border-white/5">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-sm">
-          <div className="text-lg font-black text-[#ffffff] font-headline">Open Pass</div>
+          <div className="text-lg font-black text-[#EAEFEF] font-headline">Open Pass</div>
           <div className="flex flex-wrap justify-center gap-8">
-            <Link href="/privacy" className="text-[#adaaaa] hover:text-[#ffffff] transition-all">
+            <Link href="/privacy" className="text-[#BFC9D1] hover:text-[#EAEFEF] transition-all">
               Privacy
             </Link>
-            <Link href="/terms" className="text-[#adaaaa] hover:text-[#ffffff] transition-all">
+            <Link href="/terms" className="text-[#BFC9D1] hover:text-[#EAEFEF] transition-all">
               Terms
             </Link>
             <Link
               href="/open-source"
-              className="text-[#adaaaa] hover:text-[#ffffff] transition-all"
+              className="text-[#BFC9D1] hover:text-[#EAEFEF] transition-all"
             >
               Open Source
             </Link>
           </div>
-          <p className="text-[#adaaaa]">
+          <p className="text-[#BFC9D1]">
             © {new Date().getFullYear()} Open Pass Infrastructure. Built for the Open Community.
           </p>
         </div>

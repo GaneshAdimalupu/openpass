@@ -48,7 +48,7 @@ const features = [
     iconBg: 'bg-primary/10',
     title: 'Viral Scaling',
     description: 'Share links and social integrations that amplify your event reach.',
-    bg: 'bg-[#1a1919]',
+    bg: 'bg-[#25343F]',
     hover: true,
     watermark: true,
   },
@@ -79,7 +79,7 @@ function LargeCard({ feature }: { feature: (typeof features)[0] }) {
           className="absolute inset-0"
           style={{
             backgroundImage:
-              'linear-gradient(rgba(133,173,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(133,173,255,0.03) 1px, transparent 1px)',
+              'linear-gradient(rgba(133, 173, 255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(133, 173, 255,0.03) 1px, transparent 1px)',
             backgroundSize: '40px 40px',
           }}
         />
@@ -166,7 +166,7 @@ export function FeaturesSection() {
   const small = features.filter((f) => f.size === 'small')
 
   return (
-    <section className="py-24 px-6 max-w-7xl mx-auto">
+    <section className="py-24 px-6 md:px-8 max-w-7xl mx-auto">
       <div className="mb-16 space-y-4">
         <h2 className="text-4xl md:text-5xl font-black font-headline tracking-tight text-white">
           System Architecture

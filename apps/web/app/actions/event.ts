@@ -3,7 +3,7 @@
 import { headers } from 'next/headers'
 import { auth } from '@openpass/auth'
 import { redirect } from 'next/navigation'
-import { createEvent, getEvents } from '@openpass/core'
+import { createEvent, getEvents, updateEvent } from '@openpass/core'
 import { CreateEventInput } from '@openpass/types'
 
 export async function createEventAction(data: CreateEventInput) {
@@ -17,6 +17,18 @@ export async function createEventAction(data: CreateEventInput) {
   const event = await createEvent(data, session.user.id)
 
   redirect(`/events/${event.slug}`)
+}
+
+export async function updateEventAction(id: string, data: Partial<CreateEventInput>) {
+  const cookieHeaders = await headers()
+  const session = await auth.api.getSession({ headers: cookieHeaders })
+
+  if (!session?.user) {
+    throw new Error('You must be logged in to update an event.')
+  }
+
+  const event = await updateEvent(id, data, session.user.id)
+  return event
 }
 
 export async function getEventsAction(skip: number = 0, take: number = 10) {

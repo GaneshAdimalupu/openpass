@@ -42,14 +42,14 @@ export default function NotFound() {
           size: Math.random() * 1.8,
           opacity: Math.random(),
           speed: 0.005 + Math.random() * 0.015,
-          color: Math.random() > 0.8 ? '#85adff' : '#ffffff',
+          color: Math.random() > 0.8 ? '#85adff' : '#EAEFEF',
         })
       }
     }
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height)
-      ctx.fillStyle = '#0e0e0e'
+      ctx.fillStyle = '#19242d'
       ctx.fillRect(0, 0, width, height)
 
       stars.forEach((star) => {
@@ -165,7 +165,7 @@ export default function NotFound() {
   }, [])
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0e0e0e] text-white px-4 select-none">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#19242d] text-white px-4 select-none">
       {/* --- INJECTED VANILLA CSS --- */}
       <style
         dangerouslySetInnerHTML={{
