@@ -961,12 +961,17 @@ export default function OrganizationOverviewPage(): JSX.Element {
 						<form onSubmit={handleSaveOrganization} className="space-y-4">
 							{/* Logo Preview */}
 							<div className="space-y-2">
-								<label
-									htmlFor="orgLogoUrlInput"
-									className="block label text-xs"
-								>
-									Organization Logo / Poster
-								</label>
+								<div className="flex items-center justify-between">
+									<label
+										htmlFor="orgLogoUrlInput"
+										className="block label text-xs"
+									>
+										Organization Logo / Poster
+									</label>
+									<span className="text-[10px] font-mono opacity-60 bg-perforation/40 px-1.5 py-0.5 rounded border border-perforation">
+										16:9 Ratio (1200 × 675 px)
+									</span>
+								</div>
 								<div className="relative w-full h-36 rounded-lg bg-perforation/20 border border-perforation flex items-center justify-center overflow-hidden">
 									{orgLogoUrl ? (
 										<Image
@@ -977,9 +982,14 @@ export default function OrganizationOverviewPage(): JSX.Element {
 											className="object-cover"
 										/>
 									) : (
-										<span className="font-display text-lg opacity-40">
-											{orgTitle || org?.name}
-										</span>
+										<div className="text-center p-4">
+											<span className="font-display text-lg opacity-40 block">
+												{orgTitle || org?.name}
+											</span>
+											<span className="text-[11px] font-mono opacity-50 block mt-1">
+												Recommended: 1200 × 675 px (16:9)
+											</span>
+										</div>
 									)}
 								</div>
 								<input
@@ -990,6 +1000,14 @@ export default function OrganizationOverviewPage(): JSX.Element {
 									placeholder="https://example.com/logo.png"
 									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
 								/>
+								<p className="text-[11px] opacity-60 font-mono">
+									Recommended:{" "}
+									<strong className="font-semibold text-ink">
+										1200 × 675 px
+									</strong>{" "}
+									(16:9 ratio) or 1200 × 600 px (2:1). Min: 600 × 338 px.
+									Supports PNG, JPG, WebP.
+								</p>
 							</div>
 
 							{/* Organization Name (Slug) - Readonly */}
