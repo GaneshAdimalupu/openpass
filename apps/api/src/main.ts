@@ -9,7 +9,10 @@ async function bootstrap() {
 	app.enableCors();
 	app.use(
 		"/trpc",
-		trpcExpress.createExpressMiddleware({ router: appRouter, createContext }),
+		trpcExpress.createExpressMiddleware({
+			router: appRouter,
+			createContext: () => createContext(),
+		}),
 	);
 	await app.listen(3001);
 }

@@ -91,10 +91,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 	adapter: PrismaAdapter(prisma),
 	session: { strategy: "jwt" },
 	trustHost: true,
-	secret:
-		process.env.AUTH_SECRET ||
-		process.env.NEXTAUTH_SECRET ||
-		"openevents-auth-secret-key-32-chars-long",
+	secret: (() => {
+		const s = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+		if (!s) {
+			throw new Error(
+				"Missing AUTH_SECRET or NEXTAUTH_SECRET environment variable. Auth cannot start without a signing secret.",
+			);
+		}
+		return s;
+	})(),
 	pages: {
 		signIn: "/login",
 	},
@@ -104,7 +109,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 			if (user) {
 				token.id = user.id;
 				token.name = user.name || profile?.name || token.name;
-				token.email = user.email || token.email;
 				token.picture =
 					user.image ||
 					(profile as { picture?: string })?.picture ||

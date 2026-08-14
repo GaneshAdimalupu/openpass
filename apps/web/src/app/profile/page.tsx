@@ -104,7 +104,6 @@ export default function ProfilePage(): JSX.Element {
 
 		try {
 			await updateBasicInfoMutation.mutateAsync({
-				userId,
 				name: nameInput.trim(),
 				phone: phoneInput.trim() || null,
 				image: imageInput.trim() || null,
@@ -126,7 +125,6 @@ export default function ProfilePage(): JSX.Element {
 
 		try {
 			await updateSocialsMutation.mutateAsync({
-				userId,
 				whatsapp: whatsappInput.trim() || null,
 				instagram: instagramInput.trim() || null,
 				twitter: twitterInput.trim() || null,
@@ -160,7 +158,6 @@ export default function ProfilePage(): JSX.Element {
 
 		try {
 			await changePasswordMutation.mutateAsync({
-				userId,
 				currentPassword: currentPassword || undefined,
 				newPassword,
 			});
@@ -199,7 +196,7 @@ export default function ProfilePage(): JSX.Element {
 				"Are you sure you want to log out all other active sessions on your account?",
 			)
 		) {
-			await logoutAllDevicesMutation.mutateAsync({ userId });
+			await logoutAllDevicesMutation.mutateAsync();
 			await refetch();
 			showToast("Logged out all other sessions");
 		}

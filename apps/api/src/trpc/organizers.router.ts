@@ -1,5 +1,6 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { publicProcedure, router } from "./trpc";
+import { authedProcedure, publicProcedure, router } from "./trpc";
 
 /**
  * Organizer sub-categories mapped by OrganizerType (main group).
@@ -31,7 +32,7 @@ const ORGANIZER_CATEGORIES = [
 ] as const;
 
 export const organizersRouter = router({
-	create: publicProcedure
+	create: authedProcedure
 		.input(
 			z.object({
 				name: z.string().min(2).max(100),
@@ -55,8 +56,16 @@ export const organizersRouter = router({
 				.replace(/-+/g, "-")
 				.replace(/^-|-$/g, "");
 
+			// Verify ownership: only allow creating organizers for yourself
+			if (input.ownerId !== ctx.userId) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "You can only create organizers for your own account.",
+				});
+			}
+
 			const userExists = await ctx.prisma.user.findUnique({
-				where: { id: input.ownerId },
+				where: { id: ctx.userId },
 			});
 
 			if (!userExists) {

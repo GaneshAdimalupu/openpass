@@ -1,53 +1,58 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { publicProcedure, router } from "./trpc";
+import { authedProcedure, publicProcedure, router } from "./trpc";
 
 export const usersRouter = router({
 	getProfile: publicProcedure
 		.input(z.object({ userId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const user = await ctx.prisma.user.findUnique({
-				where: { id: input.userId },
-				select: {
-					id: true,
-					name: true,
-					email: true,
-					phone: true,
-					image: true,
-					role: true,
-					identityProvider: true,
-					whatsapp: true,
-					instagram: true,
-					twitter: true,
-					linkedin: true,
-					facebook: true,
-					createdAt: true,
-					passwordHash: true,
-					organizers: {
-						select: {
-							id: true,
-							name: true,
-							slug: true,
-							type: true,
-							category: true,
-							_count: {
-								select: {
-									events: true,
+			const [user, pwCheck] = await Promise.all([
+				ctx.prisma.user.findUnique({
+					where: { id: input.userId },
+					select: {
+						id: true,
+						name: true,
+						email: true,
+						phone: true,
+						image: true,
+						role: true,
+						identityProvider: true,
+						whatsapp: true,
+						instagram: true,
+						twitter: true,
+						linkedin: true,
+						facebook: true,
+						createdAt: true,
+						organizers: {
+							select: {
+								id: true,
+								name: true,
+								slug: true,
+								type: true,
+								category: true,
+								_count: {
+									select: {
+										events: true,
+									},
 								},
 							},
 						},
-					},
-					sessions: {
-						select: {
-							id: true,
-							expires: true,
+						sessions: {
+							select: {
+								id: true,
+								expires: true,
+							},
+							orderBy: {
+								expires: "desc",
+							},
 						},
-						orderBy: {
-							expires: "desc",
-						},
 					},
-				},
-			});
+				}),
+				ctx.prisma.user.findUnique({
+					where: { id: input.userId },
+					select: { passwordHash: true },
+				}),
+			]);
 
 			if (!user) {
 				throw new Error("User not found.");
@@ -58,19 +63,16 @@ export const usersRouter = router({
 				0,
 			);
 
-			const { passwordHash, ...safeUser } = user;
-
 			return {
-				...safeUser,
-				hasPassword: Boolean(passwordHash),
+				...user,
+				hasPassword: Boolean(pwCheck?.passwordHash),
 				totalHostedEvents,
 			};
 		}),
 
-	updateBasicInfo: publicProcedure
+	updateBasicInfo: authedProcedure
 		.input(
 			z.object({
-				userId: z.string(),
 				name: z.string().min(1, "Name cannot be empty").max(100),
 				phone: z.string().max(30).optional().nullable(),
 				image: z
@@ -83,7 +85,7 @@ export const usersRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const updated = await ctx.prisma.user.update({
-				where: { id: input.userId },
+				where: { id: ctx.userId },
 				data: {
 					name: input.name.trim(),
 					phone: input.phone?.trim() || null,
@@ -100,10 +102,9 @@ export const usersRouter = router({
 			return updated;
 		}),
 
-	updateSocials: publicProcedure
+	updateSocials: authedProcedure
 		.input(
 			z.object({
-				userId: z.string(),
 				whatsapp: z.string().max(50).optional().nullable(),
 				instagram: z.string().max(100).optional().nullable(),
 				twitter: z.string().max(100).optional().nullable(),
@@ -113,7 +114,7 @@ export const usersRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const updated = await ctx.prisma.user.update({
-				where: { id: input.userId },
+				where: { id: ctx.userId },
 				data: {
 					whatsapp: input.whatsapp?.trim() || null,
 					instagram: input.instagram?.trim() || null,
@@ -134,10 +135,9 @@ export const usersRouter = router({
 			return updated;
 		}),
 
-	changePassword: publicProcedure
+	changePassword: authedProcedure
 		.input(
 			z.object({
-				userId: z.string(),
 				currentPassword: z.string().optional(),
 				newPassword: z
 					.string()
@@ -146,7 +146,7 @@ export const usersRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const user = await ctx.prisma.user.findUnique({
-				where: { id: input.userId },
+				where: { id: ctx.userId },
 				select: { id: true, passwordHash: true },
 			});
 
@@ -172,30 +172,29 @@ export const usersRouter = router({
 			const newHash = await bcrypt.hash(input.newPassword, 12);
 
 			await ctx.prisma.user.update({
-				where: { id: input.userId },
+				where: { id: ctx.userId },
 				data: { passwordHash: newHash },
 			});
 
 			return { success: true };
 		}),
 
-	logoutDevice: publicProcedure
+	logoutDevice: authedProcedure
 		.input(z.object({ sessionId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
+			// Only allow deleting sessions owned by the current user
 			await ctx.prisma.session.deleteMany({
-				where: { id: input.sessionId },
+				where: { id: input.sessionId, userId: ctx.userId },
 			});
 
 			return { success: true };
 		}),
 
-	logoutAllDevices: publicProcedure
-		.input(z.object({ userId: z.string() }))
-		.mutation(async ({ ctx, input }) => {
-			await ctx.prisma.session.deleteMany({
-				where: { userId: input.userId },
-			});
+	logoutAllDevices: authedProcedure.mutation(async ({ ctx }) => {
+		await ctx.prisma.session.deleteMany({
+			where: { userId: ctx.userId },
+		});
 
-			return { success: true };
-		}),
+		return { success: true };
+	}),
 });
