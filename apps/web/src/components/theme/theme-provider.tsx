@@ -30,7 +30,7 @@ export interface ThemeProviderProps {
 
 export function ThemeProvider({
 	children,
-	defaultTheme = "system",
+	defaultTheme = "light",
 }: ThemeProviderProps): JSX.Element {
 	const [theme, setThemeState] = useState<Theme>(() => {
 		if (typeof window !== "undefined") {
