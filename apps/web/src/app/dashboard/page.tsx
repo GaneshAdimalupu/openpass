@@ -243,6 +243,18 @@ export default function DashboardPage(): JSX.Element {
 									</svg>
 								</div>
 
+								{/* Manage Organization & Team Members Button */}
+								{activeOrg && (
+									<Link
+										href={`/organization/${activeOrg.slug}`}
+										className="p-2 border border-perforation rounded-md bg-paper hover:border-ink/40 text-xs text-ink transition-colors flex items-center gap-1.5 label"
+										title="Manage Organization Profile & Team Members"
+									>
+										<span>⚙️</span>
+										<span className="hidden sm:inline">Manage Org</span>
+									</Link>
+								)}
+
 								{/* Create Event Pill Button */}
 								<Link
 									href="/events/new"

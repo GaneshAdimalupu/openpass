@@ -176,10 +176,20 @@ export const eventsRouter = router({
 			}
 
 			if (organizer.ownerId !== ctx.userId) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "You do not own this organizer.",
+				const membership = await ctx.prisma.organizerMember.findFirst({
+					where: {
+						organizerId: input.organizerId,
+						userId: ctx.userId,
+						role: { in: ["ADMIN", "EDITOR", "COORDINATOR"] },
+					},
 				});
+				if (!membership) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message:
+							"You do not have permission to create events for this organizer.",
+					});
+				}
 			}
 
 			const cleanSlug = input.slug
