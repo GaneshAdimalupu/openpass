@@ -2,17 +2,35 @@
 
 import { registerUser } from "@/app/actions/auth";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { JSX } from "react";
 
 export function LoginForm(): JSX.Element {
+	const searchParams = useSearchParams();
+	const urlError = searchParams.get("error");
+
 	const [isLogin, setIsLogin] = useState<boolean>(true);
 	const [name, setName] = useState<string>("");
 	const [email, setEmail] = useState<string>("");
 	const [password, setPassword] = useState<string>("");
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (urlError === "OAuthAccountNotLinked") {
+			setError(
+				"An account with this email already exists under another sign-in method. Email account linking is now enabled — please click Sign In with GitHub again to link your accounts.",
+			);
+		} else if (urlError === "Configuration") {
+			setError(
+				"Authentication configuration error. Please check server settings.",
+			);
+		} else if (urlError) {
+			setError("Authentication error occurred. Please try again.");
+		}
+	}, [urlError]);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
