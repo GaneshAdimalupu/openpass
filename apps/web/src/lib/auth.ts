@@ -159,6 +159,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 					}
 				}
 			} else if (token.id) {
+				// Verify session is still valid in database (if revoked remotely, kick out)
+				if (token.sessionToken) {
+					try {
+						const activeSession = await prisma.session.findUnique({
+							where: { sessionToken: token.sessionToken as string },
+						});
+						if (!activeSession) {
+							// Session was revoked remotely! Invalidate this JWT token immediately
+							return null;
+						}
+					} catch {
+						// session check background ignore
+					}
+				}
+
 				// Refresh from DB if name or image is missing from token
 				if (!token.name || !token.picture) {
 					try {
@@ -185,6 +200,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 			return token;
 		},
 		async session({ session, token }) {
+			if (!token?.id) {
+				return null as unknown as typeof session;
+			}
 			if (session.user) {
 				if (typeof token.id === "string") {
 					session.user.id = token.id;
