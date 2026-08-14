@@ -32,6 +32,8 @@ export function LoginForm(): JSX.Element {
 		}
 	}, [urlError]);
 
+	const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setIsLoading(true);
@@ -51,7 +53,7 @@ export function LoginForm(): JSX.Element {
 					setError("Invalid email or password");
 					setIsLoading(false);
 				} else {
-					window.location.href = "/onboarding";
+					window.location.href = callbackUrl;
 				}
 			} else {
 				const formData = new FormData();
@@ -66,7 +68,7 @@ export function LoginForm(): JSX.Element {
 					setError(result.error);
 					setIsLoading(false);
 				} else {
-					// Automatically log in after registration
+					// Automatically log in after registration to complete onboarding
 					await signIn("credentials", {
 						email: normalizedEmail,
 						password,
@@ -81,7 +83,7 @@ export function LoginForm(): JSX.Element {
 	};
 
 	const handleOAuthLogin = (provider: string) => {
-		signIn(provider, { callbackUrl: "/onboarding" });
+		signIn(provider, { callbackUrl });
 	};
 
 	return (
