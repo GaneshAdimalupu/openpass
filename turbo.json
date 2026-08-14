@@ -1,56 +1,15 @@
 {
-  "$schema": "https://turborepo.dev/schema.json",
-  "ui": "tui",
-  "globalDependencies": ["NODE_ENV", "SKIP_ENV_VALIDATION"],
-  "tasks": {
-    "db:generate": {
-      "cache": false
-    },
-    "build": {
-      "dependsOn": ["^build", "^db:generate"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "env": [
-        "NODE_ENV",
-        "SKIP_ENV_VALIDATION",
-        "RESEND_API_KEY",
-        "EMAIL_FROM",
-        "DATABASE_URL",
-        "DIRECT_URL",
-        "GOOGLE_CLIENT_ID",
-        "GOOGLE_CLIENT_SECRET",
-        "BETTER_AUTH_URL",
-        "BETTER_AUTH_SECRET",
-        "Supabase_pd",
-        "NEXT_PUBLIC_APP_URL"
-      ],
-      "outputs": [".next/**", "!.next/cache/**"]
-    },
-    "lint": {
-      "dependsOn": ["^lint"],
-      "env": [
-        "NODE_ENV",
-        "GOOGLE_CLIENT_ID",
-        "GOOGLE_CLIENT_SECRET",
-        "NEXT_PUBLIC_APP_URL",
-        "DATABASE_URL",
-        "DIRECT_URL",
-        "RESEND_API_KEY",
-        "EMAIL_FROM"
-      ]
-    },
-    "check-types": {
-      "dependsOn": ["^check-types"]
-    },
-    "format": {
-      "dependsOn": ["^format"]
-    },
-    "dev": {
-      "dependsOn": ["^db:generate"],
-      "cache": false,
-      "persistent": true
-    },
-    "clean": {
-      "cache": false
-    }
-  }
+	"$schema": "https://turbo.build/schema.json",
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"lint": {},
+		"test": {}
+	}
 }

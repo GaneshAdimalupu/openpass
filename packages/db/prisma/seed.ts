@@ -1,122 +1,108 @@
-import { PrismaClient } from '@prisma/client'
-const prisma = new PrismaClient()
+import "dotenv/config";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../generated/prisma/client";
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Seeding database...')
+	const owner = await prisma.user.upsert({
+		where: { email: "ganesh@openevents.dev" },
+		update: {},
+		create: {
+			email: "ganesh@openevents.dev",
+			name: "Ganesh Adimalupu",
+		},
+	});
 
-  // 1. Create a dummy organizer
-  const user = await prisma.user.upsert({
-    where: { email: 'admin@openpass.local' },
-    update: {},
-    create: {
-      email: 'admin@openpass.local',
-      name: 'Local Admin',
-      role: 'ADMIN',
-    },
-  })
+	const organizer = await prisma.organizer.upsert({
+		where: { slug: "playfest" },
+		update: {},
+		create: {
+			type: "organization",
+			name: "PlayFest",
+			slug: "playfest",
+			ownerId: owner.id,
+		},
+	});
 
-  // 2. Create geographically diverse demo events
-  const events = [
-    {
-      title: 'OpenPass Contributor Hackathon',
-      slug: 'test-event-2026',
-      description:
-        'Hack on the OpenPass codebase with core contributors. Build features, squash bugs, and ship together.',
-      venue: 'San Francisco, CA',
-      latitude: 37.7749,
-      longitude: -122.4194,
-      category: 'Technology',
-      tags: ['hackathon', 'open-source', 'contributors'],
-      startAt: new Date(Date.now() - 3600000), // Started 1 hour ago (LIVE)
-      endAt: new Date(Date.now() + 86400000),
-    },
-    {
-      title: 'Kubernetes Berlin Meetup',
-      slug: 'k8s-berlin-2026',
-      description:
-        'Monthly Kubernetes meetup in Berlin. Lightning talks, live demos, and networking with the cloud-native community.',
-      venue: 'Berlin, DE',
-      latitude: 52.52,
-      longitude: 13.405,
-      category: 'Technology',
-      tags: ['kubernetes', 'cloud-native', 'meetup'],
-      startAt: new Date(Date.now() + 86400000 * 3),
-      endAt: new Date(Date.now() + 86400000 * 3 + 10800000),
-    },
-    {
-      title: 'Rust WebAssembly Workshop',
-      slug: 'rust-wasm-london-2026',
-      description:
-        'Hands-on workshop building high-performance web apps with Rust and WebAssembly. All skill levels welcome.',
-      venue: 'London, UK',
-      latitude: 51.5074,
-      longitude: -0.1278,
-      category: 'Workshop',
-      tags: ['rust', 'webassembly', 'workshop'],
-      startAt: new Date(Date.now() + 86400000 * 7),
-      endAt: new Date(Date.now() + 86400000 * 7 + 14400000),
-    },
-    {
-      title: 'Open Source Beats: Algorave',
-      slug: 'algorave-tokyo-2026',
-      description:
-        'Live-coded music performance using open-source tools. Experience the intersection of code and creativity.',
-      venue: 'Tokyo, JP',
-      latitude: 35.6762,
-      longitude: 139.6503,
-      category: 'Music',
-      tags: ['algorave', 'music', 'live-coding'],
-      startAt: new Date(Date.now() + 86400000 * 5),
-      endAt: new Date(Date.now() + 86400000 * 5 + 18000000),
-    },
-    {
-      title: 'DeFi Protocol Architecture Deep-Dive',
-      slug: 'defi-sao-paulo-2026',
-      description:
-        'Technical deep-dive into decentralized finance protocol architecture. Smart contracts, security, and scalability.',
-      venue: 'São Paulo, BR',
-      latitude: -23.5505,
-      longitude: -46.6333,
-      category: 'Technology',
-      tags: ['defi', 'blockchain', 'architecture'],
-      startAt: new Date(Date.now() + 86400000 * 14),
-      endAt: new Date(Date.now() + 86400000 * 14 + 28800000),
-    },
-    {
-      title: 'Cloud Native Africa Summit',
-      slug: 'cloud-native-nairobi-2026',
-      description:
-        'The largest cloud-native conference in Africa. Keynotes, workshops, and hands-on labs with CNCF projects.',
-      venue: 'Nairobi, KE',
-      latitude: -1.2921,
-      longitude: 36.8219,
-      category: 'Technology',
-      tags: ['cloud-native', 'africa', 'summit'],
-      startAt: new Date(Date.now() + 86400000 * 21),
-      endAt: new Date(Date.now() + 86400000 * 23),
-    },
-  ]
+	await prisma.event.upsert({
+		where: { slug: "react-and-the-dom" },
+		update: {},
+		create: {
+			title: "React and the DOM",
+			slug: "react-and-the-dom",
+			description:
+				"A hands-on workshop covering how React actually updates the DOM under the hood.",
+			category: "Workshop",
+			status: "published",
+			eventStart: new Date("2026-08-14T10:00:00+05:30"),
+			eventEnd: new Date("2026-08-14T13:00:00+05:30"),
+			registrationStart: new Date("2026-08-01T00:00:00+05:30"),
+			registrationEnd: new Date("2026-08-13T23:59:00+05:30"),
+			location: "Kochi",
+			capacity: 60,
+			organizerId: organizer.id,
+			tickets: {
+				create: [{ name: "General", price: 0, quantity: 60 }],
+			},
+		},
+	});
 
-  for (const event of events) {
-    await prisma.event.upsert({
-      where: { slug: event.slug },
-      update: {},
-      create: {
-        ...event,
-        organiserId: user.id,
-        isPublished: true,
-      },
-    })
-  }
+	await prisma.event.upsert({
+		where: { slug: "kelora-tech-fest" },
+		update: {},
+		create: {
+			title: "Kelora Tech Fest",
+			slug: "kelora-tech-fest",
+			description:
+				"A two-day tech fest with talks, workshops, and a hackathon track.",
+			category: "Fest",
+			status: "published",
+			eventStart: new Date("2026-09-02T09:00:00+05:30"),
+			eventEnd: new Date("2026-09-03T18:00:00+05:30"),
+			registrationStart: new Date("2026-08-01T00:00:00+05:30"),
+			registrationEnd: new Date("2026-09-01T23:59:00+05:30"),
+			location: "Trivandrum",
+			capacity: 500,
+			organizerId: organizer.id,
+			tickets: {
+				create: [{ name: "General", price: 199, quantity: 500 }],
+			},
+		},
+	});
 
-  console.log(`✅ Database seeded with ${events.length} events!`)
+	await prisma.event.upsert({
+		where: { slug: "startup-summit" },
+		update: {},
+		create: {
+			title: "Startup Summit",
+			slug: "startup-summit",
+			description:
+				"A summit for early-stage founders, investors, and operators.",
+			category: "Conference",
+			status: "published",
+			eventStart: new Date("2026-09-20T09:00:00+05:30"),
+			eventEnd: new Date("2026-09-20T17:00:00+05:30"),
+			registrationStart: new Date("2026-08-01T00:00:00+05:30"),
+			registrationEnd: new Date("2026-09-19T23:59:00+05:30"),
+			location: "Kochi",
+			capacity: 200,
+			organizerId: organizer.id,
+			tickets: {
+				create: [{ name: "General", price: 499, quantity: 0 }],
+			},
+		},
+	});
+
+	console.log("Seeded: 1 organizer, 3 events, 3 tickets");
 }
 
 main()
-  .catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+	.catch((e) => {
+		console.error(e);
+		process.exit(1);
+	})
+	.finally(async () => {
+		await prisma.$disconnect();
+	});

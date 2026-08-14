@@ -1,41 +1,22 @@
 {
-  "name": "openpass",
-  "version": "1.0.0",
-  "description": "Open source event registration and ticketing platform.",
-  "author": "Ganesh Adimalupu",
-  "license": "AGPL-3.0-only",
-  "private": true,
-  "scripts": {
-    "build": "turbo run build",
-    "clean": "turbo run clean",
-    "dev": "turbo run dev",
-    "postinstall": "node -e \"require('fs').existsSync('.env') || require('fs').copyFileSync('.env.example', '.env')\"",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types",
-    "prepare": "husky",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "docker:build": "docker compose build --no-cache",
-    "docker:logs": "docker compose logs -f",
-    "docker:shell": "docker exec -it openpass-web sh",
-    "docker:clean": "docker compose down -v --rmi all --remove-orphans"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,md}": [
-      "prettier --write"
-    ]
-  },
-  "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
-    "prettier": "^3.7.4",
-    "turbo": "^2.9.4",
-    "typescript": "5.9.2"
-  },
-  "packageManager": "pnpm@10.0.0",
-  "engines": {
-    "node": ">=18"
-  }
+	"name": "openevents",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"dev": "turbo dev",
+		"build": "turbo build",
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"prepare": "husky"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.30.3",
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.7",
+		"husky": "^9.1.7",
+		"lint-staged": "^17.3.0",
+		"turbo": "^2.10.8"
+	}
 }

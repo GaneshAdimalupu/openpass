@@ -1,205 +1,156 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  name          String?
-  passwordHash  String?
-  role          Role           @default(ATTENDEE)
-  createdAt     DateTime       @default(now())
-  emailVerified Boolean        @default(false)
-  image         String?
-  updatedAt     DateTime       @updatedAt
-  accounts      Account[]
-  events        Event[]
-  projects      Project[]
-  proposals     Proposal[]
-  registrations Registration[]
-  sessions      Session[]
-  volunteers    Volunteer[]
-}
-
-model Event {
-  id                   String         @id @default(cuid())
-  title                String
-  slug                 String         @unique
-  description          String?
-  bannerUrl            String?
-  startAt              DateTime
-  endAt                DateTime
-  venue                String?
-  capacity             Int?
-  isPublished          Boolean        @default(false)
-  formSchema           Json?
-  organiserId          String
-  createdAt            DateTime       @default(now())
-  category             String         @default("Other")
-  deletedAt            DateTime?
-  latitude             Float?
-  longitude            Float?
-  organization         String?
-  registrationDeadline DateTime?
-  requireApproval      Boolean        @default(false)
-  tags                 String[]
-  twitterHandle        String?
-  websiteUrl           String?
-  isFlagship           Boolean        @default(false)
-  scheduleDates        String[]       @default([])
-  scheduleHalls        String[]       @default([])
-  showSchedule         Boolean        @default(false)
-  organiser            User           @relation(fields: [organiserId], references: [id], onDelete: Cascade)
-  partners             Partner[]
-  projects             Project[]
-  proposals            Proposal[]
-  registrations        Registration[]
-  scheduleItems        ScheduleItem[]
-  volunteers           Volunteer[]
-}
-
-model Registration {
-  id          String             @id @default(cuid())
-  eventId     String
-  userId      String
-  formData    Json?
-  qrCode      String             @unique
-  checkedIn   Boolean            @default(false)
-  checkedInAt DateTime?
-  createdAt   DateTime           @default(now())
-  deletedAt   DateTime?
-  status      RegistrationStatus @default(CONFIRMED)
-  event       Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
-}
-
-model Session {
-  id        String   @id @default(cuid())
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String           @id @default(cuid())
+  email            String           @unique
+  name             String?
+  phone            String?
+  image            String?
+  passwordHash     String?
+  emailVerified    DateTime?
+  timeZone         String           @default("Asia/Kolkata")
+  role             UserRole         @default(USER)
+  identityProvider IdentityProvider @default(OPENEVENTS)
+  whatsapp         String?
+  instagram        String?
+  twitter          String?
+  linkedin         String?
+  facebook         String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  accounts         Account[]
+  organizers       Organizer[]
+  sessions         Session[]
 }
 
 model Account {
-  id                    String    @id @default(cuid())
-  accountId             String
-  providerId            String
-  userId                String
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
-model Verification {
-  id         String    @id @default(cuid())
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime? @default(now())
-  updatedAt  DateTime? @updatedAt
-}
-
-model Proposal {
-  id        String   @id @default(cuid())
-  eventId   String
-  userId    String
-  title     String
-  abstract  String
-  status    String   @default("PENDING")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Partner {
-  id        String   @id @default(cuid())
-  eventId   String
-  name      String
-  logoUrl   String?
-  tier      String
-  website   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-}
-
-model ScheduleItem {
+model Session {
   id           String   @id @default(cuid())
-  eventId      String
-  title        String
-  speaker      String?
-  startTime    DateTime
-  endTime      DateTime
-  type         String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  description  String?
-  speakerImage String?
-  venue        String?
-  proposalId   String?
-  videoLink    String?
-  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
-model Volunteer {
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Organizer {
+  id        String        @id @default(cuid())
+  type      OrganizerType
+  category  String        @default("individual_host")
+  name      String
+  slug      String        @unique
+  ownerId   String
+  createdAt DateTime      @default(now())
+  events    Event[]
+  owner     User          @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([type])
+  @@index([category])
+}
+
+model Event {
+  id                String      @id @default(cuid())
+  title             String
+  slug              String      @unique
+  description       String?
+  bannerUrl         String?
+  format            String      @default("meetup")
+  topic             String      @default("technology")
+  tags              String[]
+  status            EventStatus @default(draft)
+  eventStart        DateTime
+  eventEnd          DateTime
+  timezone          String      @default("Asia/Kolkata")
+  registrationStart DateTime?
+  registrationEnd   DateTime?
+  isOnline          Boolean     @default(false)
+  location          String?
+  onlineLink        String?
+  capacity          Int?
+  seriesId          String?
+  organizerId       String
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  organizer         Organizer   @relation(fields: [organizerId], references: [id])
+  tickets           Ticket[]
+
+  @@index([organizerId])
+  @@index([status])
+  @@index([format])
+  @@index([topic])
+  @@index([eventStart])
+}
+
+model Ticket {
   id        String   @id @default(cuid())
   eventId   String
-  userId    String?
-  role      String
-  status    String   @default("PENDING")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  email     String
   name      String
-  imageUrl  String?
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id])
+  price     Int      @default(0)
+  quantity  Int?
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
 }
 
-model Project {
-  id          String   @id @default(cuid())
-  eventId     String
-  userId      String
-  title       String
-  description String
-  repoUrl     String?
-  demoUrl     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  logoUrl     String?
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-enum Role {
+enum UserRole {
+  USER
   ADMIN
-  ORGANISER
-  ATTENDEE
 }
 
-enum RegistrationStatus {
-  CONFIRMED
-  WAITLISTED
-  CANCELLED
+enum IdentityProvider {
+  OPENEVENTS
+  GOOGLE
+  GITHUB
+}
+
+enum OrganizerType {
+  personal
+  education
+  community
+  professional
+  venue
+  public_sector
+}
+
+enum EventStatus {
+  draft
+  published
+  completed
+  cancelled
 }

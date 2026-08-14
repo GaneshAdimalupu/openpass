@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+	--color-paper: #f7f6f2;
+	--color-ink: #1b1a18;
+	--color-stamp: #1f7a4d;
+	--color-perforation: #dad6cc;
+	--color-alert: #c0432a;
+}
+
+.dark,
+[data-theme="dark"] {
+	--color-paper: #131211;
+	--color-ink: #f4f3ee;
+	--color-stamp: #22c55e;
+	--color-perforation: #2a2925;
+	--color-alert: #ef4444;
+}
+
+@theme {
+	--color-paper: var(--color-paper);
+	--color-ink: var(--color-ink);
+	--color-stamp: var(--color-stamp);
+	--color-perforation: var(--color-perforation);
+	--color-alert: var(--color-alert);
+
+	--font-display: var(--font-display);
+	--font-body: var(--font-body);
+	--font-mono: var(--font-mono);
+
+	--text-h1: 2.44rem;
+	--text-h2: 1.95rem;
+	--text-h3: 1.56rem;
+	--text-body: 1rem;
+	--text-ticket: 0.875rem;
+}
+
+body {
+	background: var(--color-paper);
+	color: var(--color-ink);
+	font-family: var(--font-body);
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease;
+}
+
+.label {
+	font-size: 0.81rem;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.tear-line {
+	border-top: 1px dashed var(--color-perforation);
+	position: relative;
+}
+.tear-line::before,
+.tear-line::after {
+	content: "";
+	position: absolute;
+	top: -6px;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: var(--color-paper);
+	border: 1px solid var(--color-perforation);
+}
+.tear-line::before {
+	left: -6px;
+}
+.tear-line::after {
+	right: -6px;
+}
