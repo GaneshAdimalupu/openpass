@@ -24,6 +24,7 @@ export default function ProfilePage(): JSX.Element {
 	const updateBasicInfoMutation = trpc.users.updateBasicInfo.useMutation();
 	const updateSocialsMutation = trpc.users.updateSocials.useMutation();
 	const changePasswordMutation = trpc.users.changePassword.useMutation();
+	const logoutDeviceMutation = trpc.users.logoutDevice.useMutation();
 	const logoutAllDevicesMutation = trpc.users.logoutAllDevices.useMutation();
 
 	// Modal States
@@ -176,6 +177,18 @@ export default function ProfilePage(): JSX.Element {
 			setPasswordError(
 				err instanceof Error ? err.message : "Failed to change password",
 			);
+		}
+	};
+
+	const handleLogoutDevice = async (sessionId: string) => {
+		try {
+			await logoutDeviceMutation.mutateAsync({ sessionId });
+			await refetch();
+			showToast("Device session logged out");
+		} catch (err: unknown) {
+			const msg =
+				err instanceof Error ? err.message : "Failed to logout device";
+			showToast(msg);
 		}
 	};
 
@@ -539,7 +552,7 @@ export default function ProfilePage(): JSX.Element {
 
 												<button
 													type="button"
-													onClick={() => handleLogoutAllDevices()}
+													onClick={() => handleLogoutDevice(s.id)}
 													className="label text-xs text-alert border border-alert/30 px-3 py-1 rounded hover:bg-alert/10 transition-colors"
 												>
 													Logout

@@ -112,6 +112,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 					token.picture;
 				token.role = user.role || token.role;
 
+				// Generate unique session token for this device and record in database
+				const sessionToken =
+					(token.sessionToken as string) || crypto.randomUUID();
+				token.sessionToken = sessionToken;
+
+				try {
+					const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+					await prisma.session.upsert({
+						where: { sessionToken },
+						update: { expires },
+						create: {
+							sessionToken,
+							userId: user.id as string,
+							expires,
+						},
+					});
+				} catch {
+					// session tracking background sync
+				}
+
 				// If user exists in DB but name or image is null, sync from OAuth profile
 				if (token.id && profile) {
 					try {
@@ -177,6 +197,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 				}
 				if (typeof token.role === "string") {
 					session.user.role = token.role as UserRole;
+				}
+				if (typeof token.sessionToken === "string") {
+					(session as unknown as { sessionToken: string }).sessionToken =
+						token.sessionToken;
 				}
 			}
 			return session;

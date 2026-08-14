@@ -179,6 +179,16 @@ export const usersRouter = router({
 			return { success: true };
 		}),
 
+	logoutDevice: publicProcedure
+		.input(z.object({ sessionId: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			await ctx.prisma.session.deleteMany({
+				where: { id: input.sessionId },
+			});
+
+			return { success: true };
+		}),
+
 	logoutAllDevices: publicProcedure
 		.input(z.object({ userId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
