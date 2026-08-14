@@ -1,9 +1,0 @@
-{
-  "extends": "@openpass/typescript-config/react-library",
-  "compilerOptions": {
-    "outDir": "dist",
-    "strictNullChecks": true
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
-}

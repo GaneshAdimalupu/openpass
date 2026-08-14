@@ -1,56 +1,6 @@
-# Dependencies
 node_modules
-/.pnp
-.pnp.*
-
-# Testing
-/coverage
-.nyc_output
-
-# Build Outputs
-.next/
-out/
-build/
-dist/
-.turbo/
-
-# Vercel
-.vercel
-
-# Environment Variables
+.next
+dist
 .env
-.env*.local
-.env.sample
-!.env.example
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-.eslintcache
-
-# OS Files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE Files
-.vscode/
-!.vscode/extensions.json
-.idea/
-*.swp
-*.swo
-.project
-.settings/
-.classpath
-
-# Misc
-*.pem
-*.key
-.antigravity/
-.gemini/
+.env.local
+.turbo

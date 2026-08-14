@@ -1,36 +1,17 @@
 {
-  "name": "@openpass/ui",
-  "version": "1.1.0",
-  "description": "Shared React component library for OpenPass.",
-  "license": "AGPL-3.0-only",
-  "type": "module",
-  "private": true,
-  "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*.tsx"
-  },
-  "scripts": {
-    "clean": "rm -rf .turbo .next dist build",
-    "lint": "eslint . --max-warnings 0",
-    "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@openpass/eslint-config": "workspace:*",
-    "@openpass/typescript-config": "workspace:*",
-    "@types/node": "^22.15.3",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "eslint": "^9.39.1",
-    "typescript": "5.9.2"
-  },
-  "dependencies": {
-    "@openpass/auth": "workspace:*",
-    "@openpass/core": "workspace:*",
-    "framer-motion": "^12.38.0",
-    "lucide-react": "^1.7.0",
-    "next": "16.2.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
-  }
+	"name": "ui",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.30.3",
+	"devDependencies": {
+		"react": "^19.2.8",
+		"typescript": "^7.0.2"
+	}
 }

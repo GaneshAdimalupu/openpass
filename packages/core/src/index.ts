@@ -1,7 +1,0 @@
-export * from './events'
-export * from './registrations'
-export * from './api'
-export * from './partners'
-export * from './projects'
-export * from './volunteers'
-export * from './schedule'

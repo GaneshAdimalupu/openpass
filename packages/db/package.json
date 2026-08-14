@@ -1,31 +1,31 @@
 {
-  "name": "@openpass/db",
-  "version": "1.1.0",
-  "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
-  },
-  "description": "Database schema and Prisma client for OpenPass.",
-  "type": "module",
-  "scripts": {
-    "clean": "rm -rf .turbo .next dist build",
-    "lint": "eslint . --max-warnings 0",
-    "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push"
-  },
-  "dependencies": {
-    "@prisma/client": "^5.0.0"
-  },
-  "devDependencies": {
-    "@openpass/eslint-config": "workspace:*",
-    "@openpass/typescript-config": "workspace:*",
-    "@types/node": "^22.15.3",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "eslint": "^9.39.1",
-    "prisma": "^5.0.0",
-    "tsx": "^4.21.0",
-    "typescript": "5.9.2"
-  }
+	"name": "db",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"build": "prisma generate",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.30.3",
+	"devDependencies": {
+		"@types/pg": "^8.20.4",
+		"dotenv": "^17.4.2",
+		"prisma": "^7.9.1",
+		"tsx": "^4.23.10",
+		"typescript": "^7.0.2"
+	},
+	"dependencies": {
+		"@prisma/adapter-pg": "^7.9.1",
+		"@prisma/client": "^7.9.1",
+		"pg": "^8.22.0"
+	},
+	"exports": [
+		[
+			"./src/client.ts"
+		]
+	]
 }
