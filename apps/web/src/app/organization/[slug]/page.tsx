@@ -258,7 +258,20 @@ export default function OrganizationOverviewPage(): JSX.Element {
 						href="/dashboard"
 						className="label inline-flex items-center gap-1.5 text-xs text-ink opacity-70 hover:opacity-100 transition-opacity"
 					>
-						<span>←</span>
+						<svg
+							aria-hidden="true"
+							xmlns="http://www.w3.org/2000/svg"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="m15 18-6-6 6-6" />
+						</svg>
 						<span>Back to Dashboard</span>
 					</Link>
 				</div>
@@ -408,26 +421,69 @@ export default function OrganizationOverviewPage(): JSX.Element {
 									<button
 										type="button"
 										onClick={() => setIsEditOrgOpen(true)}
-										className="px-4 py-2 rounded-md border border-perforation bg-paper hover:border-ink/40 text-xs label text-ink transition-colors flex items-center gap-1.5 cursor-pointer"
+										className="px-4 py-2 rounded-md border border-perforation bg-paper hover:border-ink/40 text-xs label text-ink transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
 									>
-										<span>✏️</span>
+										<svg
+											aria-hidden="true"
+											xmlns="http://www.w3.org/2000/svg"
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+											<path d="m15 5 4 4" />
+										</svg>
 										<span>Edit Organization</span>
 									</button>
 								)}
 								<button
 									type="button"
 									onClick={handleShare}
-									className="px-4 py-2 rounded-md border border-perforation bg-paper hover:border-ink/40 text-xs label text-ink transition-colors flex items-center gap-1.5 cursor-pointer"
+									className="px-4 py-2 rounded-md border border-perforation bg-paper hover:border-ink/40 text-xs label text-ink transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
 								>
-									<span>🔗</span>
+									<svg
+										aria-hidden="true"
+										xmlns="http://www.w3.org/2000/svg"
+										width="13"
+										height="13"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									>
+										<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+										<polyline points="16 6 12 2 8 6" />
+										<line x1="12" x2="12" y1="2" y2="15" />
+									</svg>
 									<span>Share</span>
 								</button>
 								<button
 									type="button"
 									onClick={() => setIsEmbedOpen(true)}
-									className="px-4 py-2 rounded-md border border-perforation bg-paper hover:border-ink/40 text-xs label text-ink transition-colors flex items-center gap-1.5 cursor-pointer"
+									className="px-4 py-2 rounded-md border border-perforation bg-paper hover:border-ink/40 text-xs label text-ink transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
 								>
-									<span>{"</>"}</span>
+									<svg
+										aria-hidden="true"
+										xmlns="http://www.w3.org/2000/svg"
+										width="13"
+										height="13"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									>
+										<polyline points="16 18 22 12 16 6" />
+										<polyline points="8 6 2 12 8 18" />
+									</svg>
 									<span>Embed</span>
 								</button>
 							</div>
@@ -489,17 +545,44 @@ export default function OrganizationOverviewPage(): JSX.Element {
 										onClick={() => setIsAddMemberOpen(true)}
 										className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
 									>
-										<span>+</span>
+										<svg
+											aria-hidden="true"
+											xmlns="http://www.w3.org/2000/svg"
+											width="12"
+											height="12"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2.5"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<line x1="12" x2="12" y1="5" y2="19" />
+											<line x1="5" x2="19" y1="12" y2="12" />
+										</svg>
 										<span>Add Member</span>
 									</button>
 								)}
 							</div>
 
 							{/* Search Event Hosts Bar */}
-							<div className="relative">
-								<span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink opacity-40 text-xs">
-									🔍
-								</span>
+							<div className="relative flex items-center">
+								<svg
+									aria-hidden="true"
+									xmlns="http://www.w3.org/2000/svg"
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									className="absolute left-3 text-ink opacity-40 pointer-events-none"
+								>
+									<circle cx="11" cy="11" r="8" />
+									<path d="m21 21-4.3-4.3" />
+								</svg>
 								<input
 									type="text"
 									value={searchQuery}
@@ -578,20 +661,51 @@ export default function OrganizationOverviewPage(): JSX.Element {
 																role: member.role as RoleOption,
 															})
 														}
+														aria-label={`Edit role for ${member.email}`}
 														title="Edit Role"
-														className="p-1 text-ink opacity-60 hover:opacity-100 hover:text-stamp transition-colors cursor-pointer"
+														className="p-1.5 rounded text-ink opacity-60 hover:opacity-100 hover:text-stamp hover:bg-perforation/20 transition-all cursor-pointer"
 													>
-														✏️
+														<svg
+															aria-hidden="true"
+															xmlns="http://www.w3.org/2000/svg"
+															width="13"
+															height="13"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															strokeWidth="2"
+															strokeLinecap="round"
+															strokeLinejoin="round"
+														>
+															<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+															<path d="m15 5 4 4" />
+														</svg>
 													</button>
 													<button
 														type="button"
 														onClick={() =>
 															handleRemoveMember(member.id, member.email)
 														}
+														aria-label={`Remove member ${member.email}`}
 														title="Remove Member"
-														className="p-1 text-alert opacity-70 hover:opacity-100 transition-colors cursor-pointer"
+														className="p-1.5 rounded text-alert opacity-70 hover:opacity-100 hover:bg-alert/10 transition-all cursor-pointer"
 													>
-														🗑️
+														<svg
+															aria-hidden="true"
+															xmlns="http://www.w3.org/2000/svg"
+															width="13"
+															height="13"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															strokeWidth="2"
+															strokeLinecap="round"
+															strokeLinejoin="round"
+														>
+															<path d="M3 6h18" />
+															<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+															<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+														</svg>
 													</button>
 												</div>
 											)}

@@ -243,18 +243,6 @@ export default function DashboardPage(): JSX.Element {
 									</svg>
 								</div>
 
-								{/* Manage Organization & Team Members Button */}
-								{activeOrg && (
-									<Link
-										href={`/organization/${activeOrg.slug}`}
-										className="p-2 border border-perforation rounded-md bg-paper hover:border-ink/40 text-xs text-ink transition-colors flex items-center gap-1.5 label"
-										title="Manage Organization Profile & Team Members"
-									>
-										<span>⚙️</span>
-										<span className="hidden sm:inline">Manage Org</span>
-									</Link>
-								)}
-
 								{/* Create Event Pill Button */}
 								<Link
 									href="/events/new"
@@ -279,6 +267,32 @@ export default function DashboardPage(): JSX.Element {
 										</svg>
 									</span>
 								</Link>
+
+								{/* Organization Settings Gear Icon Button at the end */}
+								{activeOrg && (
+									<Link
+										href={`/organization/${activeOrg.slug}`}
+										className="p-2 border border-perforation rounded-md bg-paper hover:border-ink/50 text-ink opacity-80 hover:opacity-100 transition-all flex items-center justify-center cursor-pointer shadow-xs"
+										aria-label="Organization settings"
+										title="Organization settings"
+									>
+										<svg
+											aria-hidden="true"
+											xmlns="http://www.w3.org/2000/svg"
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+											<circle cx="12" cy="12" r="3" />
+										</svg>
+									</Link>
+								)}
 							</div>
 						</div>
 
@@ -286,8 +300,25 @@ export default function DashboardPage(): JSX.Element {
 						{mode === "participated" && (
 							<div className="space-y-6">
 								<div className="border border-perforation rounded-lg p-12 text-center bg-paper/40">
-									<div className="w-14 h-14 rounded-full bg-perforation/30 text-ink flex items-center justify-center mx-auto mb-4 font-mono text-xl">
-										🎫
+									<div className="w-14 h-14 rounded-full bg-perforation/30 text-ink flex items-center justify-center mx-auto mb-4">
+										<svg
+											aria-hidden="true"
+											xmlns="http://www.w3.org/2000/svg"
+											width="24"
+											height="24"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											className="opacity-70"
+										>
+											<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+											<path d="M13 5v2" />
+											<path d="M13 17v2" />
+											<path d="M13 11v2" />
+										</svg>
 									</div>
 									<h2 className="font-display font-semibold text-xl mb-2 text-ink">
 										No Registered Events Yet
