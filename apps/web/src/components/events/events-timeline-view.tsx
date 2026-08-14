@@ -75,7 +75,7 @@ export function EventsTimelineView({
 							return (
 								<div key={event.id} className="relative group">
 									{/* Timeline Bullet Node */}
-									<div className="absolute -left-[31px] md:-left-[39px] top-6 w-3.5 h-3.5 rounded-full bg-paper border-2 border-stamp group-hover:scale-125 transition-transform" />
+									<div className="absolute -left-6 md:-left-8 -translate-x-1/2 top-6 w-3 h-3 rounded-full bg-paper border-2 border-stamp group-hover:scale-125 transition-transform" />
 
 									{/* Event Item Container */}
 									<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 p-6 border border-perforation rounded-lg bg-paper hover:border-ink/20 transition-all shadow-sm">

@@ -63,6 +63,7 @@ if (githubId && githubSecret) {
 		GitHubProvider({
 			clientId: githubId,
 			clientSecret: githubSecret,
+			allowDangerousEmailAccountLinking: true,
 		}),
 	);
 }
@@ -81,6 +82,7 @@ if (googleId && googleSecret) {
 		GoogleProvider({
 			clientId: googleId,
 			clientSecret: googleSecret,
+			allowDangerousEmailAccountLinking: true,
 		}),
 	);
 }

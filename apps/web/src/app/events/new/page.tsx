@@ -240,7 +240,7 @@ export default function NewEventPage(): JSX.Element {
 		<div className="min-h-screen bg-paper flex flex-col">
 			<SiteHeader />
 
-			<main className="flex-1 max-w-[800px] w-full mx-auto px-4 md:px-6 py-8">
+			<main className="flex-1 max-w-3xl w-full mx-auto px-4 md:px-6 py-8">
 				<div className="mb-8">
 					<Link
 						href="/dashboard"
