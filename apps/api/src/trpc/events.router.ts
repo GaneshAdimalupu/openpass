@@ -1,5 +1,6 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { publicProcedure, router } from "./trpc";
+import { authedProcedure, publicProcedure, router } from "./trpc";
 
 /**
  * Event Format and Topic constants — single source of truth.
@@ -67,7 +68,10 @@ export const eventsRouter = router({
 		.input(z.object({ organizerId: z.string() }))
 		.query(({ ctx, input }) => {
 			return ctx.prisma.event.findMany({
-				where: { organizerId: input.organizerId },
+				where: {
+					organizerId: input.organizerId,
+					status: "published",
+				},
 				orderBy: { eventStart: "desc" },
 				select: {
 					id: true,
@@ -132,7 +136,7 @@ export const eventsRouter = router({
 			});
 		}),
 
-	create: publicProcedure
+	create: authedProcedure
 		.input(
 			z.object({
 				organizerId: z.string(),
@@ -161,6 +165,36 @@ export const eventsRouter = router({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
+			// Verify the organizer belongs to the current user
+			const organizer = await ctx.prisma.organizer.findUnique({
+				where: { id: input.organizerId },
+				select: { ownerId: true },
+			});
+
+			if (!organizer) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Organizer not found.",
+				});
+			}
+
+			if (organizer.ownerId !== ctx.userId) {
+				const membership = await ctx.prisma.organizerMember.findFirst({
+					where: {
+						organizerId: input.organizerId,
+						userId: ctx.userId,
+						role: { in: ["ADMIN", "EDITOR", "COORDINATOR"] },
+					},
+				});
+				if (!membership) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message:
+							"You do not have permission to create events for this organizer.",
+					});
+				}
+			}
+
 			const cleanSlug = input.slug
 				.toLowerCase()
 				.replace(/[^a-z0-9-]/g, "-")

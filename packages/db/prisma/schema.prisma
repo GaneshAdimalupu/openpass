@@ -27,6 +27,7 @@ model User {
   updatedAt        DateTime         @updatedAt
   accounts         Account[]
   organizers       Organizer[]
+  memberships      OrganizerMember[]
   sessions         Session[]
 }
 
@@ -50,13 +51,23 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
+  id           String    @id @default(cuid())
+  sessionToken String    @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId     String?
+  userAgent    String?
+  browser      String?
+  os           String?
+  deviceType   String?   @default("DESKTOP")
+  ipAddress    String?
+  lastActive   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, deviceId])
 }
 
 model VerificationToken {
@@ -68,19 +79,44 @@ model VerificationToken {
 }
 
 model Organizer {
-  id        String        @id @default(cuid())
-  type      OrganizerType
-  category  String        @default("individual_host")
-  name      String
-  slug      String        @unique
-  ownerId   String
-  createdAt DateTime      @default(now())
-  events    Event[]
-  owner     User          @relation(fields: [ownerId], references: [id])
+  id          String            @id @default(cuid())
+  type        OrganizerType
+  category    String            @default("individual_host")
+  name        String
+  title       String?
+  description String?
+  logoUrl     String?
+  instagram   String?
+  twitter     String?
+  website     String?
+  slug        String            @unique
+  ownerId     String
+  createdAt   DateTime          @default(now())
+  events      Event[]
+  members     OrganizerMember[]
+  owner       User              @relation(fields: [ownerId], references: [id])
 
   @@index([ownerId])
   @@index([type])
   @@index([category])
+}
+
+model OrganizerMember {
+  id          String     @id @default(cuid())
+  organizerId String
+  userId      String?
+  email       String
+  name        String?
+  role        MemberRole @default(VOLUNTEER)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  organizer   Organizer  @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([organizerId, email])
+  @@index([organizerId])
+  @@index([userId])
+  @@index([email])
 }
 
 model Event {
@@ -131,6 +167,16 @@ model Ticket {
 enum UserRole {
   USER
   ADMIN
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  EDITOR
+  COORDINATOR
+  VOLUNTEER
+  VIEWER
+  DEVICE
 }
 
 enum IdentityProvider {

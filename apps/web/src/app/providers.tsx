@@ -38,8 +38,8 @@ export function Providers({ children }: ProvidersProps): JSX.Element {
 	);
 
 	return (
-		<ThemeProvider defaultTheme="system">
-			<SessionProvider>
+		<ThemeProvider defaultTheme="light">
+			<SessionProvider refetchInterval={60} refetchOnWindowFocus={true}>
 				<trpc.Provider client={trpcClient} queryClient={queryClient}>
 					<QueryClientProvider client={queryClient}>
 						{children}

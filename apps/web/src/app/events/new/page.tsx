@@ -42,10 +42,7 @@ export default function NewEventPage(): JSX.Element {
 	const userId = session?.user?.id;
 
 	const { data: organizers, isLoading: orgsLoading } =
-		trpc.organizers.myOrganizers.useQuery(
-			{ ownerId: userId as string },
-			{ enabled: !!userId },
-		);
+		trpc.organizers.myOrganizers.useQuery(undefined, { enabled: !!userId });
 
 	const [organizerId, setOrganizerId] = useState<string>("");
 	const [title, setTitle] = useState<string>("");

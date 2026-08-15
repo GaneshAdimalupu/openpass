@@ -181,6 +181,18 @@ Don't scatter it as decoration.
 - Errors say what happened and what to do next. No apologies, no vagueness.
 - Empty states are an invitation, not a dead end — e.g. an organizer with no events yet sees "Host your first event," not "No events found."
 
+## Imagery & Asset Dimensions
+
+Standard aspect ratios and export dimensions for designers and organizers:
+
+| Asset Type | Aspect Ratio | Recommended Size | Minimum Size | Formats |
+|---|---|---|---|---|
+| **Organization Banner / Poster** | `16:9` (or `2:1`) | `1200 × 675 px` (`1200 × 600 px`) | `600 × 338 px` | PNG, JPG, WebP (< 5MB) |
+| **Event Cover / Poster** | `16:9` | `1920 × 1080 px` (`1200 × 675 px`) | `800 × 450 px` | PNG, JPG, WebP (< 5MB) |
+| **User / Org Avatar** | `1:1` (Square) | `400 × 400 px` | `128 × 128 px` | PNG, JPG, WebP (< 2MB) |
+
+- Safe Zone: Keep essential text and logos centered within the inner 80% to avoid cropping across responsive views.
+
 ## What not to do
 
 - Don't introduce a new color without adding it here first.

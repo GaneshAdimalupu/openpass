@@ -1,6 +1,7 @@
 "use client";
 
 import { registerUser } from "@/app/actions/auth";
+import { getClientDeviceId } from "@/lib/device";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -18,6 +19,11 @@ export function LoginForm(): JSX.Element {
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// Ensure persistent device ID is initialized in cookies & localStorage
+	useEffect(() => {
+		getClientDeviceId();
+	}, []);
+
 	useEffect(() => {
 		if (urlError === "OAuthAccountNotLinked") {
 			setError(
@@ -31,6 +37,8 @@ export function LoginForm(): JSX.Element {
 			setError("Authentication error occurred. Please try again.");
 		}
 	}, [urlError]);
+
+	const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -51,7 +59,7 @@ export function LoginForm(): JSX.Element {
 					setError("Invalid email or password");
 					setIsLoading(false);
 				} else {
-					window.location.href = "/onboarding";
+					window.location.href = callbackUrl;
 				}
 			} else {
 				const formData = new FormData();
@@ -66,7 +74,7 @@ export function LoginForm(): JSX.Element {
 					setError(result.error);
 					setIsLoading(false);
 				} else {
-					// Automatically log in after registration
+					// Automatically log in after registration to complete onboarding
 					await signIn("credentials", {
 						email: normalizedEmail,
 						password,
@@ -74,14 +82,14 @@ export function LoginForm(): JSX.Element {
 					});
 				}
 			}
-		} catch (_err) {
+		} catch {
 			setError("Something went wrong. Please try again.");
 			setIsLoading(false);
 		}
 	};
 
 	const handleOAuthLogin = (provider: string) => {
-		signIn(provider, { callbackUrl: "/onboarding" });
+		signIn(provider, { callbackUrl });
 	};
 
 	return (

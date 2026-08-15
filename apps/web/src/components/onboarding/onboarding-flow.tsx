@@ -1,8 +1,9 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { JSX } from "react";
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -279,6 +280,21 @@ const ORG_GROUPS: OrgGroup[] = [
 
 export function OnboardingFlow(): JSX.Element {
 	const { data: session, status } = useSession();
+	const router = useRouter();
+	const searchParams = useSearchParams();
+	const isCreatingNew = searchParams.get("mode") === "new";
+
+	const { data: organizers, isLoading: isCheckingOrg } =
+		trpc.organizers.myOrganizers.useQuery(undefined, {
+			enabled: !!session?.user?.id,
+		});
+
+	useEffect(() => {
+		if (!isCreatingNew && organizers && organizers.length > 0) {
+			router.replace("/dashboard");
+		}
+	}, [organizers, isCreatingNew, router]);
+
 	const [step, setStep] = useState<1 | 2>(1);
 	const [selectedGroupId, setSelectedGroupId] = useState<OrgType>("community");
 	const [selectedCategory, setSelectedCategory] =
@@ -357,6 +373,17 @@ export function OnboardingFlow(): JSX.Element {
 			setError(msg);
 		}
 	};
+
+	if (
+		status === "loading" ||
+		(status === "authenticated" && isCheckingOrg && !isCreatingNew)
+	) {
+		return (
+			<div className="w-full max-w-md mx-auto text-center py-16">
+				<p className="text-body opacity-60">Loading organizer details...</p>
+			</div>
+		);
+	}
 
 	if (status === "unauthenticated") {
 		return (
