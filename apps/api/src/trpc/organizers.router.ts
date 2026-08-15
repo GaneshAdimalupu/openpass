@@ -147,36 +147,34 @@ export const organizersRouter = router({
 			});
 		}),
 
-	myOrganizers: publicProcedure
-		.input(z.object({ ownerId: z.string() }))
-		.query(({ ctx, input }) => {
-			return ctx.prisma.organizer.findMany({
-				where: {
-					OR: [
-						{ ownerId: input.ownerId },
-						{
-							members: {
-								some: { userId: input.ownerId },
-							},
+	myOrganizers: authedProcedure.query(({ ctx }) => {
+		return ctx.prisma.organizer.findMany({
+			where: {
+				OR: [
+					{ ownerId: ctx.userId },
+					{
+						members: {
+							some: { userId: ctx.userId },
 						},
-					],
-				},
-				orderBy: { createdAt: "desc" },
-				select: {
-					id: true,
-					name: true,
-					title: true,
-					slug: true,
-					type: true,
-					category: true,
-					logoUrl: true,
-					createdAt: true,
-					_count: {
-						select: { events: true, members: true },
 					},
+				],
+			},
+			orderBy: { createdAt: "desc" },
+			select: {
+				id: true,
+				name: true,
+				title: true,
+				slug: true,
+				type: true,
+				category: true,
+				logoUrl: true,
+				createdAt: true,
+				_count: {
+					select: { events: true, members: true },
 				},
-			});
-		}),
+			},
+		});
+	}),
 
 	getOverview: publicProcedure
 		.input(z.object({ slug: z.string() }))
@@ -201,7 +199,6 @@ export const organizersRouter = router({
 						select: {
 							id: true,
 							name: true,
-							email: true,
 							image: true,
 						},
 					},

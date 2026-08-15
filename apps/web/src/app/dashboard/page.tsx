@@ -21,10 +21,7 @@ export default function DashboardPage(): JSX.Element {
 	const userId = session?.user?.id;
 
 	const { data: organizers, isLoading: orgsLoading } =
-		trpc.organizers.myOrganizers.useQuery(
-			{ ownerId: userId as string },
-			{ enabled: !!userId },
-		);
+		trpc.organizers.myOrganizers.useQuery(undefined, { enabled: !!userId });
 
 	// Automatically select the first organizer if not chosen
 	const currentOrgId = selectedOrgId || organizers?.[0]?.id;

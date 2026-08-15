@@ -6,6 +6,8 @@ import type { Provider } from "next-auth/providers";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
+import { cookies, headers } from "next/headers";
+import { parseUserAgent } from "./device";
 
 const providers: Provider[] = [
 	CredentialsProvider({
@@ -49,39 +51,21 @@ const providers: Provider[] = [
 	}),
 ];
 
-const githubId =
-	process.env.AUTH_GITHUB_ID ||
-	process.env.GITHUB_CLIENT_ID ||
-	process.env.GITHUB_ID;
-const githubSecret =
-	process.env.AUTH_GITHUB_SECRET ||
-	process.env.GITHUB_CLIENT_SECRET ||
-	process.env.GITHUB_SECRET;
-
-if (githubId && githubSecret) {
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
 	providers.push(
 		GitHubProvider({
-			clientId: githubId,
-			clientSecret: githubSecret,
+			clientId: process.env.GITHUB_CLIENT_ID,
+			clientSecret: process.env.GITHUB_CLIENT_SECRET,
 			allowDangerousEmailAccountLinking: true,
 		}),
 	);
 }
 
-const googleId =
-	process.env.AUTH_GOOGLE_ID ||
-	process.env.GOOGLE_CLIENT_ID ||
-	process.env.GOOGLE_ID;
-const googleSecret =
-	process.env.AUTH_GOOGLE_SECRET ||
-	process.env.GOOGLE_CLIENT_SECRET ||
-	process.env.GOOGLE_SECRET;
-
-if (googleId && googleSecret) {
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 	providers.push(
 		GoogleProvider({
-			clientId: googleId,
-			clientSecret: googleSecret,
+			clientId: process.env.GOOGLE_CLIENT_ID,
+			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
 			allowDangerousEmailAccountLinking: true,
 		}),
 	);
@@ -104,6 +88,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 		signIn: "/login",
 	},
 	providers,
+	events: {
+		async signOut(message) {
+			if ("token" in message && message.token?.sessionToken) {
+				try {
+					await prisma.session.deleteMany({
+						where: { sessionToken: message.token.sessionToken as string },
+					});
+				} catch {
+					// session cleanup ignore
+				}
+			}
+		},
+	},
 	callbacks: {
 		async jwt({ token, user, profile }) {
 			if (user) {
@@ -116,24 +113,97 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 					token.picture;
 				token.role = user.role || token.role;
 
-				// Generate unique session token for this device and record in database
+				// Generate persistent session token
 				const sessionToken =
 					(token.sessionToken as string) || crypto.randomUUID();
 				token.sessionToken = sessionToken;
 
+				// ──────────────── Smart Device Tracking & Session Management ────────────────
+				let userAgent: string | null = null;
+				let ipAddress: string | null = null;
+				let deviceId: string | null = null;
+
 				try {
-					const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-					await prisma.session.upsert({
-						where: { sessionToken },
-						update: { expires },
-						create: {
-							sessionToken,
-							userId: user.id as string,
-							expires,
-						},
-					});
+					const reqHeaders = await headers();
+					userAgent = reqHeaders.get("user-agent") || null;
+					ipAddress =
+						reqHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+						reqHeaders.get("x-real-ip") ||
+						null;
 				} catch {
-					// session tracking background sync
+					// safe fallback in environments where headers() is not available
+				}
+
+				try {
+					const cookieStore = await cookies();
+					deviceId = cookieStore.get("openevents_device_id")?.value || null;
+				} catch {
+					// safe fallback in environments where cookies() is not available
+				}
+
+				const { browser, os, deviceType } = parseUserAgent(userAgent);
+				const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+				try {
+					// 1. Check if an active session already exists for this physical device/browser
+					let existingSession = null;
+					if (deviceId) {
+						existingSession = await prisma.session.findFirst({
+							where: {
+								userId: user.id as string,
+								deviceId,
+							},
+						});
+					}
+
+					// 2. Fallback: match by device signature if deviceId cookie was cleared
+					if (!existingSession && userAgent) {
+						existingSession = await prisma.session.findFirst({
+							where: {
+								userId: user.id as string,
+								os,
+								browser,
+								deviceType,
+							},
+							orderBy: { lastActive: "desc" },
+						});
+					}
+
+					if (existingSession) {
+						// Reuse and update the existing device session without creating duplicates
+						await prisma.session.update({
+							where: { id: existingSession.id },
+							data: {
+								sessionToken,
+								expires,
+								lastActive: new Date(),
+								userAgent,
+								browser,
+								os,
+								deviceType,
+								ipAddress,
+								deviceId: deviceId || existingSession.deviceId,
+							},
+						});
+					} else {
+						// First login on this device -> create a new device session record
+						await prisma.session.create({
+							data: {
+								sessionToken,
+								userId: user.id as string,
+								expires,
+								lastActive: new Date(),
+								userAgent,
+								browser,
+								os,
+								deviceType,
+								ipAddress,
+								deviceId,
+							},
+						});
+					}
+				} catch (err) {
+					console.error("Session recording notice:", err);
 				}
 
 				// If user exists in DB but name or image is null, sync from OAuth profile
@@ -163,21 +233,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 					}
 				}
 			} else if (token.id) {
-				// Verify session is still valid in database (if revoked remotely, kick out)
-				if (token.sessionToken) {
-					try {
-						const activeSession = await prisma.session.findUnique({
-							where: { sessionToken: token.sessionToken as string },
-						});
-						if (!activeSession) {
-							// Session was revoked remotely! Invalidate this JWT token immediately
-							return null;
-						}
-					} catch {
-						// session check background ignore
-					}
-				}
-
 				// Refresh from DB if name or image is missing from token
 				if (!token.name || !token.picture) {
 					try {
@@ -204,10 +259,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 			return token;
 		},
 		async session({ session, token }) {
-			if (!token?.id) {
-				return null as unknown as typeof session;
-			}
-			if (session.user) {
+			if (token && session.user) {
 				if (typeof token.id === "string") {
 					session.user.id = token.id;
 				}

@@ -1,6 +1,7 @@
 "use client";
 
 import { SiteHeader } from "@/components/layout/site-header";
+import { getClientDeviceId } from "@/lib/device";
 import { trpc } from "@/lib/trpc";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,10 +17,7 @@ export default function ProfilePage(): JSX.Element {
 		data: profile,
 		isLoading,
 		refetch,
-	} = trpc.users.getProfile.useQuery(
-		{ userId: userId as string },
-		{ enabled: !!userId },
-	);
+	} = trpc.users.getProfile.useQuery(undefined, { enabled: !!userId });
 
 	const updateBasicInfoMutation = trpc.users.updateBasicInfo.useMutation();
 	const updateSocialsMutation = trpc.users.updateSocials.useMutation();
@@ -53,6 +51,12 @@ export default function ProfilePage(): JSX.Element {
 	const [passwordError, setPasswordError] = useState<string | null>(null);
 	const [passwordSuccess, setPasswordSuccess] = useState<boolean>(false);
 
+	// Current Client Device ID
+	const [clientDeviceId, setClientDeviceId] = useState<string>("");
+	useEffect(() => {
+		setClientDeviceId(getClientDeviceId());
+	}, []);
+
 	// Success Toast state
 	const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -74,6 +78,24 @@ export default function ProfilePage(): JSX.Element {
 			setFacebookInput(profile.facebook || "");
 		}
 	}, [profile]);
+
+	const formatLastActive = (dateStr?: Date | string | null): string => {
+		if (!dateStr) return "Active recently";
+		const diffMs = Date.now() - new Date(dateStr).getTime();
+		const diffMinutes = Math.floor(diffMs / (1000 * 60));
+		if (diffMinutes < 3) return "Active now";
+		if (diffMinutes < 60) return `Active ${diffMinutes}m ago`;
+		const diffHours = Math.floor(diffMinutes / 60);
+		if (diffHours < 24) return `Active ${diffHours}h ago`;
+		const diffDays = Math.floor(diffHours / 24);
+		if (diffDays === 1) return "Active yesterday";
+		return `Active ${diffDays}d ago`;
+	};
+
+	const currentSession =
+		profile?.sessions?.find(
+			(s) => clientDeviceId && s.deviceId === clientDeviceId,
+		) || profile?.sessions?.[0];
 
 	if (status === "unauthenticated") {
 		return (
@@ -193,12 +215,20 @@ export default function ProfilePage(): JSX.Element {
 		if (!userId) return;
 		if (
 			confirm(
-				"Are you sure you want to log out all other active sessions on your account?",
+				"Are you sure you want to log out all other active device sessions on your account?",
 			)
 		) {
-			await logoutAllDevicesMutation.mutateAsync();
-			await refetch();
-			showToast("Logged out all other sessions");
+			try {
+				await logoutAllDevicesMutation.mutateAsync({
+					exceptSessionId: currentSession?.id,
+				});
+				await refetch();
+				showToast("Logged out all other device sessions");
+			} catch (err: unknown) {
+				showToast(
+					err instanceof Error ? err.message : "Failed to logout other devices",
+				);
+			}
 		}
 	};
 
@@ -224,34 +254,25 @@ export default function ProfilePage(): JSX.Element {
 				</div>
 			)}
 
-			<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-8 space-y-6">
-				{/* Top Back Action */}
-				<div>
-					<Link
-						href="/dashboard"
-						className="label inline-flex items-center gap-1.5 text-xs text-ink opacity-70 hover:opacity-100 transition-opacity"
-					>
-						<span>←</span>
-						<span>Back to Dashboard</span>
-					</Link>
-				</div>
-
+			<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-8 space-y-8">
 				{isLoading ? (
-					<div className="space-y-6 animate-pulse">
-						<div className="h-48 bg-perforation/30 rounded-lg" />
-						<div className="h-64 bg-perforation/30 rounded-lg" />
+					<div className="py-24 text-center">
+						<div className="w-8 h-8 border-2 border-stamp border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+						<p className="text-xs font-mono opacity-60">
+							Loading profile details...
+						</p>
 					</div>
 				) : (
 					<>
-						{/* ──────────────── 1. Profile Header Card ──────────────── */}
+						{/* ──────────────── 1. Profile Overview Hero Card ──────────────── */}
 						<div className="border border-perforation rounded-lg p-6 sm:p-8 bg-paper/60 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-							<div className="flex items-start sm:items-center gap-5">
-								{/* Profile Avatar / Photo */}
-								<div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-perforation/30 border border-perforation flex items-center justify-center font-display font-semibold text-2xl text-ink shrink-0 overflow-hidden">
+							<div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+								{/* Profile Avatar with fallback Initial */}
+								<div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-perforation/40 border border-perforation flex items-center justify-center font-display font-semibold text-3xl text-ink shrink-0 overflow-hidden">
 									{profile?.image ? (
 										<Image
 											src={profile.image}
-											alt={profile.name || "User Avatar"}
+											alt={profile.name || "Profile"}
 											fill
 											unoptimized
 											className="object-cover"
@@ -261,28 +282,30 @@ export default function ProfilePage(): JSX.Element {
 									)}
 								</div>
 
-								{/* Details */}
-								<div className="space-y-1">
-									<h1 className="font-display font-semibold text-h2 text-ink">
-										{profile?.name || "Your Name"}
-									</h1>
-									<p className="font-mono text-xs opacity-60">@{handleSlug}</p>
-									<p className="font-mono text-xs opacity-80 text-ink">
-										{profile?.email}
+								{/* Name, Email, Handle & Communications */}
+								<div className="space-y-1.5">
+									<div className="flex items-center gap-3">
+										<h1 className="font-display font-semibold text-h3 text-ink">
+											{profile?.name || "Anonymous Organizer"}
+										</h1>
+										<span className="px-2.5 py-0.5 rounded text-[10px] font-semibold font-mono bg-perforation/40 border border-perforation text-ink opacity-80 uppercase">
+											{profile?.role || "USER"}
+										</span>
+									</div>
+
+									<p className="font-mono text-xs opacity-60">
+										@{handleSlug} • {profile?.email}
 									</p>
 
-									{/* Social & Contact Icons Strip */}
-									<div className="flex items-center gap-3 pt-2 flex-wrap">
-										{profile?.email && (
-											<a
-												href={`mailto:${profile.email}`}
-												title={profile.email}
-												className="text-ink opacity-60 hover:opacity-100 hover:text-stamp transition-colors flex items-center gap-1"
-											>
+									{/* Contact & Social badges */}
+									<div className="flex flex-wrap items-center gap-3 pt-2">
+										{profile?.phone && (
+											<span className="inline-flex items-center gap-1.5 text-xs text-ink opacity-80 font-mono">
 												<svg
 													aria-hidden="true"
-													className="w-4 h-4"
 													xmlns="http://www.w3.org/2000/svg"
+													width="12"
+													height="12"
 													viewBox="0 0 24 24"
 													fill="none"
 													stroke="currentColor"
@@ -290,13 +313,37 @@ export default function ProfilePage(): JSX.Element {
 													strokeLinecap="round"
 													strokeLinejoin="round"
 												>
-													<rect width="20" height="16" x="2" y="4" rx="2" />
-													<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+													<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
 												</svg>
-												<span className="sr-only">Email: {profile.email}</span>
+												+91 {profile.phone}
+											</span>
+										)}
+										{profile?.whatsapp && (
+											<a
+												href={`https://wa.me/${profile.whatsapp.replace(/[^0-9]/g, "")}`}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="inline-flex items-center gap-1 text-xs text-ink opacity-70 hover:opacity-100 hover:text-stamp transition-colors"
+											>
+												<span className="font-mono text-[11px] flex items-center gap-1">
+													<svg
+														aria-hidden="true"
+														xmlns="http://www.w3.org/2000/svg"
+														width="12"
+														height="12"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														strokeWidth="2"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													>
+														<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+													</svg>{" "}
+													WhatsApp
+												</span>
 											</a>
 										)}
-
 										{profile?.instagram && (
 											<a
 												href={
@@ -306,60 +353,36 @@ export default function ProfilePage(): JSX.Element {
 												}
 												target="_blank"
 												rel="noopener noreferrer"
-												title="Instagram"
-												className="text-ink opacity-60 hover:opacity-100 hover:text-stamp transition-colors flex items-center gap-1"
+												className="inline-flex items-center gap-1 text-xs text-ink opacity-70 hover:opacity-100 hover:text-stamp transition-colors"
 											>
-												<svg
-													aria-hidden="true"
-													className="w-4 h-4"
-													xmlns="http://www.w3.org/2000/svg"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													strokeWidth="2"
-													strokeLinecap="round"
-													strokeLinejoin="round"
-												>
-													<rect
-														width="20"
-														height="20"
-														x="2"
-														y="2"
-														rx="5"
-														ry="5"
-													/>
-													<path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-													<line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-												</svg>
-												<span className="sr-only">Instagram Profile</span>
+												<span className="font-mono text-[11px] flex items-center gap-1">
+													<svg
+														aria-hidden="true"
+														xmlns="http://www.w3.org/2000/svg"
+														width="12"
+														height="12"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														strokeWidth="2"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													>
+														<rect
+															width="20"
+															height="20"
+															x="2"
+															y="2"
+															rx="5"
+															ry="5"
+														/>
+														<path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+														<line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+													</svg>{" "}
+													@{profile.instagram.replace("@", "")}
+												</span>
 											</a>
 										)}
-
-										{profile?.whatsapp && (
-											<a
-												href={`https://wa.me/${profile.whatsapp.replace(/[^0-9]/g, "")}`}
-												target="_blank"
-												rel="noopener noreferrer"
-												title="WhatsApp"
-												className="text-ink opacity-60 hover:opacity-100 hover:text-stamp transition-colors flex items-center gap-1"
-											>
-												<svg
-													aria-hidden="true"
-													className="w-4 h-4"
-													xmlns="http://www.w3.org/2000/svg"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													strokeWidth="2"
-													strokeLinecap="round"
-													strokeLinejoin="round"
-												>
-													<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-												</svg>
-												<span className="sr-only">WhatsApp Contact</span>
-											</a>
-										)}
-
 										{profile?.twitter && (
 											<a
 												href={
@@ -369,55 +392,53 @@ export default function ProfilePage(): JSX.Element {
 												}
 												target="_blank"
 												rel="noopener noreferrer"
-												title="X / Twitter"
-												className="text-ink opacity-60 hover:opacity-100 hover:text-stamp transition-colors flex items-center gap-1"
+												className="inline-flex items-center gap-1 text-xs text-ink opacity-70 hover:opacity-100 hover:text-stamp transition-colors"
 											>
-												<svg
-													aria-hidden="true"
-													className="w-4 h-4"
-													xmlns="http://www.w3.org/2000/svg"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													strokeWidth="2"
-													strokeLinecap="round"
-													strokeLinejoin="round"
-												>
-													<path d="M4 4l11.733 16h4.267l-11.733 -16z" />
-													<path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" />
-												</svg>
-												<span className="sr-only">X / Twitter Profile</span>
+												<span className="font-mono text-[11px] flex items-center gap-1">
+													<svg
+														aria-hidden="true"
+														xmlns="http://www.w3.org/2000/svg"
+														width="12"
+														height="12"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														strokeWidth="2"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													>
+														<path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+													</svg>{" "}
+													@{profile.twitter.replace("@", "")}
+												</span>
 											</a>
 										)}
-
 										{profile?.linkedin && (
 											<a
-												href={
-													profile.linkedin.startsWith("http")
-														? profile.linkedin
-														: `https://linkedin.com/in/${profile.linkedin}`
-												}
+												href={profile.linkedin}
 												target="_blank"
 												rel="noopener noreferrer"
-												title="LinkedIn"
-												className="text-ink opacity-60 hover:opacity-100 hover:text-stamp transition-colors flex items-center gap-1"
+												className="inline-flex items-center gap-1 text-xs text-ink opacity-70 hover:opacity-100 hover:text-stamp transition-colors"
 											>
-												<svg
-													aria-hidden="true"
-													className="w-4 h-4"
-													xmlns="http://www.w3.org/2000/svg"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													strokeWidth="2"
-													strokeLinecap="round"
-													strokeLinejoin="round"
-												>
-													<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-													<rect width="4" height="12" x="2" y="9" />
-													<circle cx="4" cy="4" r="2" />
-												</svg>
-												<span className="sr-only">LinkedIn Profile</span>
+												<span className="font-mono text-[11px] flex items-center gap-1">
+													<svg
+														aria-hidden="true"
+														xmlns="http://www.w3.org/2000/svg"
+														width="12"
+														height="12"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														strokeWidth="2"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													>
+														<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+														<rect width="4" height="12" x="2" y="9" />
+														<circle cx="4" cy="4" r="2" />
+													</svg>{" "}
+													LinkedIn
+												</span>
 											</a>
 										)}
 									</div>
@@ -457,106 +478,198 @@ export default function ProfilePage(): JSX.Element {
 						{/* ──────────────── 2. Logged In Devices Section ──────────────── */}
 						<div className="border border-perforation rounded-lg p-6 bg-paper/60 shadow-xs space-y-4">
 							<div className="flex items-center justify-between border-b border-perforation pb-4">
-								<h2 className="font-display font-semibold text-base text-ink">
-									Logged in devices ({profile?.sessions?.length || 1})
-								</h2>
-								<button
-									type="button"
-									onClick={handleLogoutAllDevices}
-									className="label text-xs text-alert hover:underline transition-opacity cursor-pointer"
-								>
-									Logout all devices
-								</button>
+								<div>
+									<h2 className="font-display font-semibold text-base text-ink">
+										Logged in devices ({profile?.sessions?.length || 1})
+									</h2>
+									<p className="text-[11px] font-mono opacity-60">
+										Track and manage active devices connected to your account
+									</p>
+								</div>
+								{(profile?.sessions?.length || 0) > 1 && (
+									<button
+										type="button"
+										onClick={handleLogoutAllDevices}
+										className="label text-xs text-alert hover:underline transition-opacity cursor-pointer"
+									>
+										Log out other devices
+									</button>
+								)}
 							</div>
 
 							<div className="space-y-3">
-								{/* Current Device Session Card */}
-								<div className="p-4 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4">
-									<div className="flex items-center gap-3.5">
-										<div className="p-2.5 rounded-md bg-perforation/30 text-ink">
-											<svg
-												aria-hidden="true"
-												className="w-5 h-5"
-												xmlns="http://www.w3.org/2000/svg"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="2"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-											>
-												<rect width="20" height="14" x="2" y="3" rx="2" />
-												<line x1="8" x2="16" y1="21" y2="21" />
-												<line x1="12" x2="12" y1="17" y2="21" />
-											</svg>
-										</div>
-										<div>
-											<p className="font-medium text-sm text-ink">
-												OpenEvents Web
-											</p>
-											<p className="text-xs font-mono opacity-60">
-												Current Active Session • Web Browser
-											</p>
-										</div>
-									</div>
+								{profile?.sessions && profile.sessions.length > 0 ? (
+									profile.sessions.map((s, index) => {
+										const isCurrent =
+											Boolean(
+												clientDeviceId && s.deviceId === clientDeviceId,
+											) ||
+											(index === 0 &&
+												!profile.sessions.some(
+													(x) =>
+														clientDeviceId && x.deviceId === clientDeviceId,
+												));
 
-									<span className="px-3 py-1 rounded bg-stamp/10 text-stamp label text-xs font-semibold">
-										This Device
-									</span>
-								</div>
+										const isMobile = s.deviceType === "MOBILE";
+										const isTablet = s.deviceType === "TABLET";
 
-								{/* Additional Sessions */}
-								{profile?.sessions && profile.sessions.length > 1
-									? profile.sessions.slice(1).map((s) => (
+										return (
 											<div
 												key={s.id}
-												className="p-4 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4"
+												className={`p-4 rounded-md border bg-paper flex items-center justify-between gap-4 transition-colors ${
+													isCurrent
+														? "border-stamp/40 bg-stamp/5 shadow-xs"
+														: "border-perforation"
+												}`}
 											>
 												<div className="flex items-center gap-3.5">
-													<div className="p-2.5 rounded-md bg-perforation/20 text-ink opacity-70">
-														<svg
-															aria-hidden="true"
-															className="w-5 h-5"
-															xmlns="http://www.w3.org/2000/svg"
-															viewBox="0 0 24 24"
-															fill="none"
-															stroke="currentColor"
-															strokeWidth="2"
-															strokeLinecap="round"
-															strokeLinejoin="round"
-														>
-															<rect
-																width="14"
-																height="20"
-																x="5"
-																y="2"
-																rx="2"
-																ry="2"
-															/>
-															<path d="M12 18h.01" />
-														</svg>
+													<div
+														className={`p-2.5 rounded-md ${
+															isCurrent
+																? "bg-stamp/15 text-stamp"
+																: "bg-perforation/25 text-ink opacity-75"
+														}`}
+													>
+														{isMobile ? (
+															<svg
+																aria-hidden="true"
+																className="w-5 h-5"
+																xmlns="http://www.w3.org/2000/svg"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																strokeWidth="2"
+																strokeLinecap="round"
+																strokeLinejoin="round"
+															>
+																<rect
+																	width="14"
+																	height="20"
+																	x="5"
+																	y="2"
+																	rx="2"
+																/>
+																<path d="M12 18h.01" />
+															</svg>
+														) : isTablet ? (
+															<svg
+																aria-hidden="true"
+																className="w-5 h-5"
+																xmlns="http://www.w3.org/2000/svg"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																strokeWidth="2"
+																strokeLinecap="round"
+																strokeLinejoin="round"
+															>
+																<rect
+																	width="16"
+																	height="20"
+																	x="4"
+																	y="2"
+																	rx="2"
+																	ry="2"
+																/>
+																<line x1="12" x2="12.01" y1="18" y2="18" />
+															</svg>
+														) : (
+															<svg
+																aria-hidden="true"
+																className="w-5 h-5"
+																xmlns="http://www.w3.org/2000/svg"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																strokeWidth="2"
+																strokeLinecap="round"
+																strokeLinejoin="round"
+															>
+																<rect
+																	width="20"
+																	height="14"
+																	x="2"
+																	y="3"
+																	rx="2"
+																/>
+																<line x1="8" x2="16" y1="21" y2="21" />
+																<line x1="12" x2="12" y1="17" y2="21" />
+															</svg>
+														)}
 													</div>
 													<div>
-														<p className="font-medium text-sm text-ink">
-															Mobile App / Browser
-														</p>
-														<p className="text-xs font-mono opacity-60">
-															Expires:{" "}
-															{new Date(s.expires).toLocaleDateString()}
+														<div className="flex items-center gap-2">
+															<p className="font-medium text-sm text-ink">
+																{s.browser || "Web Browser"} on{" "}
+																{s.os || "Unknown OS"}
+															</p>
+															{isCurrent && (
+																<span className="px-2 py-0.5 rounded-full bg-stamp/15 text-stamp font-mono text-[10px] font-semibold">
+																	Current Device
+																</span>
+															)}
+														</div>
+														<p className="text-xs font-mono opacity-60 mt-0.5">
+															{isCurrent
+																? "This Device • Active now"
+																: formatLastActive(s.lastActive || s.createdAt)}
+															{s.ipAddress && ` • ${s.ipAddress}`}
 														</p>
 													</div>
 												</div>
 
-												<button
-													type="button"
-													onClick={() => handleLogoutDevice(s.id)}
-													className="label text-xs text-alert border border-alert/30 px-3 py-1 rounded hover:bg-alert/10 transition-colors"
-												>
-													Logout
-												</button>
+												<div>
+													{isCurrent ? (
+														<span className="px-3 py-1 rounded bg-stamp/10 text-stamp label text-xs font-semibold">
+															Active
+														</span>
+													) : (
+														<button
+															type="button"
+															onClick={() => handleLogoutDevice(s.id)}
+															className="label text-xs text-alert border border-alert/30 px-3 py-1 rounded hover:bg-alert/10 transition-colors cursor-pointer"
+														>
+															Log out
+														</button>
+													)}
+												</div>
 											</div>
-										))
-									: null}
+										);
+									})
+								) : (
+									<div className="p-4 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4">
+										<div className="flex items-center gap-3.5">
+											<div className="p-2.5 rounded-md bg-stamp/10 text-stamp">
+												<svg
+													aria-hidden="true"
+													className="w-5 h-5"
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+												>
+													<rect width="20" height="14" x="2" y="3" rx="2" />
+													<line x1="8" x2="16" y1="21" y2="21" />
+													<line x1="12" x2="12" y1="17" y2="21" />
+												</svg>
+											</div>
+											<div>
+												<p className="font-medium text-sm text-ink">
+													Current Web Browser
+												</p>
+												<p className="text-xs font-mono opacity-60">
+													Active Now
+												</p>
+											</div>
+										</div>
+										<span className="px-3 py-1 rounded bg-stamp/10 text-stamp label text-xs font-semibold">
+											This Device
+										</span>
+									</div>
+								)}
 							</div>
 						</div>
 					</>
@@ -638,7 +751,21 @@ export default function ProfilePage(): JSX.Element {
 								</label>
 								<div className="relative">
 									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink opacity-40">
-										👤
+										<svg
+											aria-hidden="true"
+											xmlns="http://www.w3.org/2000/svg"
+											width="16"
+											height="16"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+											<circle cx="12" cy="7" r="4" />
+										</svg>
 									</span>
 									<input
 										id="nameInput"
@@ -660,7 +787,21 @@ export default function ProfilePage(): JSX.Element {
 								</label>
 								<div className="relative">
 									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink opacity-40">
-										✉️
+										<svg
+											aria-hidden="true"
+											xmlns="http://www.w3.org/2000/svg"
+											width="16"
+											height="16"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<rect width="20" height="16" x="2" y="4" rx="2" />
+											<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+										</svg>
 									</span>
 									<input
 										id="emailInput"
@@ -701,14 +842,14 @@ export default function ProfilePage(): JSX.Element {
 								<button
 									type="button"
 									onClick={() => setIsBasicInfoOpen(false)}
-									className="px-4 py-2 rounded text-xs label text-ink opacity-70 hover:opacity-100"
+									className="px-4 py-2 rounded text-xs label text-ink opacity-70 hover:opacity-100 cursor-pointer"
 								>
 									Cancel
 								</button>
 								<button
 									type="submit"
 									disabled={updateBasicInfoMutation.isPending}
-									className="bg-stamp text-paper label text-xs px-5 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
+									className="bg-stamp text-paper label text-xs px-5 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
 								>
 									{updateBasicInfoMutation.isPending ? "Saving..." : "Save"}
 								</button>
@@ -850,14 +991,14 @@ export default function ProfilePage(): JSX.Element {
 								<button
 									type="button"
 									onClick={() => setIsSocialsOpen(false)}
-									className="px-4 py-2 rounded text-xs label text-ink opacity-70 hover:opacity-100"
+									className="px-4 py-2 rounded text-xs label text-ink opacity-70 hover:opacity-100 cursor-pointer"
 								>
 									Cancel
 								</button>
 								<button
 									type="submit"
 									disabled={updateSocialsMutation.isPending}
-									className="bg-stamp text-paper label text-xs px-6 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
+									className="bg-stamp text-paper label text-xs px-6 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
 								>
 									{updateSocialsMutation.isPending ? "Submitting..." : "Submit"}
 								</button>
@@ -962,14 +1103,14 @@ export default function ProfilePage(): JSX.Element {
 								<button
 									type="button"
 									onClick={() => setIsPasswordOpen(false)}
-									className="px-4 py-2 rounded text-xs label text-ink opacity-70 hover:opacity-100"
+									className="px-4 py-2 rounded text-xs label text-ink opacity-70 hover:opacity-100 cursor-pointer"
 								>
 									Cancel
 								</button>
 								<button
 									type="submit"
 									disabled={changePasswordMutation.isPending}
-									className="bg-stamp text-paper label text-xs px-5 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
+									className="bg-stamp text-paper label text-xs px-5 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
 								>
 									{changePasswordMutation.isPending
 										? "Updating..."

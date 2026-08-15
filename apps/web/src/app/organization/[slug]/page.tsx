@@ -477,7 +477,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 										{org.title || org.name}
 									</h2>
 									<p className="font-mono text-xs opacity-60">
-										Host Account: {org.owner.email}
+										Host: {org.owner.name || "Anonymous"}
 									</p>
 
 									{/* Social Links Strip */}
@@ -909,7 +909,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 														{org.owner.name || org.title || org.name}
 													</p>
 													<p className="text-[11px] font-mono opacity-60">
-														{org.owner.email}
+														Host
 													</p>
 												</div>
 											</div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { useTheme } from "@/components/theme/theme-provider";
+
 import Image from "next/image";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
@@ -14,7 +14,6 @@ export interface SiteHeaderProps {
 
 export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 	const { data: session, status } = useSession();
-	const { theme, setTheme } = useTheme();
 	const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 	const menuRef = useRef<HTMLDivElement>(null);
 
@@ -184,15 +183,6 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 									</Link>
 
 									<Link
-										href="/events/new"
-										role="menuitem"
-										onClick={() => setIsMenuOpen(false)}
-										className="block px-4 py-2 text-ink hover:bg-perforation/20 transition-colors"
-									>
-										+ Host New Event
-									</Link>
-
-									<Link
 										href="/onboarding"
 										role="menuitem"
 										onClick={() => setIsMenuOpen(false)}
@@ -200,27 +190,6 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 									>
 										Create Another Organizer
 									</Link>
-
-									{/* Theme Selector inside Dropdown */}
-									<div className="px-4 py-2.5 border-t border-perforation mt-1 flex items-center justify-between text-ink">
-										<span className="opacity-70 font-medium">Appearance</span>
-										<div className="inline-flex rounded border border-perforation p-0.5 bg-paper/60 text-xs font-mono">
-											{(["light", "system", "dark"] as const).map((t) => (
-												<button
-													key={t}
-													type="button"
-													onClick={() => setTheme(t)}
-													className={`px-2 py-0.5 rounded capitalize transition-all ${
-														theme === t
-															? "bg-ink text-paper font-semibold shadow-2xs"
-															: "opacity-60 hover:opacity-100"
-													}`}
-												>
-													{t}
-												</button>
-											))}
-										</div>
-									</div>
 
 									<button
 										type="button"

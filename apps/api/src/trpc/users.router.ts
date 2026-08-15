@@ -1,74 +1,83 @@
+import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { authedProcedure, publicProcedure, router } from "./trpc";
+import { authedProcedure, router } from "./trpc";
 
 export const usersRouter = router({
-	getProfile: publicProcedure
-		.input(z.object({ userId: z.string() }))
-		.query(async ({ ctx, input }) => {
-			const [user, pwCheck] = await Promise.all([
-				ctx.prisma.user.findUnique({
-					where: { id: input.userId },
-					select: {
-						id: true,
-						name: true,
-						email: true,
-						phone: true,
-						image: true,
-						role: true,
-						identityProvider: true,
-						whatsapp: true,
-						instagram: true,
-						twitter: true,
-						linkedin: true,
-						facebook: true,
-						createdAt: true,
-						organizers: {
-							select: {
-								id: true,
-								name: true,
-								slug: true,
-								type: true,
-								category: true,
-								_count: {
-									select: {
-										events: true,
-									},
+	getProfile: authedProcedure.query(async ({ ctx }) => {
+		const [user, pwCheck] = await Promise.all([
+			ctx.prisma.user.findUnique({
+				where: { id: ctx.userId },
+				select: {
+					id: true,
+					name: true,
+					email: true,
+					phone: true,
+					image: true,
+					role: true,
+					identityProvider: true,
+					whatsapp: true,
+					instagram: true,
+					twitter: true,
+					linkedin: true,
+					facebook: true,
+					createdAt: true,
+					organizers: {
+						select: {
+							id: true,
+							name: true,
+							slug: true,
+							type: true,
+							category: true,
+							_count: {
+								select: {
+									events: true,
 								},
 							},
 						},
-						sessions: {
-							select: {
-								id: true,
-								expires: true,
-							},
-							orderBy: {
-								expires: "desc",
-							},
+					},
+					sessions: {
+						select: {
+							id: true,
+							deviceId: true,
+							browser: true,
+							os: true,
+							deviceType: true,
+							ipAddress: true,
+							lastActive: true,
+							expires: true,
+							createdAt: true,
+						},
+						orderBy: {
+							lastActive: "desc",
 						},
 					},
-				}),
-				ctx.prisma.user.findUnique({
-					where: { id: input.userId },
-					select: { passwordHash: true },
-				}),
-			]);
+				},
+			}),
+			ctx.prisma.user.findUnique({
+				where: { id: ctx.userId },
+				select: { passwordHash: true },
+			}),
+		]);
 
-			if (!user) {
-				throw new Error("User not found.");
-			}
+		if (!user) {
+			throw new TRPCError({
+				code: "NOT_FOUND",
+				message: "User not found.",
+			});
+		}
 
-			const totalHostedEvents = user.organizers.reduce(
-				(acc, org) => acc + org._count.events,
-				0,
-			);
+		const totalHostedEvents = user.organizers.reduce(
+			(acc, org) => acc + org._count.events,
+			0,
+		);
 
-			return {
-				...user,
-				hasPassword: Boolean(pwCheck?.passwordHash),
-				totalHostedEvents,
-			};
-		}),
+		return {
+			...user,
+			hasPassword: Boolean(pwCheck?.passwordHash),
+			totalHostedEvents,
+		};
+	}),
 
 	updateBasicInfo: authedProcedure
 		.input(
@@ -151,20 +160,29 @@ export const usersRouter = router({
 			});
 
 			if (!user) {
-				throw new Error("User not found.");
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "User not found.",
+				});
 			}
 
 			// If user already has a password, verify current password
 			if (user.passwordHash) {
 				if (!input.currentPassword) {
-					throw new Error("Current password is required.");
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "Current password is required.",
+					});
 				}
 				const isValid = await bcrypt.compare(
 					input.currentPassword,
 					user.passwordHash,
 				);
 				if (!isValid) {
-					throw new Error("Incorrect current password.");
+					throw new TRPCError({
+						code: "UNAUTHORIZED",
+						message: "Incorrect current password.",
+					});
 				}
 			}
 
@@ -190,11 +208,18 @@ export const usersRouter = router({
 			return { success: true };
 		}),
 
-	logoutAllDevices: authedProcedure.mutation(async ({ ctx }) => {
-		await ctx.prisma.session.deleteMany({
-			where: { userId: ctx.userId },
-		});
+	logoutAllDevices: authedProcedure
+		.input(z.object({ exceptSessionId: z.string().optional() }).optional())
+		.mutation(async ({ ctx, input }) => {
+			await ctx.prisma.session.deleteMany({
+				where: {
+					userId: ctx.userId,
+					...(input?.exceptSessionId && {
+						id: { not: input.exceptSessionId },
+					}),
+				},
+			});
 
-		return { success: true };
-	}),
+			return { success: true };
+		}),
 });

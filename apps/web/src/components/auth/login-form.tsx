@@ -1,6 +1,7 @@
 "use client";
 
 import { registerUser } from "@/app/actions/auth";
+import { getClientDeviceId } from "@/lib/device";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -17,6 +18,11 @@ export function LoginForm(): JSX.Element {
 	const [password, setPassword] = useState<string>("");
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
+
+	// Ensure persistent device ID is initialized in cookies & localStorage
+	useEffect(() => {
+		getClientDeviceId();
+	}, []);
 
 	useEffect(() => {
 		if (urlError === "OAuthAccountNotLinked") {
@@ -76,7 +82,7 @@ export function LoginForm(): JSX.Element {
 					});
 				}
 			}
-		} catch (_err) {
+		} catch {
 			setError("Something went wrong. Please try again.");
 			setIsLoading(false);
 		}

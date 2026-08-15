@@ -285,10 +285,9 @@ export function OnboardingFlow(): JSX.Element {
 	const isCreatingNew = searchParams.get("mode") === "new";
 
 	const { data: organizers, isLoading: isCheckingOrg } =
-		trpc.organizers.myOrganizers.useQuery(
-			{ ownerId: session?.user?.id || "" },
-			{ enabled: !!session?.user?.id },
-		);
+		trpc.organizers.myOrganizers.useQuery(undefined, {
+			enabled: !!session?.user?.id,
+		});
 
 	useEffect(() => {
 		if (!isCreatingNew && organizers && organizers.length > 0) {
