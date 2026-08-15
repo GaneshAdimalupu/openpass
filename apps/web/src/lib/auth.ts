@@ -51,21 +51,21 @@ const providers: Provider[] = [
 	}),
 ];
 
-if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
 	providers.push(
 		GitHubProvider({
-			clientId: process.env.GITHUB_CLIENT_ID,
-			clientSecret: process.env.GITHUB_CLIENT_SECRET,
+			clientId: process.env.AUTH_GITHUB_ID,
+			clientSecret: process.env.AUTH_GITHUB_SECRET,
 			allowDangerousEmailAccountLinking: true,
 		}),
 	);
 }
 
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
 	providers.push(
 		GoogleProvider({
-			clientId: process.env.GOOGLE_CLIENT_ID,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+			clientId: process.env.AUTH_GOOGLE_ID,
+			clientSecret: process.env.AUTH_GOOGLE_SECRET,
 			allowDangerousEmailAccountLinking: true,
 		}),
 	);
@@ -76,10 +76,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 	session: { strategy: "jwt" },
 	trustHost: true,
 	secret: (() => {
-		const s = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+		const s = process.env.AUTH_SECRET;
 		if (!s) {
 			throw new Error(
-				"Missing AUTH_SECRET or NEXTAUTH_SECRET environment variable. Auth cannot start without a signing secret.",
+				"Missing AUTH_SECRET environment variable. Auth cannot start without a signing secret.",
 			);
 		}
 		return s;
