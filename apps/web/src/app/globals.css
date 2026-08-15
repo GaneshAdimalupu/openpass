@@ -28,9 +28,9 @@
 	--font-body: var(--font-body);
 	--font-mono: var(--font-mono);
 
-	--text-h1: 2.44rem;
-	--text-h2: 1.95rem;
-	--text-h3: 1.56rem;
+	--text-h1: clamp(1.75rem, 5vw, 2.44rem);
+	--text-h2: clamp(1.4rem, 4vw, 1.95rem);
+	--text-h3: clamp(1.15rem, 3vw, 1.56rem);
 	--text-body: 1rem;
 	--text-ticket: 0.875rem;
 }

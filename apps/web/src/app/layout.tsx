@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import type { JSX, ReactNode } from "react";
 import "./globals.css";
@@ -23,6 +23,13 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
 	title: "openevents",
 	description: "Open-source event ticketing and management",
+};
+
+export const viewport: Viewport = {
+	width: "device-width",
+	initialScale: 1,
+	maximumScale: 1,
+	userScalable: false,
 };
 
 export interface RootLayoutProps {

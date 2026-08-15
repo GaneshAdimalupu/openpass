@@ -2,16 +2,7 @@
 import { SiteHeader } from "@/components/layout/site-header";
 import { trpc } from "@/lib/trpc";
 import Link from "next/link";
-import { type JSX, useState } from "react";
-
-const FORMAT_TABS = [
-	{ value: "All", label: "All Formats" },
-	{ value: "meetup", label: "Meetups" },
-	{ value: "conference", label: "Conferences" },
-	{ value: "workshop", label: "Workshops" },
-	{ value: "fest", label: "Fests" },
-	{ value: "hackathon", label: "Hackathons" },
-];
+import type { JSX } from "react";
 
 function CardSkeleton(): JSX.Element {
 	return (
@@ -27,12 +18,7 @@ function CardSkeleton(): JSX.Element {
 }
 
 export default function Home(): JSX.Element {
-	const [selectedFormat, setSelectedFormat] = useState("All");
 	const { data: events, isLoading, isError } = trpc.events.list.useQuery();
-
-	const filtered = events?.filter(
-		(e) => selectedFormat === "All" || e.format === selectedFormat,
-	);
 
 	return (
 		<div className="min-h-screen">
@@ -54,12 +40,6 @@ export default function Home(): JSX.Element {
 					>
 						Explore Events
 					</Link>
-					<Link
-						href="/onboarding"
-						className="label px-4 py-2 rounded-md border border-perforation text-ink opacity-80 hover:opacity-100 transition-opacity"
-					>
-						Host an event
-					</Link>
 				</div>
 			</section>
 
@@ -67,23 +47,6 @@ export default function Home(): JSX.Element {
 				id="events"
 				className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-6"
 			>
-				<div className="flex flex-wrap gap-2 mb-6">
-					{FORMAT_TABS.map((tab) => (
-						<button
-							type="button"
-							key={tab.value}
-							onClick={() => setSelectedFormat(tab.value)}
-							className={`label px-4 py-2 rounded-md transition-colors text-xs ${
-								selectedFormat === tab.value
-									? "bg-ink text-paper"
-									: "text-ink opacity-60 hover:opacity-100 bg-paper border border-perforation"
-							}`}
-						>
-							{tab.label}
-						</button>
-					))}
-				</div>
-
 				<div className="mb-4 flex items-center justify-between">
 					<h2 className="font-display font-semibold text-h2">
 						Happening near you
@@ -132,19 +95,9 @@ export default function Home(): JSX.Element {
 					</div>
 				)}
 
-				{!isLoading &&
-					!isError &&
-					events &&
-					events.length > 0 &&
-					filtered?.length === 0 && (
-						<p className="text-body opacity-60 py-12 text-center">
-							No events found for this format yet.
-						</p>
-					)}
-
-				{!isLoading && !isError && filtered && filtered.length > 0 && (
+				{!isLoading && !isError && events && events.length > 0 && (
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-						{filtered.map((event) => {
+						{events.map((event) => {
 							const ticket = event.tickets[0];
 							const soldOut = ticket?.quantity === 0;
 							return (

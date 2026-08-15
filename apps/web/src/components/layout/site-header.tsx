@@ -15,12 +15,20 @@ export interface SiteHeaderProps {
 export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 	const { data: session, status } = useSession();
 	const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+	const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
 	const menuRef = useRef<HTMLDivElement>(null);
+	const mobileNavRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
 			if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
 				setIsMenuOpen(false);
+			}
+			if (
+				mobileNavRef.current &&
+				!mobileNavRef.current.contains(event.target as Node)
+			) {
+				setIsMobileNavOpen(false);
 			}
 		}
 		document.addEventListener("mousedown", handleClickOutside);
@@ -39,14 +47,50 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 
 	return (
 		<header className="border-b border-perforation">
-			<div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-4 flex items-center justify-between">
-				<div className="flex items-center gap-8">
+			<div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-4 flex items-center justify-between gap-2">
+				<div className="flex items-center gap-4 sm:gap-8">
+					{/* Mobile hamburger */}
+					<button
+						type="button"
+						onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+						className="md:hidden p-1 text-ink opacity-70 hover:opacity-100 transition-opacity"
+						aria-label="Toggle navigation menu"
+						aria-expanded={isMobileNavOpen}
+					>
+						<svg
+							aria-hidden="true"
+							xmlns="http://www.w3.org/2000/svg"
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							{isMobileNavOpen ? (
+								<>
+									<path d="M18 6 6 18" />
+									<path d="m6 6 12 12" />
+								</>
+							) : (
+								<>
+									<line x1="4" x2="20" y1="12" y2="12" />
+									<line x1="4" x2="20" y1="6" y2="6" />
+									<line x1="4" x2="20" y1="18" y2="18" />
+								</>
+							)}
+						</svg>
+					</button>
+
 					<Link
 						href="/"
 						className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2"
 					>
 						<span className="w-4 h-4 rounded-sm bg-stamp inline-block" />
-						openevents
+						<span className="hidden sm:inline">openevents</span>
+						<span className="sm:hidden">oe</span>
 					</Link>
 
 					<nav className="hidden md:flex items-center gap-6">
@@ -73,14 +117,15 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 					</nav>
 				</div>
 
-				<div className="flex items-center gap-3 sm:gap-4">
-					{/* Host an Event Button */}
+				<div className="flex items-center gap-2 sm:gap-4">
+					{/* Host an Event — icon-only on xs, full on sm+ */}
 					<Link
 						href={status === "authenticated" ? "/events/new" : "/login"}
-						className="group inline-flex items-center gap-2 pl-4 pr-1 py-1 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs"
+						className="group inline-flex items-center gap-2 px-3 sm:pl-4 sm:pr-1 py-1 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs"
 					>
-						<span>Host an event</span>
-						<span className="w-6 h-6 rounded-full bg-ink flex items-center justify-center text-paper transition-transform duration-200 group-hover:translate-x-0.5">
+						<span className="hidden sm:inline">Host an event</span>
+						<span className="sm:hidden text-sm font-semibold">+</span>
+						<span className="hidden sm:flex w-6 h-6 rounded-full bg-ink items-center justify-center text-paper transition-transform duration-200 group-hover:translate-x-0.5">
 							<svg
 								aria-hidden="true"
 								xmlns="http://www.w3.org/2000/svg"
@@ -99,7 +144,7 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 						</span>
 					</Link>
 
-					{/* Theme Switcher Button */}
+					{/* Theme Switcher */}
 					<ThemeToggle />
 
 					{/* User Profile Menu or Sign In */}
@@ -142,7 +187,7 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 									strokeWidth="2"
 									strokeLinecap="round"
 									strokeLinejoin="round"
-									className={`text-ink opacity-60 transition-transform duration-200 ${
+									className={`hidden sm:block text-ink opacity-60 transition-transform duration-200 ${
 										isMenuOpen ? "rotate-180" : ""
 									}`}
 								>
@@ -208,13 +253,63 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 					) : (
 						<Link
 							href="/login"
-							className="bg-stamp text-paper label px-4 py-2 rounded-md hover:opacity-90 transition-opacity"
+							className="bg-stamp text-paper label px-3 sm:px-4 py-2 rounded-md hover:opacity-90 transition-opacity text-xs"
 						>
 							Sign In
 						</Link>
 					)}
 				</div>
 			</div>
+
+			{/* Mobile Navigation Drawer */}
+			{isMobileNavOpen && (
+				<div
+					ref={mobileNavRef}
+					className="md:hidden border-t border-perforation bg-paper px-4 py-4 space-y-2 animate-in slide-in-from-top duration-150"
+				>
+					<Link
+						href="/events"
+						onClick={() => setIsMobileNavOpen(false)}
+						className={`block py-2 px-3 rounded-md label text-xs transition-colors ${
+							activeNav === "events"
+								? "bg-ink text-paper"
+								: "text-ink opacity-70 hover:bg-perforation/20"
+						}`}
+					>
+						Events
+					</Link>
+					<Link
+						href="/onboarding"
+						onClick={() => setIsMobileNavOpen(false)}
+						className={`block py-2 px-3 rounded-md label text-xs transition-colors ${
+							activeNav === "communities"
+								? "bg-ink text-paper"
+								: "text-ink opacity-70 hover:bg-perforation/20"
+						}`}
+					>
+						Communities
+					</Link>
+					{status === "authenticated" && (
+						<>
+							<div className="border-t border-perforation my-2" />
+							<Link
+								href="/dashboard"
+								onClick={() => setIsMobileNavOpen(false)}
+								className="block py-2 px-3 rounded-md label text-xs text-ink opacity-70 hover:bg-perforation/20 transition-colors"
+							>
+								Dashboard
+							</Link>
+							<Link
+								href="/profile"
+								onClick={() => setIsMobileNavOpen(false)}
+								className="block py-2 px-3 rounded-md label text-xs text-ink opacity-70 hover:bg-perforation/20 transition-colors"
+							>
+								Profile
+							</Link>
+						</>
+					)}
+				</div>
+			)}
 		</header>
 	);
 }
