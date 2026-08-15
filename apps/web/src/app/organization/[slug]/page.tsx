@@ -18,6 +18,8 @@ type RoleOption =
 	| "VIEWER"
 	| "DEVICE";
 
+type RoleFilter = "ALL" | RoleOption;
+
 const ROLE_DESCRIPTIONS: Record<RoleOption, string> = {
 	ADMIN: "Can manage members, edit organization details, and publish events",
 	EDITOR: "Can create, edit, and publish events",
@@ -45,8 +47,12 @@ export default function OrganizationOverviewPage(): JSX.Element {
 	const slug = (params?.slug as string) || "";
 	const { status } = useSession();
 
-	const [activeTab, setActiveTab] = useState<"overview">("overview");
+	const [activeTab, setActiveTab] = useState<"overview" | "events" | "team">(
+		"overview",
+	);
 	const [searchQuery, setSearchQuery] = useState<string>("");
+	const [selectedRoleFilter, setSelectedRoleFilter] =
+		useState<RoleFilter>("ALL");
 	const [toastMessage, setToastMessage] = useState<string | null>(null);
 
 	// Modals & Drawer State
@@ -66,6 +72,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 	const [orgLogoUrl, setOrgLogoUrl] = useState<string>("");
 	const [orgInstagram, setOrgInstagram] = useState<string>("");
 	const [orgTwitter, setOrgTwitter] = useState<string>("");
+	const [orgWebsite, setOrgWebsite] = useState<string>("");
 	const [orgError, setOrgError] = useState<string | null>(null);
 
 	// Form States - Add Member
@@ -106,24 +113,36 @@ export default function OrganizationOverviewPage(): JSX.Element {
 			setOrgLogoUrl(org.logoUrl || "");
 			setOrgInstagram(org.instagram || "");
 			setOrgTwitter(org.twitter || "");
+			setOrgWebsite(org.website || "");
 		}
 	}, [org]);
 
 	const isOwnerOrAdmin =
 		org?.currentUserRole === "OWNER" || org?.currentUserRole === "ADMIN";
+	const canCreateEvent =
+		isOwnerOrAdmin ||
+		org?.currentUserRole === "EDITOR" ||
+		org?.currentUserRole === "COORDINATOR";
 
 	// Filtered member list
 	const filteredMembers = useMemo(() => {
 		if (!org) return [];
+		let list = org.members;
+
+		if (selectedRoleFilter !== "ALL") {
+			list = list.filter((m) => m.role === selectedRoleFilter);
+		}
+
 		const q = searchQuery.trim().toLowerCase();
-		if (!q) return org.members;
-		return org.members.filter(
+		if (!q) return list;
+
+		return list.filter(
 			(m) =>
 				m.email.toLowerCase().includes(q) ||
 				m.name?.toLowerCase().includes(q) ||
 				m.role.toLowerCase().includes(q),
 		);
-	}, [org, searchQuery]);
+	}, [org, searchQuery, selectedRoleFilter]);
 
 	// Actions
 	const handleSaveOrganization = async (e: React.FormEvent) => {
@@ -139,6 +158,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 				logoUrl: orgLogoUrl.trim() || null,
 				instagram: orgInstagram.trim() || null,
 				twitter: orgTwitter.trim() || null,
+				website: orgWebsite.trim() || null,
 			});
 			await refetch();
 			setIsEditOrgOpen(false);
@@ -275,25 +295,49 @@ export default function OrganizationOverviewPage(): JSX.Element {
 						</svg>
 						<span>Back to Dashboard</span>
 					</Link>
+
+					{canCreateEvent && (
+						<Link
+							href="/events/new"
+							className="group inline-flex items-center gap-2 pl-3.5 pr-1.5 py-1 bg-stamp text-paper rounded-full font-medium text-xs hover:opacity-95 transition-all shadow-xs"
+						>
+							<span>Host Event</span>
+							<span className="w-4 h-4 rounded-full bg-ink flex items-center justify-center text-paper transition-transform duration-200 group-hover:translate-x-0.5">
+								<svg
+									aria-hidden="true"
+									xmlns="http://www.w3.org/2000/svg"
+									width="8"
+									height="8"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2.5"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								>
+									<path d="M5 12h14" />
+									<path d="m12 5 7 7-7 7" />
+								</svg>
+							</span>
+						</Link>
+					)}
 				</div>
 
 				{isLoading ? (
-					<div className="space-y-6 animate-pulse">
-						<div className="h-14 bg-perforation/20 rounded-lg" />
-						<div className="h-48 bg-perforation/20 rounded-lg" />
-						<div className="h-64 bg-perforation/20 rounded-lg" />
+					<div className="py-24 text-center">
+						<div className="w-8 h-8 border-2 border-stamp border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+						<p className="text-xs font-mono opacity-60">
+							Loading organization details...
+						</p>
 					</div>
 				) : !org ? (
-					<div className="border border-perforation rounded-lg p-12 text-center bg-paper/60 space-y-4">
-						<h1 className="font-display font-semibold text-h2 text-ink">
+					<div className="border border-perforation rounded-lg p-12 text-center bg-paper/50">
+						<h2 className="font-display font-semibold text-xl mb-2 text-ink">
 							Organization Not Found
-						</h1>
-						<p className="text-body opacity-70">
-							The organization with handle{" "}
-							<code className="font-mono text-xs bg-perforation/30 px-1.5 py-0.5 rounded">
-								@{slug}
-							</code>{" "}
-							could not be found.
+						</h2>
+						<p className="text-body text-xs opacity-70 mb-6">
+							The organization with handle "@{slug}" does not exist or you don't
+							have access.
 						</p>
 						<Link
 							href="/dashboard"
@@ -304,7 +348,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 					</div>
 				) : (
 					<>
-						{/* Organization Page Header & Tabs */}
+						{/* Organization Page Header & Profile Details */}
 						<div className="space-y-4">
 							<div className="flex items-center gap-3.5">
 								<div className="w-10 h-10 rounded-lg bg-ink text-paper flex items-center justify-center font-display font-semibold text-lg shrink-0">
@@ -324,7 +368,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 								<button
 									type="button"
 									onClick={() => setActiveTab("overview")}
-									className={`pb-3 relative transition-colors label text-xs ${
+									className={`pb-3 relative transition-colors label text-xs cursor-pointer ${
 										activeTab === "overview"
 											? "text-ink font-semibold"
 											: "text-ink opacity-60 hover:opacity-100"
@@ -335,6 +379,70 @@ export default function OrganizationOverviewPage(): JSX.Element {
 										<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-ink" />
 									)}
 								</button>
+								<button
+									type="button"
+									onClick={() => setActiveTab("events")}
+									className={`pb-3 relative transition-colors label text-xs cursor-pointer ${
+										activeTab === "events"
+											? "text-ink font-semibold"
+											: "text-ink opacity-60 hover:opacity-100"
+									}`}
+								>
+									Events ({org.events?.length || org._count?.events || 0})
+									{activeTab === "events" && (
+										<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-ink" />
+									)}
+								</button>
+								<button
+									type="button"
+									onClick={() => setActiveTab("team")}
+									className={`pb-3 relative transition-colors label text-xs cursor-pointer ${
+										activeTab === "team"
+											? "text-ink font-semibold"
+											: "text-ink opacity-60 hover:opacity-100"
+									}`}
+								>
+									Team Members ({(org.members?.length || 0) + 1})
+									{activeTab === "team" && (
+										<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-ink" />
+									)}
+								</button>
+							</div>
+						</div>
+
+						{/* ──────────────── Metric Counters Strip ──────────────── */}
+						<div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+							<div className="border border-perforation rounded-lg p-4 bg-paper/60 shadow-xs">
+								<span className="label text-[10px] text-ink opacity-60 block">
+									Events Hosted
+								</span>
+								<span className="font-display font-semibold text-2xl text-ink mt-0.5 block">
+									{org.events?.length || org._count?.events || 0}
+								</span>
+							</div>
+							<div className="border border-perforation rounded-lg p-4 bg-paper/60 shadow-xs">
+								<span className="label text-[10px] text-ink opacity-60 block">
+									Team Members
+								</span>
+								<span className="font-display font-semibold text-2xl text-ink mt-0.5 block">
+									{(org.members?.length || 0) + 1}
+								</span>
+							</div>
+							<div className="border border-perforation rounded-lg p-4 bg-paper/60 shadow-xs">
+								<span className="label text-[10px] text-ink opacity-60 block">
+									Organization Type
+								</span>
+								<span className="font-mono text-xs font-semibold text-ink mt-2 block capitalize">
+									{org.type}
+								</span>
+							</div>
+							<div className="border border-perforation rounded-lg p-4 bg-paper/60 shadow-xs">
+								<span className="label text-[10px] text-ink opacity-60 block">
+									Category
+								</span>
+								<span className="font-mono text-xs font-semibold text-ink mt-2 block truncate">
+									{org.category}
+								</span>
 							</div>
 						</div>
 
@@ -372,9 +480,67 @@ export default function OrganizationOverviewPage(): JSX.Element {
 										Host Account: {org.owner.email}
 									</p>
 
-									{/* Social Link if configured */}
-									{org.instagram && (
-										<div className="pt-1">
+									{/* Social Links Strip */}
+									<div className="flex flex-wrap items-center gap-3 pt-1">
+										{org.website && (
+											<a
+												href={
+													org.website.startsWith("http")
+														? org.website
+														: `https://${org.website}`
+												}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="inline-flex items-center gap-1 text-xs text-ink opacity-70 hover:opacity-100 hover:text-stamp transition-colors"
+												title="Website"
+											>
+												<svg
+													aria-hidden="true"
+													className="w-3.5 h-3.5"
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+												>
+													<circle cx="12" cy="12" r="10" />
+													<line x1="2" x2="22" y1="12" y2="12" />
+													<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+												</svg>
+												<span className="font-mono text-[11px]">Website</span>
+											</a>
+										)}
+
+										{org.twitter && (
+											<a
+												href={
+													org.twitter.startsWith("http")
+														? org.twitter
+														: `https://x.com/${org.twitter.replace("@", "")}`
+												}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="inline-flex items-center gap-1 text-xs text-ink opacity-70 hover:opacity-100 hover:text-stamp transition-colors"
+												title="Twitter / X"
+											>
+												<svg
+													aria-hidden="true"
+													className="w-3.5 h-3.5"
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													fill="currentColor"
+												>
+													<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+												</svg>
+												<span className="font-mono text-[11px]">
+													@{org.twitter.replace("@", "")}
+												</span>
+											</a>
+										)}
+
+										{org.instagram && (
 											<a
 												href={
 													org.instagram.startsWith("http")
@@ -383,11 +549,12 @@ export default function OrganizationOverviewPage(): JSX.Element {
 												}
 												target="_blank"
 												rel="noopener noreferrer"
-												className="inline-flex items-center gap-1.5 text-xs text-ink opacity-70 hover:opacity-100 hover:text-stamp transition-colors"
+												className="inline-flex items-center gap-1 text-xs text-ink opacity-70 hover:opacity-100 hover:text-stamp transition-colors"
+												title="Instagram"
 											>
 												<svg
 													aria-hidden="true"
-													className="w-4 h-4"
+													className="w-3.5 h-3.5"
 													xmlns="http://www.w3.org/2000/svg"
 													viewBox="0 0 24 24"
 													fill="none"
@@ -407,12 +574,12 @@ export default function OrganizationOverviewPage(): JSX.Element {
 													<path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
 													<line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
 												</svg>
-												<span className="font-mono">
+												<span className="font-mono text-[11px]">
 													@{org.instagram.replace("@", "")}
 												</span>
 											</a>
-										</div>
-									)}
+										)}
+									</div>
 								</div>
 							</div>
 
@@ -491,236 +658,375 @@ export default function OrganizationOverviewPage(): JSX.Element {
 						</div>
 
 						{/* ──────────────── 2. About the Organization Card ──────────────── */}
-						<div className="border border-perforation rounded-lg p-6 bg-paper/60 shadow-xs space-y-3">
-							<div className="flex items-center gap-2 text-ink opacity-80">
-								<svg
-									aria-hidden="true"
-									className="w-4 h-4"
-									xmlns="http://www.w3.org/2000/svg"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth="2"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								>
-									<circle cx="12" cy="12" r="10" />
-									<line x1="12" x2="12" y1="8" y2="12" />
-									<line x1="12" x2="12.01" y1="16" y2="16" />
-								</svg>
-								<h3 className="font-display font-medium text-sm text-ink">
-									About the Organization
-								</h3>
-							</div>
-
-							<div className="text-body text-xs leading-relaxed opacity-80 pt-1">
-								{org.description ? (
-									<p className="whitespace-pre-wrap">{org.description}</p>
-								) : (
-									<p className="italic opacity-60">
-										No description provided yet.
-										{isOwnerOrAdmin && (
-											<button
-												type="button"
-												onClick={() => setIsEditOrgOpen(true)}
-												className="ml-1 text-stamp underline cursor-pointer"
-											>
-												Add details about your organization
-											</button>
-										)}
-									</p>
-								)}
-							</div>
-						</div>
-
-						{/* ──────────────── 3. Organization Members Section ──────────────── */}
-						<div className="border border-perforation rounded-lg p-6 bg-paper/60 shadow-xs space-y-4">
-							<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-								<h3 className="font-display font-semibold text-base text-ink">
-									Organization Members
-								</h3>
-
-								{isOwnerOrAdmin && (
-									<button
-										type="button"
-										onClick={() => setIsAddMemberOpen(true)}
-										className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+						{(activeTab === "overview" || activeTab === "team") && (
+							<div className="border border-perforation rounded-lg p-6 bg-paper/60 shadow-xs space-y-3">
+								<div className="flex items-center gap-2 text-ink opacity-80">
+									<svg
+										aria-hidden="true"
+										className="w-4 h-4"
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2"
+										strokeLinecap="round"
+										strokeLinejoin="round"
 									>
-										<svg
-											aria-hidden="true"
-											xmlns="http://www.w3.org/2000/svg"
-											width="12"
-											height="12"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											strokeWidth="2.5"
-											strokeLinecap="round"
-											strokeLinejoin="round"
-										>
-											<line x1="12" x2="12" y1="5" y2="19" />
-											<line x1="5" x2="19" y1="12" y2="12" />
-										</svg>
-										<span>Add Member</span>
-									</button>
-								)}
-							</div>
-
-							{/* Search Event Hosts Bar */}
-							<div className="relative flex items-center">
-								<svg
-									aria-hidden="true"
-									xmlns="http://www.w3.org/2000/svg"
-									width="14"
-									height="14"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth="2"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									className="absolute left-3 text-ink opacity-40 pointer-events-none"
-								>
-									<circle cx="11" cy="11" r="8" />
-									<path d="m21 21-4.3-4.3" />
-								</svg>
-								<input
-									type="text"
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									placeholder="Search Event Hosts..."
-									className="w-full bg-paper border border-perforation rounded-md pl-9 pr-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
-								/>
-							</div>
-
-							{/* Members List */}
-							<div className="space-y-2.5 pt-2">
-								{/* 1. Primary Owner Row */}
-								<div className="p-3.5 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4">
-									<div className="flex items-center gap-3">
-										<div className="w-8 h-8 rounded-full bg-stamp/20 border border-stamp/40 text-stamp flex items-center justify-center font-display font-semibold text-xs shrink-0">
-											{org.owner.name?.charAt(0).toUpperCase() || "O"}
-										</div>
-										<div>
-											<p className="font-medium text-xs text-ink">
-												{org.owner.name || org.title || org.name}
-											</p>
-											<p className="text-[11px] font-mono opacity-60">
-												{org.owner.email}
-											</p>
-										</div>
-									</div>
-
-									<span
-										className={`px-2.5 py-0.5 rounded text-[10px] font-semibold font-mono border ${ROLE_BADGE_STYLES.OWNER}`}
-									>
-										Owner
-									</span>
+										<circle cx="12" cy="12" r="10" />
+										<line x1="12" x2="12" y1="8" y2="12" />
+										<line x1="12" x2="12.01" y1="16" y2="16" />
+									</svg>
+									<h3 className="font-display font-medium text-sm text-ink">
+										About the Organization
+									</h3>
 								</div>
 
-								{/* 2. Team Members Rows */}
-								{filteredMembers.map((member) => (
-									<div
-										key={member.id}
-										className="p-3.5 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4"
-									>
-										<div className="flex items-center gap-3">
-											<div className="w-8 h-8 rounded-full bg-perforation/30 border border-perforation text-ink flex items-center justify-center font-display font-semibold text-xs shrink-0">
-												{member.name?.charAt(0).toUpperCase() ||
-													member.email.charAt(0).toUpperCase()}
-											</div>
-											<div>
-												<p className="font-medium text-xs text-ink">
-													{member.name || member.email.split("@")[0]}
-												</p>
-												<p className="text-[11px] font-mono opacity-60">
-													{member.email}
-												</p>
-											</div>
-										</div>
-
-										<div className="flex items-center gap-3">
-											<span
-												className={`px-2.5 py-0.5 rounded text-[10px] font-semibold font-mono border ${
-													ROLE_BADGE_STYLES[member.role] ||
-													ROLE_BADGE_STYLES.VIEWER
-												}`}
-											>
-												{member.role.charAt(0) +
-													member.role.slice(1).toLowerCase()}
-											</span>
-
+								<div className="text-body text-xs leading-relaxed opacity-80 pt-1">
+									{org.description ? (
+										<div
+											className="rich-editor-content text-xs leading-relaxed"
+											// biome-ignore lint/security/noDangerouslySetInnerHtml: Sanitized rich text description rendered from organizer
+											dangerouslySetInnerHTML={{ __html: org.description }}
+										/>
+									) : (
+										<p className="italic opacity-60">
+											No description provided yet.
 											{isOwnerOrAdmin && (
-												<div className="flex items-center gap-1.5">
-													<button
-														type="button"
-														onClick={() =>
-															setEditingMember({
-																id: member.id,
-																email: member.email,
-																name: member.name,
-																role: member.role as RoleOption,
-															})
-														}
-														aria-label={`Edit role for ${member.email}`}
-														title="Edit Role"
-														className="p-1.5 rounded text-ink opacity-60 hover:opacity-100 hover:text-stamp hover:bg-perforation/20 transition-all cursor-pointer"
-													>
-														<svg
-															aria-hidden="true"
-															xmlns="http://www.w3.org/2000/svg"
-															width="13"
-															height="13"
-															viewBox="0 0 24 24"
-															fill="none"
-															stroke="currentColor"
-															strokeWidth="2"
-															strokeLinecap="round"
-															strokeLinejoin="round"
-														>
-															<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-															<path d="m15 5 4 4" />
-														</svg>
-													</button>
-													<button
-														type="button"
-														onClick={() =>
-															handleRemoveMember(member.id, member.email)
-														}
-														aria-label={`Remove member ${member.email}`}
-														title="Remove Member"
-														className="p-1.5 rounded text-alert opacity-70 hover:opacity-100 hover:bg-alert/10 transition-all cursor-pointer"
-													>
-														<svg
-															aria-hidden="true"
-															xmlns="http://www.w3.org/2000/svg"
-															width="13"
-															height="13"
-															viewBox="0 0 24 24"
-															fill="none"
-															stroke="currentColor"
-															strokeWidth="2"
-															strokeLinecap="round"
-															strokeLinejoin="round"
-														>
-															<path d="M3 6h18" />
-															<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-															<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-														</svg>
-													</button>
-												</div>
+												<button
+													type="button"
+													onClick={() => setIsEditOrgOpen(true)}
+													className="ml-1 text-stamp underline cursor-pointer"
+												>
+													Add details about your organization
+												</button>
 											)}
-										</div>
-									</div>
-								))}
+										</p>
+									)}
+								</div>
+							</div>
+						)}
 
-								{filteredMembers.length === 0 && searchQuery && (
-									<div className="text-center py-6 text-xs opacity-60">
-										No event hosts matching &ldquo;{searchQuery}&rdquo;
+						{/* ──────────────── 3. Events Hosted by Organization ──────────────── */}
+						{(activeTab === "overview" || activeTab === "events") && (
+							<div className="border border-perforation rounded-lg p-6 bg-paper/60 shadow-xs space-y-4">
+								<div className="flex items-center justify-between">
+									<h3 className="font-display font-semibold text-base text-ink">
+										Events Hosted ({org.events?.length || 0})
+									</h3>
+
+									{canCreateEvent && (
+										<Link
+											href="/events/new"
+											className="bg-stamp text-paper label text-xs px-3.5 py-1.5 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5"
+										>
+											<span>+ Host Event</span>
+										</Link>
+									)}
+								</div>
+
+								{org.events && org.events.length > 0 ? (
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+										{org.events.map((event) => (
+											<Link
+												key={event.id}
+												href={`/events/${event.slug}`}
+												className="p-4 rounded-lg border border-perforation bg-paper hover:border-ink/50 transition-all shadow-xs flex flex-col justify-between gap-3 group"
+											>
+												<div className="space-y-1.5">
+													<div className="flex items-center justify-between gap-2">
+														<span className="font-mono text-[10px] opacity-60">
+															{new Date(event.eventStart).toLocaleDateString(
+																undefined,
+																{
+																	month: "short",
+																	day: "numeric",
+																	year: "numeric",
+																},
+															)}
+														</span>
+														<span
+															className={`px-2 py-0.5 rounded text-[9px] font-mono font-semibold uppercase border ${
+																event.status === "published"
+																	? "bg-stamp/10 text-stamp border-stamp/30"
+																	: "bg-perforation/40 text-ink opacity-70 border-perforation"
+															}`}
+														>
+															{event.status}
+														</span>
+													</div>
+													<h4 className="font-display font-semibold text-sm text-ink group-hover:text-stamp transition-colors">
+														{event.title}
+													</h4>
+													{event.isOnline ? (
+														<p className="text-[11px] text-ink opacity-70 truncate font-mono">
+															🌐 Online Event
+														</p>
+													) : event.location ? (
+														<p className="text-[11px] text-ink opacity-70 truncate font-mono">
+															📍 {event.location}
+														</p>
+													) : null}
+												</div>
+
+												<div className="pt-2 border-t border-perforation flex items-center justify-between text-[11px] font-mono opacity-70">
+													<span>
+														🎟️ {event._count?.tickets || 0} Ticket Types
+													</span>
+													<span className="text-stamp group-hover:translate-x-0.5 transition-transform">
+														View Event →
+													</span>
+												</div>
+											</Link>
+										))}
+									</div>
+								) : (
+									<div className="p-8 text-center border border-dashed border-perforation rounded-lg bg-paper/40">
+										<p className="text-xs text-ink opacity-70 mb-3">
+											No events hosted yet.
+										</p>
+										{canCreateEvent && (
+											<Link
+												href="/events/new"
+												className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 transition-opacity inline-block"
+											>
+												Host Your First Event
+											</Link>
+										)}
 									</div>
 								)}
 							</div>
-						</div>
+						)}
+
+						{/* ──────────────── 4. Organization Members Section ──────────────── */}
+						{(activeTab === "overview" || activeTab === "team") && (
+							<div className="border border-perforation rounded-lg p-6 bg-paper/60 shadow-xs space-y-4">
+								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+									<div>
+										<h3 className="font-display font-semibold text-base text-ink">
+											Organization Members
+										</h3>
+										<p className="text-[11px] font-mono opacity-60">
+											{(org.members?.length || 0) + 1} Total Team Members
+										</p>
+									</div>
+
+									{isOwnerOrAdmin && (
+										<button
+											type="button"
+											onClick={() => setIsAddMemberOpen(true)}
+											className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+										>
+											<svg
+												aria-hidden="true"
+												xmlns="http://www.w3.org/2000/svg"
+												width="12"
+												height="12"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												strokeWidth="2.5"
+												strokeLinecap="round"
+												strokeLinejoin="round"
+											>
+												<line x1="12" x2="12" y1="5" y2="19" />
+												<line x1="5" x2="19" y1="12" y2="12" />
+											</svg>
+											<span>Add Member</span>
+										</button>
+									)}
+								</div>
+
+								{/* Role Filter Pills */}
+								<div className="flex flex-wrap items-center gap-2 pt-1">
+									{(
+										[
+											"ALL",
+											"ADMIN",
+											"EDITOR",
+											"COORDINATOR",
+											"VOLUNTEER",
+											"VIEWER",
+										] as RoleFilter[]
+									).map((role) => (
+										<button
+											key={role}
+											type="button"
+											onClick={() => setSelectedRoleFilter(role)}
+											className={`px-3 py-1 rounded-full text-[10px] font-mono transition-all cursor-pointer border ${
+												selectedRoleFilter === role
+													? "bg-ink text-paper border-ink font-semibold"
+													: "bg-paper border-perforation text-ink opacity-70 hover:opacity-100 hover:border-ink/40"
+											}`}
+										>
+											{role === "ALL"
+												? `All (${(org.members?.length || 0) + 1})`
+												: `${role.charAt(0) + role.slice(1).toLowerCase()} (${
+														org.members.filter((m) => m.role === role).length
+													})`}
+										</button>
+									))}
+								</div>
+
+								{/* Search Event Hosts Bar */}
+								<div className="relative flex items-center">
+									<svg
+										aria-hidden="true"
+										xmlns="http://www.w3.org/2000/svg"
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										className="absolute left-3 text-ink opacity-40 pointer-events-none"
+									>
+										<circle cx="11" cy="11" r="8" />
+										<path d="m21 21-4.3-4.3" />
+									</svg>
+									<input
+										type="text"
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										placeholder="Search Event Hosts by name, email, or role..."
+										className="w-full bg-paper border border-perforation rounded-md pl-9 pr-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
+									/>
+								</div>
+
+								{/* Members List */}
+								<div className="space-y-2.5 pt-2">
+									{/* 1. Primary Owner Row */}
+									{(selectedRoleFilter === "ALL" ||
+										selectedRoleFilter === "ADMIN") && (
+										<div className="p-3.5 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4">
+											<div className="flex items-center gap-3">
+												<div className="w-8 h-8 rounded-full bg-stamp/20 border border-stamp/40 text-stamp flex items-center justify-center font-display font-semibold text-xs shrink-0">
+													{org.owner.name?.charAt(0).toUpperCase() || "O"}
+												</div>
+												<div>
+													<p className="font-medium text-xs text-ink">
+														{org.owner.name || org.title || org.name}
+													</p>
+													<p className="text-[11px] font-mono opacity-60">
+														{org.owner.email}
+													</p>
+												</div>
+											</div>
+
+											<span
+												className={`px-2.5 py-0.5 rounded text-[10px] font-semibold font-mono border ${ROLE_BADGE_STYLES.OWNER}`}
+											>
+												Owner
+											</span>
+										</div>
+									)}
+
+									{/* 2. Team Members Rows */}
+									{filteredMembers.map((member) => (
+										<div
+											key={member.id}
+											className="p-3.5 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4"
+										>
+											<div className="flex items-center gap-3">
+												<div className="w-8 h-8 rounded-full bg-perforation/30 border border-perforation text-ink flex items-center justify-center font-display font-semibold text-xs shrink-0">
+													{member.name?.charAt(0).toUpperCase() ||
+														member.email.charAt(0).toUpperCase()}
+												</div>
+												<div>
+													<p className="font-medium text-xs text-ink">
+														{member.name || member.email.split("@")[0]}
+													</p>
+													<p className="text-[11px] font-mono opacity-60">
+														{member.email}
+													</p>
+												</div>
+											</div>
+
+											<div className="flex items-center gap-3">
+												<span
+													className={`px-2.5 py-0.5 rounded text-[10px] font-semibold font-mono border ${
+														ROLE_BADGE_STYLES[member.role] ||
+														ROLE_BADGE_STYLES.VIEWER
+													}`}
+												>
+													{member.role.charAt(0) +
+														member.role.slice(1).toLowerCase()}
+												</span>
+
+												{isOwnerOrAdmin && (
+													<div className="flex items-center gap-1.5">
+														<button
+															type="button"
+															onClick={() =>
+																setEditingMember({
+																	id: member.id,
+																	email: member.email,
+																	name: member.name,
+																	role: member.role as RoleOption,
+																})
+															}
+															aria-label={`Edit role for ${member.email}`}
+															title="Edit Role"
+															className="p-1.5 rounded text-ink opacity-60 hover:opacity-100 hover:text-stamp hover:bg-perforation/20 transition-all cursor-pointer"
+														>
+															<svg
+																aria-hidden="true"
+																xmlns="http://www.w3.org/2000/svg"
+																width="13"
+																height="13"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																strokeWidth="2"
+																strokeLinecap="round"
+																strokeLinejoin="round"
+															>
+																<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+																<path d="m15 5 4 4" />
+															</svg>
+														</button>
+														<button
+															type="button"
+															onClick={() =>
+																handleRemoveMember(member.id, member.email)
+															}
+															aria-label={`Remove member ${member.email}`}
+															title="Remove Member"
+															className="p-1.5 rounded text-alert opacity-70 hover:opacity-100 hover:bg-alert/10 transition-all cursor-pointer"
+														>
+															<svg
+																aria-hidden="true"
+																xmlns="http://www.w3.org/2000/svg"
+																width="13"
+																height="13"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																strokeWidth="2"
+																strokeLinecap="round"
+																strokeLinejoin="round"
+															>
+																<path d="M3 6h18" />
+																<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+																<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+															</svg>
+														</button>
+													</div>
+												)}
+											</div>
+										</div>
+									))}
+
+									{filteredMembers.length === 0 &&
+										(selectedRoleFilter !== "ALL" || searchQuery) && (
+											<p className="text-xs font-mono opacity-50 text-center py-4">
+												No members match the selected filter.
+											</p>
+										)}
+								</div>
+							</div>
+						)}
 					</>
 				)}
 			</main>
@@ -732,10 +1038,10 @@ export default function OrganizationOverviewPage(): JSX.Element {
 					aria-modal="true"
 					className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-xs flex items-center justify-center p-4"
 				>
-					<div className="w-full max-w-md bg-paper border border-perforation rounded-lg p-6 shadow-xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+					<div className="w-full max-w-md bg-paper border border-perforation rounded-lg p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
 						<div className="flex items-center justify-between border-b border-perforation pb-3">
 							<h3 className="font-display font-semibold text-base text-ink">
-								Add Member
+								Add Organization Member
 							</h3>
 							<button
 								type="button"
@@ -756,62 +1062,66 @@ export default function OrganizationOverviewPage(): JSX.Element {
 						<form onSubmit={handleAddMember} className="space-y-4">
 							<div>
 								<label
-									htmlFor="newMemberEmail"
-									className="block label text-xs mb-1.5"
+									htmlFor="newMemberEmailInput"
+									className="block label text-xs mb-1"
 								>
-									Enter Email
+									Email Address *
 								</label>
 								<input
-									id="newMemberEmail"
+									id="newMemberEmailInput"
 									type="email"
 									required
 									value={newMemberEmail}
 									onChange={(e) => setNewMemberEmail(e.target.value)}
-									placeholder="Enter the email address for the Member"
+									placeholder="member@example.com"
 									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
 								/>
 							</div>
 
 							<div>
 								<label
-									htmlFor="newMemberName"
-									className="block label text-xs mb-1.5"
+									htmlFor="newMemberNameInput"
+									className="block label text-xs mb-1"
 								>
 									Full Name (Optional)
 								</label>
 								<input
-									id="newMemberName"
+									id="newMemberNameInput"
 									type="text"
 									value={newMemberName}
 									onChange={(e) => setNewMemberName(e.target.value)}
-									placeholder="e.g. Adnan Kattekaden"
+									placeholder="e.g. Sarah Connor"
 									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
 								/>
 							</div>
 
 							<div>
 								<label
-									htmlFor="newMemberRole"
-									className="block label text-xs mb-1.5"
+									htmlFor="newMemberRoleSelect"
+									className="block label text-xs mb-1"
 								>
-									Select Role
+									Member Role
 								</label>
 								<select
-									id="newMemberRole"
+									id="newMemberRoleSelect"
 									value={newMemberRole}
 									onChange={(e) =>
 										setNewMemberRole(e.target.value as RoleOption)
 									}
 									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
 								>
-									<option value="ADMIN">Admin</option>
-									<option value="EDITOR">Editor</option>
-									<option value="COORDINATOR">Coordinator</option>
-									<option value="VOLUNTEER">Volunteer</option>
-									<option value="VIEWER">Viewer</option>
-									<option value="DEVICE">Device (Scanner)</option>
+									<option value="ADMIN">Admin — Manage org & members</option>
+									<option value="EDITOR">Editor — Create & edit events</option>
+									<option value="COORDINATOR">
+										Coordinator — Coordinate attendees & speakers
+									</option>
+									<option value="VOLUNTEER">
+										Volunteer — Onsite assistance & scan check-ins
+									</option>
+									<option value="VIEWER">Viewer — Read-only access</option>
+									<option value="DEVICE">Device — Ticket scanning kiosk</option>
 								</select>
-								<p className="text-[11px] opacity-60 mt-1.5 font-mono">
+								<p className="text-[11px] opacity-60 mt-1 font-mono">
 									{ROLE_DESCRIPTIONS[newMemberRole]}
 								</p>
 							</div>
@@ -844,10 +1154,10 @@ export default function OrganizationOverviewPage(): JSX.Element {
 					aria-modal="true"
 					className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-xs flex items-center justify-center p-4"
 				>
-					<div className="w-full max-w-md bg-paper border border-perforation rounded-lg p-6 shadow-xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+					<div className="w-full max-w-md bg-paper border border-perforation rounded-lg p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
 						<div className="flex items-center justify-between border-b border-perforation pb-3">
 							<h3 className="font-display font-semibold text-base text-ink">
-								Edit Member
+								Change Role for {editingMember.email}
 							</h3>
 							<button
 								type="button"
@@ -868,26 +1178,10 @@ export default function OrganizationOverviewPage(): JSX.Element {
 						<form onSubmit={handleUpdateMemberRole} className="space-y-4">
 							<div>
 								<label
-									htmlFor="editMemberEmail"
-									className="block label text-xs mb-1.5"
-								>
-									Enter Email
-								</label>
-								<input
-									id="editMemberEmail"
-									type="email"
-									disabled
-									value={editingMember.email}
-									className="w-full bg-perforation/20 border border-perforation rounded-md px-3 py-2 text-xs text-body opacity-70 cursor-not-allowed font-mono"
-								/>
-							</div>
-
-							<div>
-								<label
 									htmlFor="editMemberRoleSelect"
-									className="block label text-xs mb-1.5"
+									className="block label text-xs mb-1"
 								>
-									Select Role
+									Select New Role
 								</label>
 								<select
 									id="editMemberRoleSelect"
@@ -902,9 +1196,9 @@ export default function OrganizationOverviewPage(): JSX.Element {
 									<option value="COORDINATOR">Coordinator</option>
 									<option value="VOLUNTEER">Volunteer</option>
 									<option value="VIEWER">Viewer</option>
-									<option value="DEVICE">Device (Scanner)</option>
+									<option value="DEVICE">Device</option>
 								</select>
-								<p className="text-[11px] opacity-60 mt-1.5 font-mono">
+								<p className="text-[11px] opacity-60 mt-1 font-mono">
 									{ROLE_DESCRIPTIONS[editMemberRole]}
 								</p>
 							</div>
@@ -922,7 +1216,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 									disabled={updateRoleMutation.isPending}
 									className="bg-stamp text-paper label text-xs px-5 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
 								>
-									{updateRoleMutation.isPending ? "Saving..." : "Save Changes"}
+									{updateRoleMutation.isPending ? "Updating..." : "Update Role"}
 								</button>
 							</div>
 						</form>
@@ -930,18 +1224,17 @@ export default function OrganizationOverviewPage(): JSX.Element {
 				</div>
 			)}
 
-			{/* ──────────────── DRAWER / MODAL 3: Edit Organization ──────────────── */}
+			{/* ──────────────── DRAWER 3: Edit Organization ──────────────── */}
 			{isEditOrgOpen && (
 				<div
 					role="dialog"
 					aria-modal="true"
 					className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-xs flex justify-end"
 				>
-					<div className="w-full max-w-md h-full bg-paper border-l border-perforation p-6 shadow-2xl space-y-5 overflow-y-auto animate-in slide-in-from-right duration-200">
-						<div className="flex items-center justify-between border-b border-perforation pb-3">
-							<h3 className="font-display font-semibold text-base text-ink flex items-center gap-2">
-								<span>←</span>
-								<span>Edit Organization</span>
+					<div className="w-full max-w-xl bg-paper h-full overflow-y-auto border-l border-perforation p-6 sm:p-8 space-y-6 shadow-2xl animate-in slide-in-from-right duration-200">
+						<div className="flex items-center justify-between border-b border-perforation pb-4">
+							<h3 className="font-display font-semibold text-lg text-ink">
+								Edit Organization Profile
 							</h3>
 							<button
 								type="button"
@@ -1035,6 +1328,42 @@ export default function OrganizationOverviewPage(): JSX.Element {
 								</p>
 							</div>
 
+							{/* Website URL */}
+							<div>
+								<label
+									htmlFor="orgWebsiteInput"
+									className="block label text-xs mb-1"
+								>
+									Website
+								</label>
+								<input
+									id="orgWebsiteInput"
+									type="url"
+									value={orgWebsite}
+									onChange={(e) => setOrgWebsite(e.target.value)}
+									placeholder="https://fossclub.org"
+									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
+								/>
+							</div>
+
+							{/* Twitter / X Handle */}
+							<div>
+								<label
+									htmlFor="orgTwitterInput"
+									className="block label text-xs mb-1"
+								>
+									Twitter / X Profile
+								</label>
+								<input
+									id="orgTwitterInput"
+									type="text"
+									value={orgTwitter}
+									onChange={(e) => setOrgTwitter(e.target.value)}
+									placeholder="https://x.com/fossclub or @fossclub"
+									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
+								/>
+							</div>
+
 							{/* Instagram Handle */}
 							<div>
 								<label
@@ -1048,7 +1377,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 									type="text"
 									value={orgInstagram}
 									onChange={(e) => setOrgInstagram(e.target.value)}
-									placeholder="https://instagram.com/playfest or @playfest"
+									placeholder="https://instagram.com/fossclub or @fossclub"
 									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
 								/>
 							</div>
@@ -1115,26 +1444,25 @@ export default function OrganizationOverviewPage(): JSX.Element {
 							</button>
 						</div>
 
-						<p className="text-xs opacity-70">
-							Copy and paste this iframe snippet into your website to embed your
-							events and tickets:
+						<p className="text-body text-xs opacity-80">
+							Copy the iframe code below to embed your organization's upcoming
+							events feed onto your own website:
 						</p>
 
-						<div className="p-3 bg-perforation/20 rounded border border-perforation font-mono text-[11px] text-ink select-all overflow-x-auto">
-							{`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/events#${slug}" width="100%" height="600" frameborder="0"></iframe>`}
+						<div className="p-3 bg-perforation/20 rounded border border-perforation font-mono text-[11px] break-all select-all text-ink">
+							{`<iframe src="${typeof window !== "undefined" ? window.location.origin : "https://openevents.app"}/embed/org/${slug}" width="100%" height="450" frameborder="0"></iframe>`}
 						</div>
 
-						<div className="flex justify-end pt-2">
+						<div className="flex justify-end gap-3 pt-2">
 							<button
 								type="button"
 								onClick={() => {
-									navigator.clipboard.writeText(
-										`<iframe src="${window.location.origin}/events#${slug}" width="100%" height="600" frameborder="0"></iframe>`,
-									);
+									const snippet = `<iframe src="${window.location.origin}/embed/org/${slug}" width="100%" height="450" frameborder="0"></iframe>`;
+									navigator.clipboard.writeText(snippet);
 									showToast("Embed code copied to clipboard");
 									setIsEmbedOpen(false);
 								}}
-								className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 cursor-pointer"
+								className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 transition-opacity cursor-pointer"
 							>
 								Copy Snippet
 							</button>

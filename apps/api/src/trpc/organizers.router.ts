@@ -223,6 +223,24 @@ export const organizersRouter = router({
 						},
 						orderBy: { createdAt: "asc" },
 					},
+					events: {
+						select: {
+							id: true,
+							title: true,
+							slug: true,
+							status: true,
+							eventStart: true,
+							eventEnd: true,
+							location: true,
+							isOnline: true,
+							_count: {
+								select: {
+									tickets: true,
+								},
+							},
+						},
+						orderBy: { eventStart: "desc" },
+					},
 					_count: {
 						select: {
 							events: true,
