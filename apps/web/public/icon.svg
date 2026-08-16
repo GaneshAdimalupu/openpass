@@ -1,0 +1,160 @@
+<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background Gradient for Squircle -->
+    <linearGradient id="squircleGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="55%" stop-color="#a7f3d0"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+
+    <!-- Sky Gradient (Inside) -->
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="61.8%" stop-color="#bae6fd"/>
+      <stop offset="100%" stop-color="#f0fdf4"/>
+    </linearGradient>
+
+    <!-- Soft Sun Radial Glow -->
+    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="61.8%" stop-color="#ffffff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Mountain Slate Gradient -->
+    <linearGradient id="mountainGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <!-- Deep Forest Green Meadows Gradient -->
+    <linearGradient id="forestMeadowsGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#15803d"/>
+      <stop offset="38.2%" stop-color="#166534"/>
+      <stop offset="100%" stop-color="#052e16"/>
+    </linearGradient>
+
+    <!-- Golden Ratio Warm Accent Gradient -->
+    <linearGradient id="goldAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="61.8%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+
+    <!-- TICKET CUTOUT MASK -->
+    <mask id="ticketMask">
+      <rect x="0" y="0" width="230" height="142" rx="16" fill="white" />
+      
+      <!-- Hole Punch 'O' Cutout -->
+      <circle cx="86" cy="50" r="11" fill="black" />
+      
+      <!-- Side Notch Cutouts -->
+      <circle cx="0" cy="71" r="12" fill="black" />
+      <circle cx="230" cy="71" r="12" fill="black" />
+
+      <!-- Perforation Line -->
+      <line x1="63" y1="2" x2="63" y2="140" stroke="black" stroke-width="3" stroke-dasharray="5 5" />
+    </mask>
+
+    <!-- Shadow for Ticket -->
+    <filter id="ticketShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="22" stdDeviation="15" flood-color="#022c22" flood-opacity="0.55" />
+    </filter>
+
+    <clipPath id="squircleClip">
+      <rect width="320" height="320" rx="70" />
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squircleClip)">
+    <!-- Base Squircle Background if inner contents don't cover completely, but they do -->
+    <!-- Background Sky Layer -->
+    <rect width="320" height="320" fill="url(#skyGrad)" />
+
+    <!-- Soft Sun Glow -->
+    <circle cx="160" cy="110" r="110" fill="url(#sunGlow)" />
+
+    <!-- Mountain & Forest Meadows Layered BEHIND Ticket -->
+    <g id="background-scenery">
+      <!-- Main Mountain Peak -->
+      <polygon points="-10,320 160,18 330,320" fill="url(#mountainGrad)" />
+      
+      <!-- Mountain Shadow Side -->
+      <polygon points="160,18 330,320 160,320" fill="#020617" opacity="0.4" />
+
+      <!-- Snow Cap -->
+      <polygon points="160,18 196,88 174,76 160,98 146,76 124,88" fill="#ffffff" />
+      <polygon points="160,18 196,88 174,78 160,98" fill="#cbd5e1" />
+
+      <!-- Classic Deep Forest Green Meadows -->
+      <path d="M -10 230 Q 80 205 160 225 T 330 225 L 330 330 L -10 330 Z" fill="url(#forestMeadowsGrad)" />
+    </g>
+
+    <!-- Centered Ticket Tilted to -30 Degrees (Solid Green Body) -->
+    <g filter="url(#ticketShadow)" transform="translate(160, 175) rotate(-30)">
+      <g transform="translate(-115, -71)">
+        <!-- Main Ticket Body (Solid Emerald Green) -->
+        <rect x="0" y="0" width="230" height="142" rx="16" 
+              fill="#047857" 
+              mask="url(#ticketMask)" />
+
+        <!-- Ticket Outer Contrast Border (Soft White Glow) -->
+        <rect x="1" y="1" width="228" height="140" rx="15" 
+              fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2"
+              mask="url(#ticketMask)" />
+
+        <!-- Ticket Inner Inset Border (Golden Ratio Accent Line) -->
+        <rect x="8" y="8" width="214" height="126" rx="10" 
+              fill="none" stroke="url(#goldAccent)" stroke-width="1.5" stroke-opacity="0.85"
+              mask="url(#ticketMask)" />
+
+        <!-- Perforation Line -->
+        <line x1="63" y1="8" x2="63" y2="134" stroke="rgba(255, 255, 255, 0.4)" stroke-width="2" stroke-dasharray="4 4" />
+
+        <!-- High-Contrast Mint Ring Outline Around 'O' Hole Cutout -->
+        <circle cx="86" cy="50" r="13" fill="none" stroke="#6ee7b7" stroke-width="3" />
+        <circle cx="86" cy="50" r="15" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.6" />
+
+        <!-- Left Stub Text (ADMIT) in Gold Badge Accent -->
+        <g transform="translate(34, 71) rotate(-90)">
+          <rect x="-24" y="-9" width="48" height="18" rx="4" fill="url(#goldAccent)" />
+          <text x="0" y="4" fill="#022c22" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="900" text-anchor="middle" letter-spacing="2">ADMIT</text>
+        </g>
+
+        <!-- Main Title Text: PENPASS (Crisp Bold White for Maximum Legibility) -->
+        <text x="103" y="58" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="900" letter-spacing="2.5">PENPASS</text>
+
+        <!-- Golden Divider Accent Line -->
+        <line x1="80" y1="66" x2="202" y2="66" stroke="url(#goldAccent)" stroke-width="2" stroke-linecap="round" />
+
+        <!-- Barcode Graphic (High-Contrast White with Gold Accent Bars) -->
+        <g transform="translate(80, 77)" fill="#ffffff">
+          <rect x="0" y="0" width="3" height="34" />
+          <rect x="5" y="0" width="2" height="34" />
+          <rect x="9" y="0" width="5" height="34" />
+          <rect x="16" y="0" width="2" height="34" fill="#fde047" />
+          <rect x="20" y="0" width="3" height="34" />
+          <rect x="25" y="0" width="6" height="34" />
+          <rect x="33" y="0" width="2" height="34" />
+          <rect x="37" y="0" width="4" height="34" fill="#fde047" />
+          <rect x="43" y="0" width="3" height="34" />
+          <rect x="48" y="0" width="2" height="34" />
+          <rect x="52" y="0" width="5" height="34" />
+          <rect x="59" y="0" width="2" height="34" />
+          <rect x="63" y="0" width="4" height="34" />
+          <rect x="69" y="0" width="2" height="34" />
+          <rect x="73" y="0" width="5" height="34" />
+          <rect x="80" y="0" width="3" height="34" fill="#fde047" />
+          <rect x="85" y="0" width="2" height="34" />
+          <rect x="89" y="0" width="4" height="34" />
+          <rect x="95" y="0" width="3" height="34" />
+          <rect x="100" y="0" width="2" height="34" />
+          <rect x="104" y="0" width="5" height="34" />
+          <rect x="111" y="0" width="2" height="34" fill="#fde047" />
+          <rect x="115" y="0" width="4" height="34" />
+          <rect x="121" y="0" width="1" height="34" />
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
