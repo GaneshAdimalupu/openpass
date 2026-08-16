@@ -21,8 +21,28 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "openevents",
-	description: "Open-source event ticketing and management",
+	title: {
+		default: "openevents | Find and host events",
+		template: "%s | openevents",
+	},
+	description: "Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
+	keywords: ["events", "ticketing", "conferences", "meetups", "open source", "management", "openevents"],
+	openGraph: {
+		type: "website",
+		locale: "en_US",
+		url: "https://openevents.vercel.app",
+		title: "openevents | Find and host events",
+		description: "Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
+		siteName: "openevents",
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: "openevents | Find and host events",
+		description: "Open-source event ticketing and management platform.",
+	},
+	verification: {
+		google: "EO9SG-z--GhL_8DQ1ywwXUUHJPIIGJiLKhQITqxbdOQ",
+	},
 };
 
 export const viewport: Viewport = {
