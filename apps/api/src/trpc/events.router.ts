@@ -434,6 +434,45 @@ export const eventsRouter = router({
 			});
 		}),
 
+	delete: authedProcedure
+		.input(z.object({ id: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			const event = await ctx.prisma.event.findUnique({
+				where: { id: input.id },
+				include: { organizer: true },
+			});
+
+			if (!event) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Event not found",
+				});
+			}
+
+			// Verify permissions
+			if (event.organizer.ownerId !== ctx.userId) {
+				const membership = await ctx.prisma.organizerMember.findFirst({
+					where: {
+						organizerId: event.organizerId,
+						userId: ctx.userId,
+						role: { in: ["ADMIN", "EDITOR"] },
+					},
+				});
+				if (!membership) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message: "You do not have permission to delete this event.",
+					});
+				}
+			}
+
+			await ctx.prisma.event.delete({
+				where: { id: input.id },
+			});
+
+			return { success: true };
+		}),
+
 	rsvpGetForm: authedProcedure
 		.input(z.object({ slug: z.string() }))
 		.query(async ({ ctx, input }) => {

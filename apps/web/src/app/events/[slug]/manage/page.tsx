@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Eye, EyeOff, Edit3, ExternalLink, Copy } from "lucide-react";
+import { Eye, EyeOff, Edit3, ExternalLink, Copy, Trash2 } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 export default function EventManagePage() {
 	const params = useParams();
 	const slug = params.slug as string;
-	const _router = useRouter();
+	const router = useRouter();
+
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [showDeleteModal, setShowDeleteModal] = useState(false);
 
 	// Basic Info
 	const [title, setTitle] = useState("");
@@ -59,6 +62,22 @@ export default function EventManagePage() {
 			alert(err.message);
 		},
 	});
+
+	const deleteEvent = trpc.events.delete.useMutation({
+		onSuccess: () => {
+			router.push("/dashboard");
+		},
+		onError: (err: { message: string }) => {
+			alert(err.message);
+			setIsDeleting(false);
+		},
+	});
+
+	const handleDeleteEvent = () => {
+		if (!event) return;
+		setIsDeleting(true);
+		deleteEvent.mutate({ id: event.id });
+	};
 
 	useEffect(() => {
 		if (event) {
@@ -630,6 +649,78 @@ export default function EventManagePage() {
 					</div>
 				</div>
 			</div>
+
+			{/* Danger Zone */}
+			<div className="flex flex-col my-8 border border-alert/30 bg-alert/5 rounded-lg p-6">
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+					<div>
+						<h3 className="font-display font-semibold text-base text-alert">
+							Danger Zone
+						</h3>
+						<p className="text-xs text-ink/70 mt-1">
+							Permanently delete this event and all associated tickets, RSVP
+							forms, schedules, and attendee records.
+						</p>
+					</div>
+					<button
+						type="button"
+						onClick={() => setShowDeleteModal(true)}
+						className="px-4 py-2 text-xs font-semibold text-paper bg-alert rounded-md hover:bg-alert/90 transition-colors whitespace-nowrap cursor-pointer self-start sm:self-auto flex items-center gap-1.5"
+					>
+						<Trash2 className="w-3.5 h-3.5" />
+						<span>Delete Event</span>
+					</button>
+				</div>
+			</div>
+
+			{/* Delete Confirmation Modal */}
+			{showDeleteModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-xs">
+					<div className="bg-paper border border-perforation rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+						<div className="flex items-center gap-3 text-alert">
+							<div className="w-10 h-10 rounded-full bg-alert/10 flex items-center justify-center shrink-0">
+								<Trash2 className="w-5 h-5 text-alert" />
+							</div>
+							<div>
+								<h3 className="font-display font-semibold text-base text-ink">
+									Delete Event
+								</h3>
+								<p className="text-xs text-ink/60">
+									This action cannot be undone.
+								</p>
+							</div>
+						</div>
+
+						<p className="text-xs text-ink/80 leading-relaxed">
+							Are you sure you want to permanently delete{" "}
+							<strong className="text-ink font-semibold">
+								"{event.title}"
+							</strong>
+							? All tickets, RSVPs, speaker proposals, and check-in records will
+							be permanently removed.
+						</p>
+
+						<div className="flex items-center justify-end gap-3 pt-2">
+							<button
+								type="button"
+								onClick={() => setShowDeleteModal(false)}
+								disabled={isDeleting}
+								className="px-4 py-2 text-xs font-medium text-ink bg-perforation/30 hover:bg-perforation/50 rounded-lg transition-colors cursor-pointer"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								onClick={handleDeleteEvent}
+								disabled={isDeleting}
+								className="px-4 py-2 text-xs font-semibold text-paper bg-alert hover:bg-alert/90 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+							>
+								{isDeleting ? "Deleting..." : "Yes, Delete Event"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 
 			{/* Form Action Bar at bottom */}
 			<div className="fixed bottom-0 right-0 left-0 md:left-[250px] bg-paper border-t border-perforation px-8 py-4 flex justify-between items-center z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">

@@ -2,7 +2,7 @@
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { trpc } from "@/lib/trpc";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -41,6 +41,10 @@ function DashboardContent(): JSX.Element {
 	const [isCompletedExpanded, setIsCompletedExpanded] =
 		useState<boolean>(false);
 	const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
+	const [deletingEvent, setDeletingEvent] = useState<{
+		id: string;
+		title: string;
+	} | null>(null);
 
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 	const [newEventTitle, setNewEventTitle] = useState<string>("");
@@ -51,6 +55,17 @@ function DashboardContent(): JSX.Element {
 		onSuccess: () => {
 			utils.events.byOrganizer.invalidate();
 			utils.organizers.myOrganizers.invalidate();
+		},
+	});
+
+	const deleteEvent = trpc.events.delete.useMutation({
+		onSuccess: () => {
+			utils.events.byOrganizer.invalidate();
+			utils.organizers.myOrganizers.invalidate();
+			setDeletingEvent(null);
+		},
+		onError: (err) => {
+			alert(err.message);
 		},
 	});
 
@@ -506,6 +521,9 @@ function DashboardContent(): JSX.Element {
 													event={evt}
 													onCopyLink={() => handleCopyLink(evt.slug, evt.id)}
 													isCopied={copiedEventId === evt.id}
+													onDelete={() =>
+														setDeletingEvent({ id: evt.id, title: evt.title })
+													}
 												/>
 											))}
 										</div>
@@ -535,6 +553,9 @@ function DashboardContent(): JSX.Element {
 													event={evt}
 													onCopyLink={() => handleCopyLink(evt.slug, evt.id)}
 													isCopied={copiedEventId === evt.id}
+													onDelete={() =>
+														setDeletingEvent({ id: evt.id, title: evt.title })
+													}
 												/>
 											))}
 										</div>
@@ -575,6 +596,12 @@ function DashboardContent(): JSX.Element {
 																handleCopyLink(evt.slug, evt.id)
 															}
 															isCopied={copiedEventId === evt.id}
+															onDelete={() =>
+																setDeletingEvent({
+																	id: evt.id,
+																	title: evt.title,
+																})
+															}
 														/>
 													))}
 												</div>
@@ -677,6 +704,55 @@ function DashboardContent(): JSX.Element {
 					</div>
 				</div>
 			)}
+
+			{/* Delete Event Confirmation Modal */}
+			{deletingEvent && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-xs">
+					<div className="bg-paper border border-perforation rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+						<div className="flex items-center gap-3 text-alert">
+							<div className="w-10 h-10 rounded-full bg-alert/10 flex items-center justify-center shrink-0">
+								<Trash2 className="w-5 h-5 text-alert" />
+							</div>
+							<div>
+								<h3 className="font-display font-semibold text-base text-ink">
+									Delete Event
+								</h3>
+								<p className="text-xs text-ink/60">
+									This action cannot be undone.
+								</p>
+							</div>
+						</div>
+
+						<p className="text-xs text-ink/80 leading-relaxed">
+							Are you sure you want to permanently delete{" "}
+							<strong className="text-ink font-semibold">
+								"{deletingEvent.title}"
+							</strong>
+							? All tickets, RSVPs, and check-in records will be permanently
+							removed.
+						</p>
+
+						<div className="flex items-center justify-end gap-3 pt-2">
+							<button
+								type="button"
+								onClick={() => setDeletingEvent(null)}
+								disabled={deleteEvent.isPending}
+								className="px-4 py-2 text-xs font-medium text-ink bg-perforation/30 hover:bg-perforation/50 rounded-lg transition-colors cursor-pointer"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								onClick={() => deleteEvent.mutate({ id: deletingEvent.id })}
+								disabled={deleteEvent.isPending}
+								className="px-4 py-2 text-xs font-semibold text-paper bg-alert hover:bg-alert/90 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+							>
+								{deleteEvent.isPending ? "Deleting..." : "Yes, Delete Event"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -703,12 +779,14 @@ interface EventCardProps {
 	};
 	onCopyLink: () => void;
 	isCopied: boolean;
+	onDelete?: () => void;
 }
 
 function EventCard({
 	event,
 	onCopyLink,
 	isCopied,
+	onDelete,
 }: EventCardProps): JSX.Element {
 	const startDate = new Date(event.eventStart);
 	const formattedDate = startDate.toLocaleDateString("en-US", {
@@ -768,8 +846,8 @@ function EventCard({
 					<span aria-hidden="true">→</span>
 				</Link>
 
-				<div className="flex items-center gap-3">
-					<span className="text-xs font-mono opacity-60 flex items-center gap-1">
+				<div className="flex items-center gap-2">
+					<span className="text-xs font-mono opacity-60 flex items-center gap-1 mr-1">
 						<svg
 							aria-hidden="true"
 							className="w-3.5 h-3.5"
@@ -818,6 +896,19 @@ function EventCard({
 							</svg>
 						)}
 					</button>
+
+					{/* Delete Event Button */}
+					{onDelete && (
+						<button
+							type="button"
+							onClick={onDelete}
+							title="Delete Event"
+							className="p-1 rounded text-ink opacity-40 hover:opacity-100 hover:text-alert hover:bg-alert/10 transition-colors cursor-pointer"
+							aria-label="Delete event"
+						>
+							<Trash2 className="w-3.5 h-3.5" />
+						</button>
+					)}
 				</div>
 			</div>
 		</div>
