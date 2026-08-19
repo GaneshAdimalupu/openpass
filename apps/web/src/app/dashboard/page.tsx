@@ -1,9 +1,11 @@
 "use client";
 
-import { SiteHeader } from "@/components/layout/site-header";
+import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { trpc } from "@/lib/trpc";
+import { Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { JSX } from "react";
 
@@ -17,6 +19,60 @@ export default function DashboardPage(): JSX.Element {
 	const [isCompletedExpanded, setIsCompletedExpanded] =
 		useState<boolean>(false);
 	const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
+
+	const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+	const [newEventTitle, setNewEventTitle] = useState<string>("");
+	const [createEventError, setCreateEventError] = useState<string | null>(null);
+	const router = useRouter();
+	const createEvent = trpc.events.create.useMutation();
+
+	const handleCreateEventSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setCreateEventError(null);
+
+		if (!currentOrgId) {
+			setCreateEventError("Please select an organization.");
+			return;
+		}
+
+		if (!newEventTitle.trim()) {
+			setCreateEventError("Event name is required.");
+			return;
+		}
+
+		try {
+			const now = new Date();
+			const later = new Date(now.getTime() + 60 * 60 * 1000); // +1 hour
+
+			const autoSlug = newEventTitle
+				.trim()
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, "-")
+				.replace(/^-|-$/g, "");
+
+			const result = await createEvent.mutateAsync({
+				title: newEventTitle.trim(),
+				organizerId: currentOrgId as string,
+				slug: autoSlug || `event-${Math.random().toString(36).substring(2, 6)}`,
+				eventStart: now.toISOString(),
+				eventEnd: later.toISOString(),
+				capacity: 300,
+				tickets: [
+					{
+						name: "General Pass",
+						price: 0,
+						quantity: 300,
+					},
+				],
+			});
+
+			router.push(`/events/${result.slug}/manage`);
+		} catch (err: unknown) {
+			setCreateEventError(
+				err instanceof Error ? err.message : "Failed to create event",
+			);
+		}
+	};
 
 	const userId = session?.user?.id;
 
@@ -85,8 +141,8 @@ export default function DashboardPage(): JSX.Element {
 	if (status === "unauthenticated") {
 		return (
 			<div className="min-h-screen bg-paper flex flex-col">
-				<SiteHeader />
-				<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-16 flex flex-col items-center justify-center text-center">
+				<DashboardHeader />
+				<main className="flex-1 w-full px-4 lg:px-6 py-16 flex flex-col items-center justify-center text-center">
 					<h1 className="font-display font-semibold text-h2 mb-4">
 						Access Restricted
 					</h1>
@@ -107,9 +163,9 @@ export default function DashboardPage(): JSX.Element {
 
 	return (
 		<div className="min-h-screen bg-paper flex flex-col">
-			<SiteHeader />
+			<DashboardHeader />
 
-			<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-8">
+			<main className="flex-1 w-full px-4 lg:px-6 py-8">
 				{orgsLoading ? (
 					<div className="space-y-6 animate-pulse">
 						<div className="h-16 bg-perforation/30 rounded-lg" />
@@ -121,8 +177,8 @@ export default function DashboardPage(): JSX.Element {
 					</div>
 				) : !organizers || organizers.length === 0 ? (
 					<div className="border border-perforation rounded-lg p-12 text-center bg-paper/60 my-8">
-						<div className="w-16 h-16 rounded-full bg-stamp/10 text-stamp flex items-center justify-center mx-auto mb-4 font-mono text-2xl font-semibold">
-							⚡
+						<div className="w-16 h-16 rounded-full bg-stamp/10 text-stamp flex items-center justify-center mx-auto mb-4">
+							<Sparkles className="w-8 h-8 text-stamp" />
 						</div>
 						<h1 className="font-display font-semibold text-h2 mb-2">
 							Create your Organizer Profile
@@ -143,9 +199,9 @@ export default function DashboardPage(): JSX.Element {
 						{/* Top Control Bar: Search + Participated/Organized Pill + Switcher + Create Event */}
 						<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-perforation pb-6">
 							{/* Left: Search Bar & Segmented Toggle */}
-							<div className="flex flex-wrap items-center gap-3">
+							<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
 								{/* Search Input */}
-								<div className="relative min-w-56">
+								<div className="relative flex-1 sm:min-w-56">
 									<svg
 										aria-hidden="true"
 										className="absolute left-3 top-1/2 -translate-y-1/2 text-ink opacity-40"
@@ -172,11 +228,11 @@ export default function DashboardPage(): JSX.Element {
 								</div>
 
 								{/* Segmented Pill: Participated / Organized */}
-								<div className="inline-flex rounded-md border border-perforation p-0.5 bg-paper/50">
+								<div className="inline-flex justify-center rounded-md border border-perforation p-0.5 bg-paper/50 shrink-0">
 									<button
 										type="button"
 										onClick={() => setMode("participated")}
-										className={`px-3 py-1.5 rounded text-xs label transition-all ${
+										className={`flex-1 sm:flex-initial px-3 py-1.5 rounded text-xs label transition-all ${
 											mode === "participated"
 												? "bg-ink text-paper font-semibold shadow-xs"
 												: "text-ink opacity-60 hover:opacity-100"
@@ -187,7 +243,7 @@ export default function DashboardPage(): JSX.Element {
 									<button
 										type="button"
 										onClick={() => setMode("organized")}
-										className={`px-3 py-1.5 rounded text-xs label transition-all ${
+										className={`flex-1 sm:flex-initial px-3 py-1.5 rounded text-xs label transition-all ${
 											mode === "organized"
 												? "bg-ink text-paper font-semibold shadow-xs"
 												: "text-ink opacity-60 hover:opacity-100"
@@ -199,19 +255,19 @@ export default function DashboardPage(): JSX.Element {
 							</div>
 
 							{/* Right: Organizer Switcher & Create Event */}
-							<div className="flex items-center gap-3">
+							<div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-3 w-full lg:w-auto">
 								{/* Active Organizer Selector */}
-								<div className="relative flex items-center">
+								<div className="relative flex-1 sm:flex-initial flex items-center">
 									<select
 										value={currentOrgId}
 										onChange={(e) => {
 											if (e.target.value === "__new__") {
-												window.location.href = "/onboarding";
+												router.push("/onboarding");
 											} else {
 												setSelectedOrgId(e.target.value);
 											}
 										}}
-										className="bg-paper border border-perforation text-xs rounded-md pl-7 pr-8 py-2 text-ink font-medium focus:outline-none focus:border-stamp appearance-none cursor-pointer"
+										className="w-full sm:w-auto bg-paper border border-perforation text-xs rounded-md pl-7 pr-8 py-2 text-ink font-medium focus:outline-none focus:border-stamp appearance-none cursor-pointer"
 										aria-label="Select active organizer profile"
 									>
 										{organizers.map((org) => (
@@ -241,9 +297,14 @@ export default function DashboardPage(): JSX.Element {
 								</div>
 
 								{/* Create Event Pill Button */}
-								<Link
-									href="/events/new"
-									className="group inline-flex items-center gap-2 pl-4 pr-1.5 py-1.5 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs"
+								<button
+									type="button"
+									onClick={() => {
+										setNewEventTitle("");
+										setCreateEventError(null);
+										setIsCreateModalOpen(true);
+									}}
+									className="group inline-flex items-center gap-2 pl-4 pr-1.5 py-1.5 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs shrink-0"
 								>
 									<span>Create Event</span>
 									<span className="w-5 h-5 rounded-full bg-ink flex items-center justify-center text-paper transition-transform duration-200 group-hover:translate-x-0.5">
@@ -263,7 +324,7 @@ export default function DashboardPage(): JSX.Element {
 											<path d="m12 5 7 7-7 7" />
 										</svg>
 									</span>
-								</Link>
+								</button>
 
 								{/* Organization Settings Gear Icon Button at the end */}
 								{activeOrg && (
@@ -478,6 +539,96 @@ export default function DashboardPage(): JSX.Element {
 					</div>
 				)}
 			</main>
+
+			{/* Create Event Modal */}
+			{isCreateModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-paper border border-perforation rounded-xl shadow-lg max-w-md w-full animate-in zoom-in-95 duration-200">
+						<div className="flex items-center justify-between p-4 border-b border-perforation">
+							<h2 className="font-display font-semibold text-h3 text-ink">
+								Create New Event
+							</h2>
+							<button
+								type="button"
+								onClick={() => setIsCreateModalOpen(false)}
+								className="text-ink/50 hover:text-ink transition-colors"
+								aria-label="Close modal"
+							>
+								<X className="w-5 h-5" />
+							</button>
+						</div>
+						<form onSubmit={handleCreateEventSubmit} className="p-5 space-y-6">
+							{createEventError && (
+								<div className="text-sm text-alert bg-alert/10 p-3 rounded-md">
+									{createEventError}
+								</div>
+							)}
+							<div className="space-y-2">
+								<label
+									htmlFor="modalEventTitle"
+									className="block text-xs label text-ink/70"
+								>
+									Event Name*
+								</label>
+								<input
+									id="modalEventTitle"
+									type="text"
+									required
+									value={newEventTitle}
+									onChange={(e) => setNewEventTitle(e.target.value)}
+									placeholder="Enter the new event name"
+									className="w-full bg-perforation/10 border border-perforation rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-stamp transition-colors"
+								/>
+							</div>
+
+							<div className="space-y-2 relative">
+								<label
+									htmlFor="modalOrg"
+									className="block text-xs label text-ink/70 mb-1"
+								>
+									Organization*
+									<span className="block font-normal text-[10px] opacity-60">
+										Select Personal if you do not want any organization
+									</span>
+								</label>
+								<select
+									id="modalOrg"
+									value={currentOrgId}
+									onChange={(e) => setSelectedOrgId(e.target.value)}
+									className="w-full bg-perforation/10 border border-perforation rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-stamp transition-colors appearance-none"
+								>
+									{organizers?.map((org) => (
+										<option key={org.id} value={org.id}>
+											{org.name}
+										</option>
+									))}
+								</select>
+								<svg
+									aria-hidden="true"
+									className="w-4 h-4 absolute right-3 bottom-3 text-ink opacity-50 pointer-events-none"
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								>
+									<path d="m6 9 6 6 6-6" />
+								</svg>
+							</div>
+
+							<button
+								type="submit"
+								disabled={createEvent.isPending}
+								className="w-full py-2.5 bg-ink text-paper rounded-lg text-sm font-medium hover:bg-ink/90 transition-colors disabled:opacity-50"
+							>
+								{createEvent.isPending ? "Creating..." : "Create Event"}
+							</button>
+						</form>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -562,7 +713,7 @@ function EventCard({
 			{/* Footer: Manage Button, Guests Count, Context Actions */}
 			<div className="border-t border-perforation pt-3 flex items-center justify-between">
 				<Link
-					href={`/events#${event.slug}`}
+					href={`/events/${event.slug}/manage`}
 					className="label inline-flex items-center gap-1 text-xs text-ink hover:text-stamp transition-colors font-medium"
 				>
 					<span>Manage</span>

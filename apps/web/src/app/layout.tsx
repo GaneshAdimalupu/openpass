@@ -25,14 +25,24 @@ export const metadata: Metadata = {
 		default: "openevents | Find and host events",
 		template: "%s | openevents",
 	},
-	description: "Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
-	keywords: ["events", "ticketing", "conferences", "meetups", "open source", "management", "openevents"],
+	description:
+		"Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
+	keywords: [
+		"events",
+		"ticketing",
+		"conferences",
+		"meetups",
+		"open source",
+		"management",
+		"openevents",
+	],
 	openGraph: {
 		type: "website",
 		locale: "en_US",
 		url: "https://openevents.vercel.app",
 		title: "openevents | Find and host events",
-		description: "Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
+		description:
+			"Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
 		siteName: "openevents",
 	},
 	twitter: {

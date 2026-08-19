@@ -3,6 +3,7 @@
 import { SiteHeader } from "@/components/layout/site-header";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { trpc } from "@/lib/trpc";
+import { X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -31,15 +32,12 @@ const ROLE_DESCRIPTIONS: Record<RoleOption, string> = {
 
 const ROLE_BADGE_STYLES: Record<string, string> = {
 	OWNER: "bg-stamp/10 text-stamp border-stamp/30",
-	ADMIN:
-		"bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
-	EDITOR: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
-	COORDINATOR:
-		"bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/30",
-	VOLUNTEER:
-		"bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
-	VIEWER: "bg-perforation/40 text-ink opacity-80 border-perforation",
-	DEVICE: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30",
+	ADMIN: "bg-stamp/10 text-stamp border-stamp/30",
+	EDITOR: "bg-perforation/40 text-ink border-perforation",
+	COORDINATOR: "bg-perforation/40 text-ink border-perforation",
+	VOLUNTEER: "bg-perforation/40 text-ink border-perforation",
+	VIEWER: "bg-perforation/20 text-ink/70 border-perforation",
+	DEVICE: "bg-perforation/30 text-ink font-mono border-perforation",
 };
 
 export default function OrganizationOverviewPage(): JSX.Element {
@@ -268,7 +266,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 			{/* Floating Toast Notification */}
 			{toastMessage && (
 				<div className="fixed bottom-6 right-6 z-50 bg-ink text-paper px-4 py-3 rounded-lg shadow-lg border border-perforation text-xs font-mono animate-in fade-in slide-in-from-bottom-2">
-					✓ {toastMessage}
+					{toastMessage}
 				</div>
 			)}
 
@@ -364,7 +362,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 							</div>
 
 							{/* Navigation Tab Bar */}
-							<div className="flex items-center gap-6 border-b border-perforation text-sm font-medium">
+							<div className="flex items-center gap-6 border-b border-perforation text-sm font-medium overflow-x-auto whitespace-nowrap scrollbar-none">
 								<button
 									type="button"
 									onClick={() => setActiveTab("overview")}
@@ -759,19 +757,17 @@ export default function OrganizationOverviewPage(): JSX.Element {
 													</h4>
 													{event.isOnline ? (
 														<p className="text-[11px] text-ink opacity-70 truncate font-mono">
-															🌐 Online Event
+															Online Event
 														</p>
 													) : event.location ? (
 														<p className="text-[11px] text-ink opacity-70 truncate font-mono">
-															📍 {event.location}
+															{event.location}
 														</p>
 													) : null}
 												</div>
 
 												<div className="pt-2 border-t border-perforation flex items-center justify-between text-[11px] font-mono opacity-70">
-													<span>
-														🎟️ {event._count?.tickets || 0} Ticket Types
-													</span>
+													<span>{event._count?.tickets || 0} Ticket Types</span>
 													<span className="text-stamp group-hover:translate-x-0.5 transition-transform">
 														View Event →
 													</span>
@@ -1049,7 +1045,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
 								aria-label="Close modal"
 							>
-								✕
+								<X className="w-4 h-4" />
 							</button>
 						</div>
 
@@ -1165,7 +1161,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
 								aria-label="Close modal"
 							>
-								✕
+								<X className="w-4 h-4" />
 							</button>
 						</div>
 
@@ -1242,7 +1238,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
 								aria-label="Close drawer"
 							>
-								✕
+								<X className="w-4 h-4" />
 							</button>
 						</div>
 
@@ -1440,7 +1436,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
 								aria-label="Close modal"
 							>
-								✕
+								<X className="w-4 h-4" />
 							</button>
 						</div>
 

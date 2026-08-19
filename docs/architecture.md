@@ -86,18 +86,18 @@ sequenceDiagram
 Postgres, accessed only through Prisma, only from `apps/api`. Nothing
 else talks to the DB directly — that's the one rule worth keeping.
 
-The schema itself (`packages/db/prisma/schema.prisma`) doesn't exist
-yet. We know roughly what it'll need to cover — an organizer creates
-events, an event has ticket types, a ticket belongs to an attendee, a
-check-in records that attendee showing up — but nobody's written the
-actual models yet. That's next, and it's worth designing as its own
-PR rather than baking it into scaffolding, so it gets a real review.
+The schema (`packages/db/prisma/schema.prisma`) covers the core domain models:
+- **Auth & Organizers**: `User`, `Account`, `Session`, `Organizer`, `OrganizerMember`.
+- **Events & Ticketing**: `Event`, `Ticket` (tier config), `IssuedTicket` (attendee pass & QR token), `TicketTransfer` (secure claim delegation).
+- **RSVP & Attendee Management**: `RsvpForm`, `CustomQuestion`, `RsvpSubmission`, `RsvpCheckIn`.
+- **CFP (Call for Proposals)**: `CfpForm`, `CfpCustomQuestion`, `CfpSubmission`, `CfpReview`.
+- **Program & Schedule**: `ScheduleItem` (multi-day session scheduling, stages/tracks, proposal linking).
+- **Sponsors & Ecosystem Partners**: `EventPartner` (sponsor tiers, community partners, logo & website showcases).
+- **Team & Volunteers**: `EventVolunteer` (core organizers, registration desk staff, stage managers, helpers).
 
 ## Auth
 
-Not decided yet. Whatever we pick has to work for both a browser
-session (web) and a token a mobile app can hold onto, since mobile
-can't rely on cookies the way the web app can.
+Powered by NextAuth with JWT strategies and tRPC auth context, supporting credentials and OAuth identity providers (OpenEvents, Google, GitHub).
 
 ## Running it locally
 

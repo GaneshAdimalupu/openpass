@@ -1,5 +1,6 @@
 "use client";
 
+import { Clock, MapPin } from "lucide-react";
 import Link from "next/link";
 import type { JSX } from "react";
 import type { EventItem } from "./events-grid-view";
@@ -121,10 +122,16 @@ export function EventsTimelineView({
 													</p>
 												)}
 
-												<div className="font-mono text-ticket opacity-60 flex flex-wrap items-center gap-3 pt-1">
-													<span>🕒 {timeStr}</span>
+												<div className="font-mono text-ticket opacity-60 flex flex-wrap items-center gap-3 pt-1 text-xs">
+													<span className="flex items-center gap-1">
+														<Clock className="w-3.5 h-3.5 text-stamp" />
+														{timeStr}
+													</span>
 													<span>·</span>
-													<span>📍 {event.location}</span>
+													<span className="flex items-center gap-1">
+														<MapPin className="w-3.5 h-3.5 text-stamp" />
+														{event.location}
+													</span>
 												</div>
 											</div>
 										</div>

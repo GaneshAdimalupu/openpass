@@ -11,6 +11,7 @@ model User {
   id               String           @id @default(cuid())
   email            String           @unique
   name             String?
+  username         String?          @unique
   phone            String?
   image            String?
   passwordHash     String?
@@ -29,6 +30,11 @@ model User {
   organizers       Organizer[]
   memberships      OrganizerMember[]
   sessions         Session[]
+  rsvpSubmissions  RsvpSubmission[]
+  cfpSubmissions   CfpSubmission[]
+  cfpReviews       CfpReview[]
+  volunteeredEvents EventVolunteer[]
+  issuedTickets    IssuedTicket[]
 }
 
 model Account {
@@ -129,6 +135,8 @@ model Event {
   topic             String      @default("technology")
   tags              String[]
   status            EventStatus @default(draft)
+  shortDescription  String?
+  showSpeakers      Boolean     @default(true)
   eventStart        DateTime
   eventEnd          DateTime
   timezone          String      @default("Asia/Kolkata")
@@ -137,6 +145,13 @@ model Event {
   isOnline          Boolean     @default(false)
   location          String?
   onlineLink        String?
+  recordingLink     String?
+  mapLink           String?
+  isPaid            Boolean     @default(false)
+  ticketDescription String?
+  showRsvp          Boolean     @default(false)
+  showSchedule      Boolean     @default(true)
+  showPartners      Boolean     @default(true)
   capacity          Int?
   seriesId          String?
   organizerId       String
@@ -144,6 +159,14 @@ model Event {
   updatedAt         DateTime    @updatedAt
   organizer         Organizer   @relation(fields: [organizerId], references: [id])
   tickets           Ticket[]
+  issuedTickets     IssuedTicket[]
+  rsvpSubmissions   RsvpSubmission[]
+  rsvpForm          RsvpForm?
+  cfpForm           CfpForm?
+  cfpSubmissions    CfpSubmission[]
+  scheduleItems     ScheduleItem[]
+  partners          EventPartner[]
+  volunteers        EventVolunteer[]
 
   @@index([organizerId])
   @@index([status])
@@ -153,15 +176,123 @@ model Event {
 }
 
 model Ticket {
-  id        String   @id @default(cuid())
-  eventId   String
-  name      String
-  price     Int      @default(0)
-  quantity  Int?
-  createdAt DateTime @default(now())
-  event     Event    @relation(fields: [eventId], references: [id])
+  id            String         @id @default(cuid())
+  eventId       String
+  name          String
+  description   String?
+  price         Int            @default(0)
+  quantity      Int?           // null = unlimited
+  maxPerOrder   Int            @default(1)
+  salesStart    DateTime?
+  salesEnd      DateTime?
+  isPublished   Boolean        @default(true)
+  allowWaitlist Boolean        @default(true)
+  allowTransfer Boolean        @default(true)
+  allowDrop     Boolean        @default(true)
+  order         Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  issuedTickets IssuedTicket[]
 
   @@index([eventId])
+}
+
+model IssuedTicket {
+  id            String         @id @default(cuid())
+  ticketId      String
+  eventId       String
+  userId        String?
+  ticketCode    String         @unique // "OPT-XXXX-YYYY"
+  qrToken       String         @unique // Verification token
+  attendeeName  String
+  attendeeEmail String
+  attendeePhone String?
+  status        TicketStatus   @default(CONFIRMED)
+  waitlistOrder Int?
+  checkedInAt   DateTime?
+  answers       String?        // JSON string
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  ticket        Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  transfers     TicketTransfer[]
+
+  @@index([eventId])
+  @@index([ticketId])
+  @@index([attendeeEmail])
+  @@index([status])
+  @@index([ticketCode])
+  @@index([qrToken])
+}
+
+model TicketTransfer {
+  id             String         @id @default(cuid())
+  issuedTicketId String
+  senderEmail    String
+  recipientName  String
+  recipientEmail String
+  transferToken  String         @unique
+  status         TransferStatus @default(PENDING)
+  expiresAt      DateTime
+  createdAt      DateTime       @default(now())
+  completedAt    DateTime?
+
+  issuedTicket   IssuedTicket   @relation(fields: [issuedTicketId], references: [id], onDelete: Cascade)
+
+  @@index([issuedTicketId])
+  @@index([transferToken])
+}
+
+enum TicketStatus {
+  CONFIRMED
+  WAITLISTED
+  DROPPED
+  TRANSFERRED
+  CHECKED_IN
+  CANCELLED
+}
+
+enum TransferStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+model RsvpForm {
+  id                     String    @id @default(cuid())
+  eventId                String    @unique
+  isPublished            Boolean   @default(false)
+  allowEdit              Boolean   @default(false)
+  requiresApproval       Boolean   @default(false)
+  maxRsvpCount           Int       @default(100)
+  description            String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  event                  Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  customQuestions        CustomQuestion[]
+
+  @@index([eventId])
+}
+
+model CustomQuestion {
+  id           String    @id @default(cuid())
+  rsvpFormId   String
+  question     String
+  type         String    
+  isMandatory  Boolean   @default(false)
+  options      String?   
+  description  String?
+  order        Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  rsvpForm     RsvpForm  @relation(fields: [rsvpFormId], references: [id], onDelete: Cascade)
+
+  @@index([rsvpFormId])
 }
 
 enum UserRole {
@@ -200,3 +331,186 @@ enum EventStatus {
   completed
   cancelled
 }
+
+model RsvpSubmission {
+  id                String    @id @default(cuid())
+  eventId           String
+  userId            String
+  status            String    @default("Pending") // "Pending", "Accepted", "Rejected"
+  confirmAttendance Boolean   @default(false)
+  answers           Json?     // Stores mapping of Custom Question -> Answer
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIns          RsvpCheckIn[]
+
+  @@unique([eventId, userId])
+}
+
+model RsvpCheckIn {
+  id               String         @id @default(cuid())
+  submissionId     String
+  timestamp        DateTime       @default(now())
+
+  submission       RsvpSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+}
+
+model CfpForm {
+  id                    String               @id @default(cuid())
+  eventId               String               @unique
+  isPublished           Boolean              @default(false)
+  allowEdit             Boolean              @default(true)
+  anonymiseProposals    Boolean              @default(false)
+  hideReviews           Boolean              @default(false)
+  onlyWorkshops         Boolean              @default(false)
+  onlyTalks             Boolean              @default(false)
+  deadline              DateTime?
+  publicCustomResponses Boolean              @default(false)
+  guidelines            String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  event                 Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  customQuestions       CfpCustomQuestion[]
+  submissions           CfpSubmission[]
+
+  @@index([eventId])
+}
+
+model CfpCustomQuestion {
+  id          String   @id @default(cuid())
+  cfpFormId   String
+  question    String
+  type        String   
+  isMandatory Boolean  @default(false)
+  options     String?  
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cfpForm     CfpForm  @relation(fields: [cfpFormId], references: [id], onDelete: Cascade)
+
+  @@index([cfpFormId])
+}
+
+model CfpSubmission {
+  id             String      @id @default(cuid())
+  eventId        String
+  cfpFormId      String
+  speakerId      String
+  
+  title          String
+  sessionType    String      @default("talk")
+  abstract       String
+  targetAudience String      @default("all")
+  duration       Int         @default(30)
+  speakerBio     String?
+  slidesUrl      String?
+
+  answers        Json?
+  status         String      @default("Pending")
+  
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  event          Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  cfpForm        CfpForm     @relation(fields: [cfpFormId], references: [id], onDelete: Cascade)
+  speaker        User        @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+  reviews        CfpReview[]
+  scheduleItems  ScheduleItem[]
+
+  @@index([eventId])
+  @@index([cfpFormId])
+  @@index([speakerId])
+  @@index([status])
+}
+
+model CfpReview {
+  id           String        @id @default(cuid())
+  submissionId String
+  reviewerId   String
+  score        Int?
+  comment      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  submission   CfpSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer     User          @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, reviewerId])
+  @@index([submissionId])
+  @@index([reviewerId])
+}
+
+model ScheduleItem {
+  id                    String         @id @default(cuid())
+  eventId               String
+  title                 String
+  description           String?
+  scheduledDate         String         // e.g. "2026-09-15"
+  startTime             String         // e.g. "10:00"
+  endTime               String         // e.g. "10:45"
+  stage                 String?        // e.g. "Main Auditorium", "Workshop Lab"
+  type                  String         @default("talk") // "keynote", "talk", "workshop", "break", "networking"
+  speakerName           String?
+
+  linkedCfpSubmissionId String?
+  linkedCfpSubmission   CfpSubmission? @relation(fields: [linkedCfpSubmissionId], references: [id], onDelete: SetNull)
+
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  event                 Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([scheduledDate])
+  @@index([linkedCfpSubmissionId])
+}
+
+model EventPartner {
+  id          String   @id @default(cuid())
+  eventId     String
+  type        String   // "sponsor" | "community"
+  name        String
+  tier        String?  // "Platinum", "Gold", "Silver", "Bronze", "Venue Partner", "Custom"
+  customTier  String?
+  logoUrl     String?
+  websiteUrl  String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([type])
+}
+
+model EventVolunteer {
+  id          String   @id @default(cuid())
+  eventId     String
+  userId      String?
+  name        String
+  email       String
+  role        String   @default("Volunteer") // "Core Team Member", "Volunteer", "Registration Desk", "Stage Manager", "Custom"
+  customRole  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, email])
+  @@index([eventId])
+  @@index([userId])
+  @@index([email])
+}
+
+
+
+

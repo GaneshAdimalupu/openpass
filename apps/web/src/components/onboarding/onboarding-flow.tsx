@@ -366,7 +366,7 @@ export function OnboardingFlow(): JSX.Element {
 				ownerId: session.user.id,
 			});
 
-			window.location.href = "/dashboard";
+			router.push("/dashboard");
 		} catch (err: unknown) {
 			const msg =
 				err instanceof Error ? err.message : "Failed to create organizer";

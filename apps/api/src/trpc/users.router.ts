@@ -11,6 +11,7 @@ export const usersRouter = router({
 				select: {
 					id: true,
 					name: true,
+					username: true,
 					email: true,
 					phone: true,
 					image: true,
@@ -83,6 +84,7 @@ export const usersRouter = router({
 		.input(
 			z.object({
 				name: z.string().min(1, "Name cannot be empty").max(100),
+				username: z.string().max(30).optional().nullable(),
 				phone: z.string().max(30).optional().nullable(),
 				image: z
 					.string()
@@ -93,16 +95,48 @@ export const usersRouter = router({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
+			let formattedUsername: string | null = null;
+			if (input.username?.trim()) {
+				formattedUsername = input.username
+					.trim()
+					.toLowerCase()
+					.replace(/^@/, "");
+
+				if (!/^[a-z0-9_-]{3,30}$/.test(formattedUsername)) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message:
+							"Username must be 3-30 characters and contain only lowercase letters, numbers, hyphens, and underscores.",
+					});
+				}
+
+				const existing = await ctx.prisma.user.findFirst({
+					where: {
+						username: formattedUsername,
+						NOT: { id: ctx.userId },
+					},
+				});
+
+				if (existing) {
+					throw new TRPCError({
+						code: "CONFLICT",
+						message: "This username is already taken.",
+					});
+				}
+			}
+
 			const updated = await ctx.prisma.user.update({
 				where: { id: ctx.userId },
 				data: {
 					name: input.name.trim(),
+					username: formattedUsername,
 					phone: input.phone?.trim() || null,
 					image: input.image?.trim() || null,
 				},
 				select: {
 					id: true,
 					name: true,
+					username: true,
 					phone: true,
 					image: true,
 				},

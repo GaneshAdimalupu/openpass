@@ -16,3 +16,4 @@ const handler = async (req: Request) => {
 };
 
 export { handler as GET, handler as POST };
+// force reload

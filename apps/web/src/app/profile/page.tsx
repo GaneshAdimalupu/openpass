@@ -3,6 +3,7 @@
 import { SiteHeader } from "@/components/layout/site-header";
 import { getClientDeviceId } from "@/lib/device";
 import { trpc } from "@/lib/trpc";
+import { X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -32,6 +33,7 @@ export default function ProfilePage(): JSX.Element {
 
 	// Form States - Basic Info
 	const [nameInput, setNameInput] = useState<string>("");
+	const [usernameInput, setUsernameInput] = useState<string>("");
 	const [phoneInput, setPhoneInput] = useState<string>("");
 	const [imageInput, setImageInput] = useState<string>("");
 	const [basicInfoError, setBasicInfoError] = useState<string | null>(null);
@@ -69,6 +71,7 @@ export default function ProfilePage(): JSX.Element {
 	useEffect(() => {
 		if (profile) {
 			setNameInput(profile.name || "");
+			setUsernameInput(profile.username || "");
 			setPhoneInput(profile.phone || "");
 			setImageInput(profile.image || "");
 			setWhatsappInput(profile.whatsapp || "");
@@ -127,6 +130,7 @@ export default function ProfilePage(): JSX.Element {
 		try {
 			await updateBasicInfoMutation.mutateAsync({
 				name: nameInput.trim(),
+				username: usernameInput.trim() || null,
 				phone: phoneInput.trim() || null,
 				image: imageInput.trim() || null,
 			});
@@ -237,10 +241,10 @@ export default function ProfilePage(): JSX.Element {
 		profile?.email?.charAt(0).toUpperCase() ||
 		"U";
 
-	// Generate clean handle from name or email
+	// Generate clean handle from username, organizer slug, or email
 	const handleSlug =
+		profile?.username ||
 		profile?.organizers?.[0]?.slug ||
-		profile?.name?.toLowerCase().replace(/[^a-z0-9]/g, "") ||
 		profile?.email?.split("@")[0];
 
 	return (
@@ -250,7 +254,7 @@ export default function ProfilePage(): JSX.Element {
 			{/* Floating Toast Notification */}
 			{toastMessage && (
 				<div className="fixed bottom-6 right-6 z-50 bg-ink text-paper px-4 py-3 rounded-lg shadow-lg border border-perforation text-xs font-mono animate-in fade-in slide-in-from-bottom-2">
-					✓ {toastMessage}
+					{toastMessage}
 				</div>
 			)}
 
@@ -694,7 +698,7 @@ export default function ProfilePage(): JSX.Element {
 								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
 								aria-label="Close modal"
 							>
-								✕
+								<X className="w-4 h-4" />
 							</button>
 						</div>
 
@@ -776,6 +780,37 @@ export default function ProfilePage(): JSX.Element {
 										className="w-full bg-paper border border-perforation rounded-md pl-9 pr-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
 									/>
 								</div>
+							</div>
+
+							<div>
+								<label
+									htmlFor="usernameInput"
+									className="block label text-xs mb-1.5"
+								>
+									Username / Handle
+								</label>
+								<div className="flex items-center rounded-md border border-perforation bg-paper overflow-hidden focus-within:border-stamp">
+									<span className="px-2.5 py-2 text-xs font-mono bg-perforation/20 border-r border-perforation text-ink/60">
+										@
+									</span>
+									<input
+										id="usernameInput"
+										type="text"
+										value={usernameInput}
+										onChange={(e) =>
+											setUsernameInput(
+												e.target.value
+													.toLowerCase()
+													.replace(/[^a-z0-9_-]/g, ""),
+											)
+										}
+										placeholder="your_handle"
+										className="flex-1 bg-transparent px-3 py-2 text-xs text-body font-mono focus:outline-none placeholder:text-ink/30"
+									/>
+								</div>
+								<p className="text-[11px] opacity-50 mt-1 font-mono">
+									Unique handle for your public profile and event mentions.
+								</p>
 							</div>
 
 							<div>
@@ -877,7 +912,7 @@ export default function ProfilePage(): JSX.Element {
 								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
 								aria-label="Close modal"
 							>
-								✕
+								<X className="w-4 h-4" />
 							</button>
 						</div>
 
@@ -1026,13 +1061,13 @@ export default function ProfilePage(): JSX.Element {
 								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
 								aria-label="Close modal"
 							>
-								✕
+								<X className="w-4 h-4" />
 							</button>
 						</div>
 
 						{passwordSuccess && (
 							<div className="p-3 text-xs text-stamp bg-stamp/10 border border-stamp/20 rounded font-mono">
-								✓ Password updated successfully!
+								Password updated successfully!
 							</div>
 						)}
 
