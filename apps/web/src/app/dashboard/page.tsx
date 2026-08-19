@@ -514,7 +514,7 @@ function DashboardContent(): JSX.Element {
 											</button>
 										</div>
 									) : (
-										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
 											{publishedEvents.map((evt) => (
 												<EventCard
 													key={evt.id}
@@ -546,7 +546,7 @@ function DashboardContent(): JSX.Element {
 											No draft events in progress.
 										</div>
 									) : (
-										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
 											{draftEvents.map((evt) => (
 												<EventCard
 													key={evt.id}
@@ -587,7 +587,7 @@ function DashboardContent(): JSX.Element {
 													No past completed events yet.
 												</div>
 											) : (
-												<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+												<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
 													{completedEvents.map((evt) => (
 														<EventCard
 															key={evt.id}
@@ -805,30 +805,30 @@ function EventCard({
 		event.tickets.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
 	return (
-		<div className="border border-perforation rounded-lg p-5 bg-paper hover:border-ink/20 transition-all flex flex-col justify-between space-y-4 shadow-xs">
-			<div className="flex items-start gap-3.5">
+		<div className="border border-perforation rounded-lg p-3.5 bg-paper hover:border-ink/30 transition-all flex flex-col justify-between space-y-3 shadow-xs hover:shadow-sm">
+			<div className="flex items-start gap-3">
 				{/* Square Thumbnail with Initial */}
-				<div className="w-12 h-12 rounded-md bg-perforation/30 text-ink flex items-center justify-center font-display font-semibold text-lg shrink-0 border border-perforation/40">
+				<div className="w-9 h-9 rounded-md bg-perforation/20 text-ink flex items-center justify-center font-display font-semibold text-sm shrink-0 border border-perforation/40">
 					{initial}
 				</div>
 
 				{/* Title and Date */}
 				<div className="flex-1 min-w-0">
-					<p className="font-mono text-xs opacity-60 mb-0.5 truncate">
+					<p className="font-mono text-[11px] opacity-60 mb-0.5 truncate leading-tight">
 						{formattedDate}
 					</p>
 					<h3
-						className="font-display font-semibold text-sm text-ink truncate"
+						className="font-display font-semibold text-xs sm:text-sm text-ink truncate leading-snug"
 						title={event.title}
 					>
 						{event.title}
 					</h3>
-					<div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-						<span className="label text-xs px-2 py-0.5 rounded bg-stamp/10 text-stamp uppercase">
+					<div className="flex items-center gap-1.5 mt-1 flex-wrap">
+						<span className="label text-[10px] px-1.5 py-0.5 rounded bg-stamp/10 text-stamp uppercase font-medium">
 							{event.format}
 						</span>
 						{event.isOnline && (
-							<span className="label text-xs px-2 py-0.5 rounded bg-perforation/40 text-ink opacity-70">
+							<span className="label text-[10px] px-1.5 py-0.5 rounded bg-perforation/40 text-ink opacity-70">
 								Online
 							</span>
 						)}
@@ -837,20 +837,20 @@ function EventCard({
 			</div>
 
 			{/* Footer: Manage Button, Guests Count, Context Actions */}
-			<div className="border-t border-perforation pt-3 flex items-center justify-between">
+			<div className="border-t border-perforation pt-2.5 flex items-center justify-between">
 				<Link
 					href={`/events/${event.slug}/manage`}
-					className="label inline-flex items-center gap-1 text-xs text-ink hover:text-stamp transition-colors font-medium"
+					className="label inline-flex items-center gap-1 text-[11px] text-ink hover:text-stamp transition-colors font-medium"
 				>
 					<span>Manage</span>
 					<span aria-hidden="true">→</span>
 				</Link>
 
-				<div className="flex items-center gap-2">
-					<span className="text-xs font-mono opacity-60 flex items-center gap-1 mr-1">
+				<div className="flex items-center gap-1.5">
+					<span className="text-[10px] font-mono opacity-60 flex items-center gap-1 mr-1">
 						<svg
 							aria-hidden="true"
-							className="w-3.5 h-3.5"
+							className="w-3 h-3"
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
 							fill="none"
@@ -872,17 +872,17 @@ function EventCard({
 						type="button"
 						onClick={onCopyLink}
 						title="Copy Event URL"
-						className="p-1 rounded text-ink opacity-60 hover:opacity-100 hover:bg-perforation/30 transition-colors"
+						className="p-1 rounded text-ink opacity-60 hover:opacity-100 hover:bg-perforation/30 transition-colors cursor-pointer"
 						aria-label="Copy event link"
 					>
 						{isCopied ? (
-							<span className="text-xs font-mono text-stamp font-semibold">
+							<span className="text-[10px] font-mono text-stamp font-semibold">
 								Copied!
 							</span>
 						) : (
 							<svg
 								aria-hidden="true"
-								className="w-3.5 h-3.5"
+								className="w-3 h-3"
 								xmlns="http://www.w3.org/2000/svg"
 								viewBox="0 0 24 24"
 								fill="none"
@@ -906,7 +906,7 @@ function EventCard({
 							className="p-1 rounded text-alert hover:text-alert hover:bg-alert/15 transition-colors cursor-pointer"
 							aria-label="Delete event"
 						>
-							<Trash2 className="w-3.5 h-3.5 text-alert" />
+							<Trash2 className="w-3 h-3 text-alert" />
 						</button>
 					)}
 				</div>
