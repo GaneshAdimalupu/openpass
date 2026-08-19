@@ -903,10 +903,10 @@ function EventCard({
 							type="button"
 							onClick={onDelete}
 							title="Delete Event"
-							className="p-1 rounded text-ink opacity-40 hover:opacity-100 hover:text-alert hover:bg-alert/10 transition-colors cursor-pointer"
+							className="p-1 rounded text-alert hover:text-alert hover:bg-alert/15 transition-colors cursor-pointer"
 							aria-label="Delete event"
 						>
-							<Trash2 className="w-3.5 h-3.5" />
+							<Trash2 className="w-3.5 h-3.5 text-alert" />
 						</button>
 					)}
 				</div>
