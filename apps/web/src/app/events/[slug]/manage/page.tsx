@@ -32,7 +32,12 @@ export default function EventManagePage() {
 	const [eventStartTime, setEventStartTime] = useState("");
 	const [eventEndDate, setEventEndDate] = useState("");
 	const [eventEndTime, setEventEndTime] = useState("");
-	const [timezone, setTimezone] = useState("Asia/Kolkata");
+	const [timezone, setTimezone] = useState(
+		() =>
+			(typeof Intl !== "undefined" &&
+				Intl.DateTimeFormat().resolvedOptions().timeZone) ||
+			"UTC",
+	);
 
 	// Registration
 	const [registrationStartDate, setRegistrationStartDate] = useState("");
@@ -70,30 +75,44 @@ export default function EventManagePage() {
 			setMapLink(event.mapLink || "");
 			setIsPaid(event.isPaid ?? false);
 			setTicketDescription(event.ticketDescription || "");
-			setTimezone(event.timezone);
+			if (event.timezone) {
+				setTimezone(event.timezone);
+			}
+
+			const formatLocalDate = (d: Date) => {
+				const year = d.getFullYear();
+				const month = String(d.getMonth() + 1).padStart(2, "0");
+				const day = String(d.getDate()).padStart(2, "0");
+				return `${year}-${month}-${day}`;
+			};
+			const formatLocalTime = (d: Date) => {
+				const hours = String(d.getHours()).padStart(2, "0");
+				const minutes = String(d.getMinutes()).padStart(2, "0");
+				return `${hours}:${minutes}`;
+			};
 
 			if (event.eventStart) {
 				const start = new Date(event.eventStart);
-				setEventStartDate(start.toISOString().split("T")[0]);
-				setEventStartTime(start.toTimeString().substring(0, 5));
+				setEventStartDate(formatLocalDate(start));
+				setEventStartTime(formatLocalTime(start));
 			}
 
 			if (event.eventEnd) {
 				const end = new Date(event.eventEnd);
-				setEventEndDate(end.toISOString().split("T")[0]);
-				setEventEndTime(end.toTimeString().substring(0, 5));
+				setEventEndDate(formatLocalDate(end));
+				setEventEndTime(formatLocalTime(end));
 			}
 
 			if (event.registrationStart) {
 				const regStart = new Date(event.registrationStart);
-				setRegistrationStartDate(regStart.toISOString().split("T")[0]);
-				setRegistrationStartTime(regStart.toTimeString().substring(0, 5));
+				setRegistrationStartDate(formatLocalDate(regStart));
+				setRegistrationStartTime(formatLocalTime(regStart));
 			}
 
 			if (event.registrationEnd) {
 				const regEnd = new Date(event.registrationEnd);
-				setRegistrationEndDate(regEnd.toISOString().split("T")[0]);
-				setRegistrationEndTime(regEnd.toTimeString().substring(0, 5));
+				setRegistrationEndDate(formatLocalDate(regEnd));
+				setRegistrationEndTime(formatLocalTime(regEnd));
 				setCloseRegistration(true);
 			}
 		}

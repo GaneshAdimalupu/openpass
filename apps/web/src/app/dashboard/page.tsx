@@ -78,6 +78,10 @@ function DashboardContent(): JSX.Element {
 		try {
 			const now = new Date();
 			const later = new Date(now.getTime() + 60 * 60 * 1000); // +1 hour
+			const detectedTimezone =
+				typeof Intl !== "undefined"
+					? Intl.DateTimeFormat().resolvedOptions().timeZone
+					: "UTC";
 
 			const autoSlug = newEventTitle
 				.trim()
@@ -91,6 +95,7 @@ function DashboardContent(): JSX.Element {
 				slug: autoSlug || `event-${Math.random().toString(36).substring(2, 6)}`,
 				eventStart: now.toISOString(),
 				eventEnd: later.toISOString(),
+				timezone: detectedTimezone || "UTC",
 				capacity: 300,
 				tickets: [
 					{
@@ -167,7 +172,7 @@ function DashboardContent(): JSX.Element {
 	}, [allOrganizerEvents]);
 
 	const handleCopyLink = (slug: string, eventId: string) => {
-		const url = `${window.location.origin}/events#${slug}`;
+		const url = `${window.location.origin}/events/${slug}`;
 		navigator.clipboard.writeText(url);
 		setCopiedEventId(eventId);
 		setTimeout(() => setCopiedEventId(null), 2000);
@@ -444,9 +449,12 @@ function DashboardContent(): JSX.Element {
 											{activeOrg?.category.replace(/_/g, " ")}
 										</span>
 										<span className="opacity-50">•</span>
-										<span className="opacity-60">
-											openevents.in/{activeOrg?.slug}
-										</span>
+										<Link
+											href={`/organization/${activeOrg?.slug}`}
+											className="opacity-60 hover:opacity-100 hover:underline transition-opacity text-stamp font-medium"
+										>
+											/{activeOrg?.slug} ↗
+										</Link>
 									</div>
 									<div className="flex items-center gap-4 text-ink opacity-70">
 										<span>{publishedEvents.length} published</span>

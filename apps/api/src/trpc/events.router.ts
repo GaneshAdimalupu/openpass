@@ -235,7 +235,7 @@ export const eventsRouter = router({
 				tags: z.array(z.string().max(40)).max(10).default([]),
 				eventStart: z.string(), // ISO String
 				eventEnd: z.string(), // ISO String
-				timezone: z.string().default("Asia/Kolkata"),
+				timezone: z.string().default("UTC"),
 				registrationStart: z.string().optional(),
 				registrationEnd: z.string().optional(),
 				isOnline: z.boolean().default(false),
