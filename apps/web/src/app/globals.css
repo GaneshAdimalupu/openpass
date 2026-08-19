@@ -163,3 +163,23 @@ body {
 	border-radius: 6px;
 	margin: 0.5rem 0;
 }
+
+/* Multi-device Performance & Touch Optimization */
+html {
+	scroll-behavior: smooth;
+	-webkit-text-size-adjust: 100%;
+}
+
+.scrollbar-none {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+	display: none;
+}
+
+/* Prevent accidental horizontal overflow on mobile viewports */
+body {
+	overflow-x: hidden;
+	width: 100%;
+}

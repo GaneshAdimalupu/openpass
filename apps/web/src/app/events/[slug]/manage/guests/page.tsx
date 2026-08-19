@@ -6,665 +6,655 @@ import {
 	CheckCircle2,
 	ChevronDown,
 	ChevronUp,
+	Clock,
+	Copy,
 	Download,
-	FileQuestion,
-	Mail,
 	RefreshCw,
 	Search,
 	UserCheck,
 	Users,
-	X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import type { JSX } from "react";
 
-type FilterTab = "all" | "pending" | "accepted" | "checked_in" | "rejected";
+type ChannelFilter = "all" | "ticket" | "rsvp";
+type StatusFilter =
+	| "all"
+	| "confirmed"
+	| "checked_in"
+	| "waitlisted"
+	| "dropped";
 
-interface SubmissionItem {
+interface UnifiedGuest {
 	id: string;
-	userId: string;
-	name: string | null;
+	guestType: "ticket" | "rsvp";
+	name: string;
 	email: string;
-	status: string;
-	confirmAttendance: boolean;
-	answers: unknown;
-	hasCheckedInToday: boolean;
-	checkIns: Array<{ id: string; timestamp: Date | string }>;
+	phone?: string | null;
+	tierName: string;
+	ticketCode?: string | null;
+	status: "CONFIRMED" | "CHECKED_IN" | "WAITLISTED" | "DROPPED" | "PENDING";
+	createdAt: Date | string;
+	checkedInAt?: Date | string | null;
+	answers?: Record<string, unknown> | null;
+	user?: {
+		id: string;
+		name?: string | null;
+		image?: string | null;
+	} | null;
 }
 
-export function GuestsPage() {
+export function GuestsPage(): JSX.Element {
 	const params = useParams();
 	const slug = params.slug as string;
 
 	const [searchTerm, setSearchTerm] = useState("");
-	const [activeTab, setActiveTab] = useState<FilterTab>("all");
-	const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+	const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+	const [expandedGuestId, setExpandedGuestId] = useState<string | null>(null);
+	const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-	// Queries
-	const { data: event, isLoading: eventLoading } =
-		trpc.events.manageGetBySlug.useQuery({ slug }, { enabled: !!slug });
+	const utils = trpc.useUtils();
 
-	const { data: rsvpForm, isLoading: rsvpFormLoading } =
-		trpc.events.rsvpGetForm.useQuery({ slug }, { enabled: !!slug });
-
+	// Primary Unified Query
 	const {
-		data: submissions,
-		isLoading: submissionsLoading,
-		refetch: refetchSubmissions,
+		data: guestHubData,
+		isLoading,
 		isRefetching,
-	} = trpc.events.rsvpGetSubmissions.useQuery({ slug }, { enabled: !!slug });
+		refetch,
+	} = trpc.events.manageGuestsList.useQuery({ slug }, { enabled: !!slug });
 
-	const { refetch: refetchStats } = trpc.events.rsvpGetStats.useQuery(
-		{ slug },
-		{ enabled: !!slug },
-	);
-
-	// Mutations
-	const { mutate: updateStatus, isPending: isUpdatingStatus } =
-		trpc.events.rsvpUpdateSubmissionStatus.useMutation({
-			onSuccess: () => {
-				refetchSubmissions();
-				refetchStats();
-			},
-		});
-
+	// Toggle Check In Mutation
 	const { mutate: toggleCheckIn, isPending: isTogglingCheckIn } =
-		trpc.events.rsvpToggleCheckIn.useMutation({
+		trpc.events.manageGuestToggleCheckIn.useMutation({
 			onSuccess: () => {
-				refetchSubmissions();
-				refetchStats();
+				utils.events.manageGuestsList.invalidate({ slug });
+			},
+			onError: (err) => {
+				alert(err.message);
 			},
 		});
 
-	const isLoading = eventLoading || rsvpFormLoading || submissionsLoading;
+	// Normalize guests into a unified list
+	const unifiedGuests = useMemo<UnifiedGuest[]>(() => {
+		if (!guestHubData) return [];
 
-	// Categorized Submissions
-	const requiresApproval = rsvpForm?.requiresApproval ?? false;
-	const customQuestions = rsvpForm?.customQuestions ?? [];
+		const rawTickets = (guestHubData.issuedTickets || []) as unknown as Array<{
+			id: string;
+			attendeeName: string | null;
+			attendeeEmail: string;
+			attendeePhone?: string | null;
+			ticketCode?: string | null;
+			status: string;
+			createdAt: string | Date;
+			checkedInAt?: string | Date | null;
+			ticket?: { name: string; price: number } | null;
+			user?: { id: string; name?: string | null; image?: string | null } | null;
+		}>;
 
-	const typedSubmissions =
-		(submissions as unknown as SubmissionItem[] | undefined) ?? [];
+		const rawRsvps = (guestHubData.rsvpSubmissions || []) as unknown as Array<{
+			id: string;
+			status: string;
+			createdAt: string | Date;
+			user?: {
+				id: string;
+				name?: string | null;
+				email?: string | null;
+				image?: string | null;
+			} | null;
+			checkIns?: Array<{ id: string; timestamp: string | Date }>;
+			answers?: unknown;
+		}>;
 
-	const pendingCount = typedSubmissions.filter(
-		(s) => s.status === "Pending",
-	).length;
-	const acceptedCount = typedSubmissions.filter(
-		(s) => s.status === "Accepted" || s.confirmAttendance,
-	).length;
-	const checkedInCount = typedSubmissions.filter(
-		(s) => s.hasCheckedInToday,
-	).length;
-	const rejectedCount = typedSubmissions.filter(
-		(s) => s.status === "Rejected",
-	).length;
-	const totalCount = typedSubmissions.length;
+		const ticketList: UnifiedGuest[] = rawTickets.map((t) => ({
+			id: t.id,
+			guestType: "ticket",
+			name: t.attendeeName || "Attendee",
+			email: t.attendeeEmail,
+			phone: t.attendeePhone,
+			tierName: t.ticket?.name || "General Pass",
+			ticketCode: t.ticketCode,
+			status:
+				t.status === "CHECKED_IN"
+					? "CHECKED_IN"
+					: t.status === "WAITLISTED"
+						? "WAITLISTED"
+						: t.status === "DROPPED" || t.status === "CANCELLED"
+							? "DROPPED"
+							: "CONFIRMED",
+			createdAt: t.createdAt,
+			checkedInAt: t.checkedInAt,
+			answers: null,
+			user: t.user,
+		}));
 
-	// Filtered Submissions based on search and active tab
-	const filteredSubmissions = useMemo(() => {
-		return typedSubmissions.filter((sub) => {
-			// Tab filtering
-			if (activeTab === "pending" && sub.status !== "Pending") return false;
-			if (
-				activeTab === "accepted" &&
-				sub.status !== "Accepted" &&
-				!sub.confirmAttendance
-			)
-				return false;
-			if (activeTab === "checked_in" && !sub.hasCheckedInToday) return false;
-			if (activeTab === "rejected" && sub.status !== "Rejected") return false;
+		const rsvpList: UnifiedGuest[] = rawRsvps.map((r) => {
+			const isCheckedIn = (r.checkIns || []).length > 0;
+			const isDropped = r.status === "Rejected";
+			const isPending = r.status === "Pending";
 
-			// Search filtering
-			if (!searchTerm.trim()) return true;
-			const query = searchTerm.toLowerCase();
-			const nameMatch = sub.name?.toLowerCase().includes(query);
-			const emailMatch = sub.email.toLowerCase().includes(query);
-
-			// Search in answers if present
-			let answerMatch = false;
-			if (sub.answers && typeof sub.answers === "object") {
-				answerMatch = Object.values(
-					sub.answers as Record<string, unknown>,
-				).some((val) => String(val).toLowerCase().includes(query));
+			let parsedAnswers: Record<string, unknown> | null = null;
+			if (r.answers && typeof r.answers === "object") {
+				parsedAnswers = r.answers as Record<string, unknown>;
 			}
 
-			return nameMatch || emailMatch || answerMatch;
+			return {
+				id: r.id,
+				guestType: "rsvp",
+				name: r.user?.name || "RSVP Guest",
+				email: r.user?.email || "—",
+				tierName: "RSVP Registration",
+				ticketCode: null,
+				status: isCheckedIn
+					? "CHECKED_IN"
+					: isDropped
+						? "DROPPED"
+						: isPending
+							? "PENDING"
+							: "CONFIRMED",
+				createdAt: r.createdAt,
+				checkedInAt: r.checkIns?.[0]?.timestamp || null,
+				answers: parsedAnswers,
+				user: r.user,
+			};
 		});
-	}, [typedSubmissions, activeTab, searchTerm]);
 
-	const handleStatusUpdate = (submissionId: string, status: string) => {
-		updateStatus({ slug, submissionId, status });
+		// Sort by creation date descending
+		return [...ticketList, ...rsvpList].sort(
+			(a, b) =>
+				new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+		);
+	}, [guestHubData]);
+
+	// Filtered Guests
+	const filteredGuests = useMemo(() => {
+		return unifiedGuests.filter((guest) => {
+			// Channel filter
+			if (channelFilter !== "all" && guest.guestType !== channelFilter) {
+				return false;
+			}
+
+			// Status filter
+			if (statusFilter === "confirmed" && guest.status !== "CONFIRMED")
+				return false;
+			if (statusFilter === "checked_in" && guest.status !== "CHECKED_IN")
+				return false;
+			if (
+				statusFilter === "waitlisted" &&
+				guest.status !== "WAITLISTED" &&
+				guest.status !== "PENDING"
+			)
+				return false;
+			if (statusFilter === "dropped" && guest.status !== "DROPPED")
+				return false;
+
+			// Search Term
+			if (searchTerm.trim()) {
+				const term = searchTerm.toLowerCase();
+				const matchName = guest.name.toLowerCase().includes(term);
+				const matchEmail = guest.email.toLowerCase().includes(term);
+				const matchCode =
+					guest.ticketCode?.toLowerCase().includes(term) ?? false;
+				const matchTier = guest.tierName.toLowerCase().includes(term);
+				if (!matchName && !matchEmail && !matchCode && !matchTier) return false;
+			}
+
+			return true;
+		});
+	}, [unifiedGuests, channelFilter, statusFilter, searchTerm]);
+
+	// Aggregate Statistics
+	const stats = useMemo(() => {
+		const total = unifiedGuests.length;
+		const confirmed = unifiedGuests.filter(
+			(g) => g.status === "CONFIRMED" || g.status === "CHECKED_IN",
+		).length;
+		const checkedIn = unifiedGuests.filter(
+			(g) => g.status === "CHECKED_IN",
+		).length;
+		const waitlisted = unifiedGuests.filter(
+			(g) => g.status === "WAITLISTED" || g.status === "PENDING",
+		).length;
+		const checkInRate =
+			confirmed > 0 ? Math.round((checkedIn / confirmed) * 100) : 0;
+
+		return { total, confirmed, checkedIn, waitlisted, checkInRate };
+	}, [unifiedGuests]);
+
+	// Copy ticket code
+	const handleCopyCode = (code: string) => {
+		navigator.clipboard.writeText(code);
+		setCopiedCode(code);
+		setTimeout(() => setCopiedCode(null), 2000);
 	};
 
-	const handleCheckInToggle = (
-		submissionId: string,
-		action: "checkin" | "undo",
-	) => {
-		toggleCheckIn({ slug, submissionId, action });
-	};
-
-	// Export CSV Handler
-	const exportToCSV = () => {
-		if (typedSubmissions.length === 0) return;
+	// Export CSV
+	const handleExportCSV = () => {
+		if (filteredGuests.length === 0) return;
 
 		const headers = [
 			"Name",
 			"Email",
+			"Phone",
+			"Channel",
+			"Tier/Form",
+			"Ticket Code",
 			"Status",
-			"Confirmed Attendance",
-			"Checked In Today",
-			"Latest Check-In Time",
-			...customQuestions.map((q) => q.question),
+			"Registered At",
+			"Checked In At",
 		];
+		const rows = filteredGuests.map((g) => [
+			`"${g.name.replace(/"/g, '""')}"`,
+			`"${g.email.replace(/"/g, '""')}"`,
+			`"${g.phone || ""}"`,
+			`"${g.guestType === "ticket" ? "Ticket Pass" : "RSVP Form"}"`,
+			`"${g.tierName.replace(/"/g, '""')}"`,
+			`"${g.ticketCode || ""}"`,
+			`"${g.status}"`,
+			`"${new Date(g.createdAt).toISOString()}"`,
+			`"${g.checkedInAt ? new Date(g.checkedInAt).toISOString() : ""}"`,
+		]);
 
-		const rows = typedSubmissions.map((sub) => {
-			let answersMap: Record<string, unknown> = {};
-			if (typeof sub.answers === "string") {
-				try {
-					answersMap = JSON.parse(sub.answers);
-				} catch {
-					answersMap = {};
-				}
-			} else if (sub.answers && typeof sub.answers === "object") {
-				answersMap = sub.answers as Record<string, unknown>;
-			}
-
-			const latestCheckIn =
-				sub.checkIns && sub.checkIns.length > 0
-					? new Date(
-							sub.checkIns[sub.checkIns.length - 1].timestamp,
-						).toISOString()
-					: "N/A";
-
-			return [
-				`"${(sub.name || "Unknown").replace(/"/g, '""')}"`,
-				`"${sub.email.replace(/"/g, '""')}"`,
-				`"${sub.status}"`,
-				`"${sub.confirmAttendance ? "Yes" : "No"}"`,
-				`"${sub.hasCheckedInToday ? "Yes" : "No"}"`,
-				`"${latestCheckIn}"`,
-				...customQuestions.map((q) => {
-					const val = answersMap[q.question] ?? "";
-					return `"${String(val).replace(/"/g, '""')}"`;
-				}),
-			].join(",");
-		});
-
-		const csvContent = `data:text/csv;charset=utf-8,${[
+		const csvContent = [
 			headers.join(","),
-			...rows,
-		].join("\n")}`;
-		const encodedUri = encodeURI(csvContent);
+			...rows.map((r) => r.join(",")),
+		].join("\n");
+		const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
 		const link = document.createElement("a");
-		link.setAttribute("href", encodedUri);
-		link.setAttribute("download", `${slug}-guests.csv`);
+		link.setAttribute("href", url);
+		link.setAttribute(
+			"download",
+			`${slug}-attendees-${new Date().toISOString().slice(0, 10)}.csv`,
+		);
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
 	};
 
-	if (isLoading) {
-		return (
-			<div className="p-8 space-y-6 max-w-6xl">
-				<div className="h-8 w-48 bg-perforation/30 animate-pulse rounded" />
-				<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-					{["sk-1", "sk-2", "sk-3", "sk-4"].map((skKey) => (
-						<div
-							key={skKey}
-							className="h-24 bg-perforation/20 rounded-lg animate-pulse"
-						/>
-					))}
-				</div>
-				<div className="h-64 bg-perforation/10 rounded-lg animate-pulse" />
-			</div>
-		);
-	}
-
-	if (!event) {
-		return (
-			<div className="p-8 text-ink/60">
-				<p>Event not found.</p>
-			</div>
-		);
-	}
-
 	return (
-		<div className="p-4 md:p-8 space-y-8 max-w-6xl">
-			{/* Page Header */}
-			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-perforation pb-6">
+		<div className="w-full px-4 py-8 md:p-8 min-h-screen pb-24 text-ink bg-paper">
+			{/* Header */}
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-perforation pb-6">
 				<div>
-					<h1 className="font-display font-semibold text-2xl text-ink">
-						Guests & Attendees
-					</h1>
-					<p className="text-ink/60 text-sm mt-1">
-						Manage registration requests, monitor attendance, and conduct
-						check-ins.
+					<div className="flex items-center gap-3">
+						<h1 className="text-2xl md:text-3xl font-bold font-display text-ink">
+							Guest Management
+						</h1>
+						<span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-stamp/10 text-stamp border border-stamp/20">
+							{stats.total} Total
+						</span>
+					</div>
+					<p className="text-xs text-ink/70 mt-1">
+						Live attendee roster across Ticket Passes and RSVP registrations.
 					</p>
 				</div>
 
-				<div className="flex items-center gap-3">
+				<div className="flex items-center gap-2.5">
 					<button
 						type="button"
-						onClick={() => {
-							refetchSubmissions();
-							refetchStats();
-						}}
-						disabled={isRefetching}
-						className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-perforation rounded-md bg-paper hover:bg-perforation/20 text-ink transition-colors disabled:opacity-50"
+						onClick={() => refetch()}
+						disabled={isLoading || isRefetching}
+						className="px-3 py-2 text-xs font-medium border border-perforation rounded-lg hover:bg-ink/5 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+						title="Refresh Roster"
 					>
 						<RefreshCw
-							className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`}
+							className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`}
 						/>
-						Refresh
+						<span>Refresh</span>
 					</button>
 
 					<button
 						type="button"
-						onClick={exportToCSV}
-						disabled={typedSubmissions.length === 0}
-						className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-ink text-paper rounded-md hover:bg-ink/90 transition-colors disabled:opacity-50"
+						onClick={handleExportCSV}
+						disabled={filteredGuests.length === 0}
+						className="px-3.5 py-2 text-xs font-medium bg-stamp text-paper rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
 					>
-						<Download className="w-4 h-4" />
-						Export CSV
+						<Download className="w-3.5 h-3.5" />
+						<span>Export CSV</span>
 					</button>
 				</div>
 			</div>
 
-			{/* Host Approval Alert Banner */}
-			{requiresApproval && (
-				<div className="bg-perforation/20 border border-perforation rounded-lg p-4 flex items-start gap-3 text-sm text-ink">
-					<Users className="w-5 h-5 text-ink/60 shrink-0 mt-0.5" />
-					<div>
-						<p className="font-medium">Host approval is required</p>
-						<p className="text-ink/70 text-xs mt-0.5">
-							New registrations will remain in the Pending queue until you
-							approve or decline them.
-						</p>
+			{/* Metric Stat Cards */}
+			<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-6">
+				<div className="p-4 rounded-xl border border-perforation bg-paper/50 flex flex-col justify-between">
+					<div className="flex items-center justify-between text-ink/60 mb-2">
+						<span className="text-[0.81rem] font-medium uppercase tracking-[0.04em]">
+							Total Registered
+						</span>
+						<Users className="w-4 h-4 text-stamp" />
 					</div>
-				</div>
-			)}
-
-			{/* Metric Cards */}
-			<div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-				<div className="border border-perforation bg-paper p-4 rounded-lg">
-					<p className="text-xs uppercase tracking-wider font-medium text-ink/60">
-						Total Registered
-					</p>
-					<div className="flex items-baseline justify-between mt-2">
-						<p className="font-mono text-2xl font-semibold text-ink">
-							{totalCount}
-						</p>
-						<Users className="w-4 h-4 text-ink/40" />
+					<div className="text-2xl font-bold font-display text-ink">
+						{stats.total}
 					</div>
 				</div>
 
-				<div className="border border-perforation bg-paper p-4 rounded-lg">
-					<p className="text-xs uppercase tracking-wider font-medium text-ink/60">
-						Accepted Guests
-					</p>
-					<div className="flex items-baseline justify-between mt-2">
-						<p className="font-mono text-2xl font-semibold text-stamp">
-							{acceptedCount}
-						</p>
-						<span className="text-xs font-mono text-ink/60">
-							{totalCount > 0
-								? `${Math.round((acceptedCount / totalCount) * 100)}%`
-								: "0%"}
+				<div className="p-4 rounded-xl border border-perforation bg-paper/50 flex flex-col justify-between">
+					<div className="flex items-center justify-between text-ink/60 mb-2">
+						<span className="text-[0.81rem] font-medium uppercase tracking-[0.04em]">
+							Confirmed
+						</span>
+						<CheckCircle2 className="w-4 h-4 text-stamp" />
+					</div>
+					<div className="text-2xl font-bold font-display text-ink">
+						{stats.confirmed}
+					</div>
+				</div>
+
+				<div className="p-4 rounded-xl border border-perforation bg-paper/50 flex flex-col justify-between">
+					<div className="flex items-center justify-between text-ink/60 mb-2">
+						<span className="text-[0.81rem] font-medium uppercase tracking-[0.04em]">
+							Checked In
+						</span>
+						<UserCheck className="w-4 h-4 text-stamp" />
+					</div>
+					<div className="flex items-baseline gap-2">
+						<span className="text-2xl font-bold font-display text-stamp">
+							{stats.checkedIn}
+						</span>
+						<span className="text-xs font-mono text-ink/50">
+							({stats.checkInRate}%)
 						</span>
 					</div>
 				</div>
 
-				<div className="border border-perforation bg-paper p-4 rounded-lg">
-					<p className="text-xs uppercase tracking-wider font-medium text-ink/60">
-						Checked In Today
-					</p>
-					<div className="flex items-baseline justify-between mt-2">
-						<p className="font-mono text-2xl font-semibold text-ink">
-							{checkedInCount}
-						</p>
-						<span className="text-xs font-mono text-ink/60">
-							{acceptedCount > 0
-								? `${Math.round((checkedInCount / acceptedCount) * 100)}%`
-								: "0%"}
+				<div className="p-4 rounded-xl border border-perforation bg-paper/50 flex flex-col justify-between">
+					<div className="flex items-center justify-between text-ink/60 mb-2">
+						<span className="text-[0.81rem] font-medium uppercase tracking-[0.04em]">
+							Waitlist / Pending
 						</span>
+						<Clock className="w-4 h-4 text-ink/50" />
 					</div>
-				</div>
-
-				<div className="border border-perforation bg-paper p-4 rounded-lg">
-					<p className="text-xs uppercase tracking-wider font-medium text-ink/60">
-						Pending Approval
-					</p>
-					<div className="flex items-baseline justify-between mt-2">
-						<p
-							className={`font-mono text-2xl font-semibold ${
-								pendingCount > 0 ? "text-alert" : "text-ink"
-							}`}
-						>
-							{pendingCount}
-						</p>
-						<UserCheck className="w-4 h-4 text-ink/40" />
+					<div className="text-2xl font-bold font-display text-ink">
+						{stats.waitlisted}
 					</div>
 				</div>
 			</div>
 
-			{/* Filter Tabs & Search Control */}
-			<div className="space-y-4">
-				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-					{/* Segmented Filter Control */}
-					<div className="flex items-center gap-1 bg-perforation/30 p-1 rounded-lg overflow-x-auto">
-						<button
-							type="button"
-							onClick={() => setActiveTab("all")}
-							className={`px-3 py-1.5 text-xs md:text-sm rounded-md transition-colors whitespace-nowrap ${
-								activeTab === "all"
-									? "bg-paper text-ink font-medium shadow-sm border border-perforation"
-									: "text-ink/60 hover:text-ink"
-							}`}
-						>
-							All ({totalCount})
-						</button>
-
-						{requiresApproval && (
-							<button
-								type="button"
-								onClick={() => setActiveTab("pending")}
-								className={`px-3 py-1.5 text-xs md:text-sm rounded-md transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-									activeTab === "pending"
-										? "bg-paper text-ink font-medium shadow-sm border border-perforation"
-										: "text-ink/60 hover:text-ink"
-								}`}
-							>
-								Pending
-								{pendingCount > 0 && (
-									<span className="px-1.5 py-0.2 bg-alert text-paper text-[10px] font-mono rounded-full font-bold">
-										{pendingCount}
-									</span>
-								)}
-							</button>
-						)}
-
-						<button
-							type="button"
-							onClick={() => setActiveTab("accepted")}
-							className={`px-3 py-1.5 text-xs md:text-sm rounded-md transition-colors whitespace-nowrap ${
-								activeTab === "accepted"
-									? "bg-paper text-ink font-medium shadow-sm border border-perforation"
-									: "text-ink/60 hover:text-ink"
-							}`}
-						>
-							Accepted ({acceptedCount})
-						</button>
-
-						<button
-							type="button"
-							onClick={() => setActiveTab("checked_in")}
-							className={`px-3 py-1.5 text-xs md:text-sm rounded-md transition-colors whitespace-nowrap ${
-								activeTab === "checked_in"
-									? "bg-paper text-ink font-medium shadow-sm border border-perforation"
-									: "text-ink/60 hover:text-ink"
-							}`}
-						>
-							Checked In ({checkedInCount})
-						</button>
-
-						{requiresApproval && (
-							<button
-								type="button"
-								onClick={() => setActiveTab("rejected")}
-								className={`px-3 py-1.5 text-xs md:text-sm rounded-md transition-colors whitespace-nowrap ${
-									activeTab === "rejected"
-										? "bg-paper text-ink font-medium shadow-sm border border-perforation"
-										: "text-ink/60 hover:text-ink"
-								}`}
-							>
-								Declined ({rejectedCount})
-							</button>
-						)}
-					</div>
-
-					{/* Search Box */}
-					<div className="relative w-full sm:w-72">
-						<Search className="w-4 h-4 text-ink/40 absolute left-3 top-1/2 -translate-y-1/2" />
-						<input
-							type="text"
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							placeholder="Search guests..."
-							className="w-full pl-9 pr-8 py-1.5 text-sm bg-paper border border-perforation rounded-md focus:outline-none focus:ring-1 focus:ring-ink"
-						/>
-						{searchTerm && (
-							<button
-								type="button"
-								onClick={() => setSearchTerm("")}
-								className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink"
-							>
-								<X className="w-3.5 h-3.5" />
-							</button>
-						)}
-					</div>
+			{/* Filters and Search Bar */}
+			<div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-6">
+				{/* Search Input */}
+				<div className="relative flex-1 max-w-md">
+					<Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" />
+					<input
+						type="text"
+						value={searchTerm}
+						onChange={(e) => setSearchTerm(e.target.value)}
+						placeholder="Search by name, email, ticket code..."
+						className="w-full bg-paper border border-perforation rounded-lg pl-9 pr-3 py-2 text-xs text-ink focus:outline-none focus:border-stamp"
+					/>
 				</div>
 
-				{/* Guest Table */}
-				<div className="border border-perforation rounded-lg overflow-hidden bg-paper shadow-sm">
-					<div className="overflow-x-auto">
-						<table className="w-full text-left text-sm text-ink">
-							<thead className="bg-perforation/20 border-b border-perforation text-xs uppercase tracking-wider text-ink/70 font-medium">
+				{/* Filter Tabs */}
+				<div className="flex flex-wrap items-center gap-2">
+					{/* Channel Segment */}
+					<div className="inline-flex rounded-lg border border-perforation p-0.5 bg-ink/5 text-xs">
+						{(["all", "ticket", "rsvp"] as const).map((ch) => (
+							<button
+								key={ch}
+								type="button"
+								onClick={() => setChannelFilter(ch)}
+								className={`px-2.5 py-1 rounded-md capitalize font-medium transition-all cursor-pointer ${
+									channelFilter === ch
+										? "bg-paper text-ink shadow-xs"
+										: "text-ink/60 hover:text-ink"
+								}`}
+							>
+								{ch === "all"
+									? "All Sources"
+									: ch === "ticket"
+										? "Tickets"
+										: "RSVPs"}
+							</button>
+						))}
+					</div>
+
+					{/* Status Segment */}
+					<div className="inline-flex rounded-lg border border-perforation p-0.5 bg-ink/5 text-xs">
+						{(
+							[
+								"all",
+								"confirmed",
+								"checked_in",
+								"waitlisted",
+								"dropped",
+							] as const
+						).map((st) => (
+							<button
+								key={st}
+								type="button"
+								onClick={() => setStatusFilter(st)}
+								className={`px-2.5 py-1 rounded-md capitalize font-medium transition-all cursor-pointer ${
+									statusFilter === st
+										? "bg-paper text-ink shadow-xs"
+										: "text-ink/60 hover:text-ink"
+								}`}
+							>
+								{st.replace("_", " ")}
+							</button>
+						))}
+					</div>
+				</div>
+			</div>
+
+			{/* Attendee Roster Table */}
+			<div className="border border-perforation rounded-xl overflow-hidden bg-paper shadow-xs">
+				<div className="overflow-x-auto">
+					<table className="w-full text-left text-xs">
+						<thead className="bg-ink/5 border-b border-perforation font-medium text-ink/70 uppercase tracking-[0.04em]">
+							<tr>
+								<th className="px-4 py-3">Guest</th>
+								<th className="px-4 py-3">Source & Tier</th>
+								<th className="px-4 py-3">Pass Code</th>
+								<th className="px-4 py-3">Status</th>
+								<th className="px-4 py-3">Registered</th>
+								<th className="px-4 py-3 text-right">Actions</th>
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-perforation">
+							{isLoading ? (
 								<tr>
-									<th className="px-4 py-3">Guest</th>
-									<th className="px-4 py-3">Status</th>
-									{customQuestions.length > 0 && (
-										<th className="px-4 py-3">Custom Answers</th>
-									)}
-									<th className="px-4 py-3">Check-In</th>
-									{requiresApproval && (
-										<th className="px-4 py-3 text-right">Approval</th>
-									)}
+									<td colSpan={6} className="text-center py-12 text-ink/50">
+										<RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-stamp" />
+										Loading attendee records...
+									</td>
 								</tr>
-							</thead>
-
-							<tbody className="divide-y divide-perforation">
-								{filteredSubmissions.map((row) => {
-									let answersMap: Record<string, unknown> = {};
-									if (typeof row.answers === "string") {
-										try {
-											answersMap = JSON.parse(row.answers);
-										} catch {
-											answersMap = {};
-										}
-									} else if (row.answers && typeof row.answers === "object") {
-										answersMap = row.answers as Record<string, unknown>;
-									}
-
-									const isExpanded = expandedRowId === row.id;
+							) : filteredGuests.length === 0 ? (
+								<tr>
+									<td colSpan={6} className="text-center py-16 text-ink/60">
+										<Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+										<p className="font-medium">No attendees found.</p>
+										<p className="text-[11px] opacity-70 mt-1">
+											{searchTerm ||
+											channelFilter !== "all" ||
+											statusFilter !== "all"
+												? "Try changing your search or filter criteria."
+												: "Share your event link with attendees to start collecting registrations."}
+										</p>
+									</td>
+								</tr>
+							) : (
+								filteredGuests.map((guest) => {
+									const isExpanded = expandedGuestId === guest.id;
+									const isCheckedIn = guest.status === "CHECKED_IN";
+									const hasCustomAnswers =
+										guest.answers && Object.keys(guest.answers).length > 0;
 
 									return (
 										<tr
-											key={row.id}
-											className="hover:bg-perforation/10 transition-colors"
+											key={`${guest.guestType}-${guest.id}`}
+											className="hover:bg-ink/[0.02] transition-colors group"
 										>
-											{/* Guest Info */}
-											<td className="px-4 py-3">
+											{/* Guest Details */}
+											<td className="px-4 py-3.5">
 												<div className="flex items-center gap-3">
-													<div className="w-8 h-8 rounded-full bg-perforation/40 flex items-center justify-center font-display font-medium text-xs text-ink uppercase">
-														{(row.name || row.email).slice(0, 2)}
+													<div className="w-8 h-8 rounded-full bg-stamp/10 border border-stamp/20 flex items-center justify-center font-display font-semibold text-stamp shrink-0">
+														{guest.name.charAt(0).toUpperCase()}
 													</div>
-													<div>
-														<div className="font-medium text-ink">
-															{row.name || "Anonymous Guest"}
+													<div className="min-w-0">
+														<div className="font-medium text-ink truncate">
+															{guest.name}
 														</div>
-														<div className="text-xs text-ink/60 flex items-center gap-1 font-mono">
-															<Mail className="w-3 h-3 text-ink/40" />
-															{row.email}
+														<div className="text-[11px] text-ink/60 font-mono truncate">
+															{guest.email}
 														</div>
 													</div>
 												</div>
 											</td>
 
-											{/* Status Badge */}
-											<td className="px-4 py-3">
-												{row.status === "Pending" ? (
-													<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-ink/10 text-ink">
-														Pending Review
+											{/* Source & Tier */}
+											<td className="px-4 py-3.5">
+												<div className="flex flex-col gap-0.5">
+													<span className="font-medium text-ink">
+														{guest.tierName}
 													</span>
-												) : row.status === "Rejected" ? (
-													<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-alert/10 text-alert">
-														Declined
+													<span className="text-[10px] uppercase tracking-wider text-ink/50 font-mono">
+														{guest.guestType === "ticket"
+															? "Ticket Pass"
+															: "RSVP Form"}
 													</span>
-												) : (
-													<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-stamp/10 text-stamp">
-														Confirmed
-													</span>
-												)}
+												</div>
 											</td>
 
-											{/* Custom Questions Viewer */}
-											{customQuestions.length > 0 && (
-												<td className="px-4 py-3">
+											{/* Ticket Code */}
+											<td className="px-4 py-3.5 font-mono text-[11px]">
+												{guest.ticketCode ? (
 													<button
 														type="button"
 														onClick={() =>
-															setExpandedRowId(isExpanded ? null : row.id)
+															guest.ticketCode &&
+															handleCopyCode(guest.ticketCode)
 														}
-														className="text-xs text-ink/70 hover:text-ink inline-flex items-center gap-1 border border-perforation px-2 py-1 rounded bg-paper"
+														className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-ink/5 hover:bg-ink/10 transition-colors text-ink/80 cursor-pointer"
+														title="Click to copy ticket code"
 													>
-														<FileQuestion className="w-3 h-3" />
-														{Object.keys(answersMap).length} Answers
-														{isExpanded ? (
-															<ChevronUp className="w-3 h-3" />
+														<span>{guest.ticketCode}</span>
+														{copiedCode === guest.ticketCode ? (
+															<Check className="w-3 h-3 text-stamp" />
 														) : (
-															<ChevronDown className="w-3 h-3" />
+															<Copy className="w-3 h-3 text-ink/40" />
 														)}
 													</button>
-
-													{/* Expandable Answers Panel */}
-													{isExpanded && (
-														<div className="mt-2 p-3 bg-perforation/20 rounded border border-perforation text-xs space-y-2 max-w-sm">
-															{customQuestions.map((q) => (
-																<div key={q.id}>
-																	<span className="font-medium text-ink block">
-																		{q.question}:
-																	</span>
-																	<span className="text-ink/80">
-																		{answersMap[q.question] !== undefined &&
-																		answersMap[q.question] !== ""
-																			? String(answersMap[q.question])
-																			: "—"}
-																	</span>
-																</div>
-															))}
-														</div>
-													)}
-												</td>
-											)}
-
-											{/* Check-In Column */}
-											<td className="px-4 py-3">
-												{row.hasCheckedInToday ? (
-													<button
-														type="button"
-														onClick={() => handleCheckInToggle(row.id, "undo")}
-														disabled={isTogglingCheckIn}
-														className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-stamp/40 bg-stamp/10 text-stamp hover:bg-stamp/20 transition-colors"
-													>
-														<CheckCircle2 className="w-3.5 h-3.5" />
-														Checked In
-													</button>
 												) : (
-													<button
-														type="button"
-														onClick={() =>
-															handleCheckInToggle(row.id, "checkin")
-														}
-														disabled={
-															isTogglingCheckIn ||
-															(row.status === "Pending" && requiresApproval) ||
-															row.status === "Rejected"
-														}
-														className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded bg-ink text-paper hover:bg-ink/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-													>
-														Check In
-													</button>
+													<span className="text-ink/40">—</span>
 												)}
 											</td>
 
-											{/* Host Approval Column */}
-											{requiresApproval && (
-												<td className="px-4 py-3 text-right">
-													{row.status === "Pending" ? (
-														<div className="inline-flex items-center gap-1.5">
-															<button
-																type="button"
-																onClick={() =>
-																	handleStatusUpdate(row.id, "Accepted")
-																}
-																disabled={isUpdatingStatus}
-																className="p-1 rounded bg-stamp text-paper hover:bg-stamp/90 transition-colors"
-																title="Approve Guest"
-															>
-																<Check className="w-4 h-4" />
-															</button>
-															<button
-																type="button"
-																onClick={() =>
-																	handleStatusUpdate(row.id, "Rejected")
-																}
-																disabled={isUpdatingStatus}
-																className="p-1 rounded bg-alert/10 text-alert hover:bg-alert/20 transition-colors"
-																title="Decline Guest"
-															>
-																<X className="w-4 h-4" />
-															</button>
-														</div>
-													) : row.status === "Accepted" ? (
+											{/* Status */}
+											<td className="px-4 py-3.5">
+												<span
+													className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${
+														isCheckedIn
+															? "bg-stamp/15 text-stamp border-stamp/30"
+															: guest.status === "CONFIRMED"
+																? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+																: guest.status === "WAITLISTED" ||
+																		guest.status === "PENDING"
+																	? "bg-amber-500/15 text-amber-700 border-amber-500/30"
+																	: "bg-alert/15 text-alert border-alert/30"
+													}`}
+												>
+													<span
+														className={`w-1.5 h-1.5 rounded-full ${
+															isCheckedIn
+																? "bg-stamp"
+																: guest.status === "CONFIRMED"
+																	? "bg-emerald-600"
+																	: guest.status === "WAITLISTED" ||
+																			guest.status === "PENDING"
+																		? "bg-amber-600"
+																		: "bg-alert"
+														}`}
+													/>
+													<span>
+														{isCheckedIn
+															? "Checked In"
+															: guest.status === "CONFIRMED"
+																? "Confirmed"
+																: guest.status === "WAITLISTED"
+																	? "Waitlist"
+																	: guest.status === "PENDING"
+																		? "Pending"
+																		: "Dropped"}
+													</span>
+												</span>
+											</td>
+
+											{/* Registered Date */}
+											<td className="px-4 py-3.5 text-ink/60 text-[11px] whitespace-nowrap">
+												{new Date(guest.createdAt).toLocaleDateString("en-IN", {
+													month: "short",
+													day: "numeric",
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
+											</td>
+
+											{/* Actions */}
+											<td className="px-4 py-3.5 text-right">
+												<div className="inline-flex items-center gap-2">
+													{isCheckedIn ? (
 														<button
 															type="button"
 															onClick={() =>
-																handleStatusUpdate(row.id, "Rejected")
+																toggleCheckIn({
+																	slug,
+																	guestType: guest.guestType,
+																	id: guest.id,
+																	action: "undo",
+																})
 															}
-															disabled={isUpdatingStatus}
-															className="text-xs text-alert hover:underline"
+															disabled={isTogglingCheckIn}
+															className="px-2.5 py-1 text-[11px] font-medium rounded border border-stamp/30 bg-stamp/10 text-stamp hover:bg-stamp/20 transition-colors cursor-pointer"
 														>
-															Revoke
+															Undo Check In
 														</button>
 													) : (
 														<button
 															type="button"
 															onClick={() =>
-																handleStatusUpdate(row.id, "Accepted")
+																toggleCheckIn({
+																	slug,
+																	guestType: guest.guestType,
+																	id: guest.id,
+																	action: "checkin",
+																})
 															}
-															disabled={isUpdatingStatus}
-															className="text-xs text-ink/70 hover:text-ink hover:underline"
+															disabled={
+																isTogglingCheckIn || guest.status === "DROPPED"
+															}
+															className="px-2.5 py-1 text-[11px] font-medium rounded bg-stamp text-paper hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
 														>
-															Re-approve
+															Check In
 														</button>
 													)}
-												</td>
-											)}
+
+													{hasCustomAnswers && (
+														<button
+															type="button"
+															onClick={() =>
+																setExpandedGuestId(isExpanded ? null : guest.id)
+															}
+															className="p-1 rounded hover:bg-ink/10 text-ink/60 hover:text-ink transition-colors cursor-pointer"
+															title="View Answers"
+														>
+															{isExpanded ? (
+																<ChevronUp className="w-4 h-4" />
+															) : (
+																<ChevronDown className="w-4 h-4" />
+															)}
+														</button>
+													)}
+												</div>
+											</td>
 										</tr>
 									);
-								})}
-							</tbody>
-						</table>
-					</div>
-
-					{/* Empty State */}
-					{filteredSubmissions.length === 0 && (
-						<div className="text-center py-12 px-4 space-y-3">
-							<Users className="w-8 h-8 text-ink/30 mx-auto" />
-							<p className="text-sm text-ink/70 font-medium">
-								{searchTerm
-									? "No guests match your search criteria."
-									: activeTab !== "all"
-										? `No guests found in "${activeTab.replace("_", " ")}" status.`
-										: "No guests have registered for this event yet."}
-							</p>
-							{!searchTerm && activeTab === "all" && (
-								<p className="text-xs text-ink/50 max-w-sm mx-auto">
-									Share your event URL with attendees to start collecting
-									registrations.
-								</p>
+								})
 							)}
-						</div>
-					)}
+						</tbody>
+					</table>
 				</div>
 			</div>
 		</div>

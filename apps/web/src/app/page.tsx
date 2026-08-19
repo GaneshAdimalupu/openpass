@@ -99,51 +99,56 @@ export default function Home(): JSX.Element {
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 						{events.map((event) => {
 							const ticket = event.tickets[0];
-							const soldOut = ticket?.quantity === 0;
 							return (
 								<div
 									key={event.id}
-									className="border border-perforation rounded-lg overflow-hidden bg-paper hover:border-ink/20 transition-all"
+									className="group border border-perforation rounded-lg overflow-hidden bg-paper hover:border-ink/30 transition-all flex flex-col justify-between"
 								>
-									<div className="h-32 bg-perforation/40" />
-									<div className="p-4">
-										<div className="flex items-center justify-between gap-2 mb-1">
-											<span className="label text-xs text-stamp uppercase">
-												{event.format}
-											</span>
-											<span className="label text-xs opacity-50 font-mono">
-												{event.organizer.name}
-											</span>
-										</div>
-										<h3 className="font-display font-medium text-h3 my-1">
-											{event.title}
-										</h3>
-										<div className="font-mono text-ticket opacity-60">
-											{new Date(event.eventStart).toLocaleDateString("en-IN", {
-												month: "short",
-												day: "numeric",
-											})}{" "}
-											· {event.isOnline ? "Online" : event.location || "TBA"}
+									<Link
+										href={`/events/${event.slug}`}
+										className="block"
+										aria-label={`View ${event.title}`}
+									>
+										<div className="h-32 bg-perforation/40 group-hover:bg-perforation/60 transition-colors" />
+									</Link>
+									<div className="p-4 flex-1 flex flex-col justify-between">
+										<div>
+											<div className="flex items-center justify-between gap-2 mb-1">
+												<span className="label text-xs text-stamp uppercase">
+													{event.format}
+												</span>
+												<span className="label text-xs opacity-50 font-mono">
+													{event.organizer.name}
+												</span>
+											</div>
+											<Link
+												href={`/events/${event.slug}`}
+												className="block hover:underline"
+											>
+												<h3 className="font-display font-medium text-h3 my-1">
+													{event.title}
+												</h3>
+											</Link>
+											<div className="font-mono text-ticket opacity-60">
+												{new Date(event.eventStart).toLocaleDateString(
+													"en-IN",
+													{
+														month: "short",
+														day: "numeric",
+													},
+												)}{" "}
+												· {event.isOnline ? "Online" : event.location || "TBA"}
+											</div>
 										</div>
 										<div className="tear-line mt-4 pt-4 flex justify-between items-center">
-											<span
-												className={`font-mono text-ticket ${soldOut ? "text-alert" : ""}`}
-											>
-												{soldOut
-													? "Sold out"
-													: ticket?.price
-														? `₹${ticket.price}`
-														: "Free"}
+											<span className="font-mono text-ticket">
+												{ticket?.price ? `₹${ticket.price}` : "Free"}
 											</span>
 											<Link
-												href={`/events`}
-												className={`label px-3 py-1 rounded text-xs transition-opacity ${
-													soldOut
-														? "bg-perforation hover:opacity-80 cursor-not-allowed"
-														: "bg-stamp text-paper hover:opacity-90"
-												}`}
+												href={`/events/${event.slug}`}
+												className="label px-3 py-1 rounded text-xs transition-opacity bg-stamp text-paper hover:opacity-90"
 											>
-												{soldOut ? "Notify me" : "Register"}
+												Register
 											</Link>
 										</div>
 									</div>

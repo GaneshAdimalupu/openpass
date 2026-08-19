@@ -52,7 +52,6 @@ export function EventsGridView({ events }: EventsGridViewProps): JSX.Element {
 		<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6">
 			{events.map((event) => {
 				const ticket = event.tickets[0];
-				const soldOut = ticket?.quantity === 0;
 				const eventDate = new Date(event.eventStart);
 
 				return (
@@ -126,27 +125,15 @@ export function EventsGridView({ events }: EventsGridViewProps): JSX.Element {
 							<div className="tear-line pt-4 flex justify-between items-center">
 								<div className="flex flex-col">
 									<span className="label text-xs opacity-50">TICKET</span>
-									<span
-										className={`font-mono text-ticket font-medium ${
-											soldOut ? "text-alert" : "text-ink"
-										}`}
-									>
-										{soldOut
-											? "Sold out"
-											: ticket?.price
-												? `₹${ticket.price}`
-												: "Free"}
+									<span className="font-mono text-ticket font-medium text-ink">
+										{ticket?.price ? `₹${ticket.price}` : "Free"}
 									</span>
 								</div>
 								<Link
 									href={`/events/${event.slug}`}
-									className={`label px-4 py-2 rounded-md transition-all ${
-										soldOut
-											? "bg-perforation text-ink/70 hover:opacity-80"
-											: "bg-stamp text-paper hover:opacity-90"
-									}`}
+									className="label bg-stamp text-paper px-4 py-2 rounded text-xs hover:opacity-90 transition-opacity"
 								>
-									{soldOut ? "View Details" : "Register"}
+									View Event
 								</Link>
 							</div>
 						</div>

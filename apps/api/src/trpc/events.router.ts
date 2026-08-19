@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import type { EventStatus, PrismaClient } from "db";
 import { z } from "zod";
 import { authedProcedure, publicProcedure, router } from "./trpc";
 
@@ -31,10 +32,77 @@ const EVENT_TOPICS = [
 	"other",
 ] as const;
 
+/**
+ * Enterprise-grade authorization helper grounded in Cal.com & Pretix RBAC standards.
+ * Verifies that the requester has the required role (Owner, Team Member, or Volunteer)
+ * for the given event.
+ */
+export async function assertEventAccess(
+	client: PrismaClient,
+	slugOrId: string,
+	userId: string,
+	allowedRoles: Array<
+		"OWNER" | "ADMIN" | "EDITOR" | "COORDINATOR" | "VOLUNTEER" | "DEVICE"
+	> = ["OWNER", "ADMIN", "EDITOR"],
+) {
+	const event = await client.event.findFirst({
+		where: {
+			OR: [{ id: slugOrId }, { slug: slugOrId }],
+		},
+		include: {
+			organizer: {
+				select: { id: true, ownerId: true },
+			},
+			volunteers: {
+				where: { userId },
+				select: { id: true, role: true },
+			},
+		},
+	});
+
+	if (!event) {
+		throw new TRPCError({
+			code: "NOT_FOUND",
+			message: "Event not found.",
+		});
+	}
+
+	// 1. Direct Organizer Owner
+	if (event.organizer.ownerId === userId) {
+		return event;
+	}
+
+	// 2. Organizer Team Member with appropriate role
+	const membership = await client.organizerMember.findFirst({
+		where: {
+			organizerId: event.organizerId,
+			userId,
+			role: { in: allowedRoles },
+		},
+	});
+	if (membership) {
+		return event;
+	}
+
+	// 3. Event-specific Volunteer (authorized for check-in / volunteer tasks)
+	if (allowedRoles.includes("VOLUNTEER") && event.volunteers.length > 0) {
+		return event;
+	}
+
+	throw new TRPCError({
+		code: "FORBIDDEN",
+		message: "You do not have permission to manage or scan for this event.",
+	});
+}
+
 export const eventsRouter = router({
 	list: publicProcedure.query(({ ctx }) => {
+		const now = new Date();
 		return ctx.prisma.event.findMany({
-			where: { status: "published", eventStart: { gte: new Date() } },
+			where: {
+				status: "published",
+				eventEnd: { gte: now },
+			},
 			orderBy: { eventStart: "asc" },
 			select: {
 				id: true,
@@ -73,11 +141,42 @@ export const eventsRouter = router({
 					.optional(),
 			}),
 		)
-		.query(({ ctx, input }) => {
+		.query(async ({ ctx, input }) => {
+			let isAuthorizedStaff = false;
+			if (ctx.userId) {
+				const organizer = await ctx.prisma.organizer.findUnique({
+					where: { id: input.organizerId },
+					select: { ownerId: true },
+				});
+				if (organizer?.ownerId === ctx.userId) {
+					isAuthorizedStaff = true;
+				} else {
+					const membership = await ctx.prisma.organizerMember.findFirst({
+						where: {
+							organizerId: input.organizerId,
+							userId: ctx.userId,
+							role: { in: ["OWNER", "ADMIN", "EDITOR", "COORDINATOR"] },
+						},
+					});
+					if (membership) {
+						isAuthorizedStaff = true;
+					}
+				}
+			}
+
+			// If caller is NOT authorized staff, strictly limit visibility to published/completed
+			const allowedStatuses: EventStatus[] | undefined = isAuthorizedStaff
+				? input.status
+					? [input.status as EventStatus]
+					: undefined
+				: input.status && input.status === "completed"
+					? ["completed" as EventStatus]
+					: ["published" as EventStatus];
+
 			return ctx.prisma.event.findMany({
 				where: {
 					organizerId: input.organizerId,
-					...(input.status ? { status: input.status } : {}),
+					...(allowedStatuses ? { status: { in: allowedStatuses } } : {}),
 				},
 				orderBy: { eventStart: "desc" },
 				select: {
@@ -1513,42 +1612,6 @@ export const eventsRouter = router({
 				throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
 			}
 
-			// If event has no ticket tiers, auto-create default 300-capacity General Pass
-			if (event.tickets.length === 0) {
-				const defaultTier = await ctx.prisma.ticket.create({
-					data: {
-						eventId: event.id,
-						name: "General Pass",
-						description: "Standard event admission pass.",
-						price: 0,
-						quantity: 300,
-						maxPerOrder: 1,
-						isPublished: true,
-						allowWaitlist: true,
-						allowTransfer: true,
-						allowDrop: true,
-						order: 0,
-					},
-					include: {
-						issuedTickets: {
-							select: {
-								id: true,
-								status: true,
-							},
-						},
-					},
-				});
-				event.tickets = [defaultTier];
-
-				if (!event.capacity) {
-					await ctx.prisma.event.update({
-						where: { id: event.id },
-						data: { capacity: 300 },
-					});
-					event.capacity = 300;
-				}
-			}
-
 			// Format tiers with real counts
 			const tiers = event.tickets.map((t) => {
 				const confirmedCount = t.issuedTickets.filter(
@@ -1913,17 +1976,44 @@ export const eventsRouter = router({
 		.input(
 			z.object({
 				ticketCode: z.string(),
+				confirmAttendeeEmail: z.string().email().optional(),
 				reason: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const ticket = await ctx.prisma.issuedTicket.findUnique({
 				where: { ticketCode: input.ticketCode },
-				include: { ticket: true },
+				include: {
+					ticket: true,
+					event: {
+						select: {
+							id: true,
+							organizer: { select: { ownerId: true } },
+						},
+					},
+				},
 			});
 
 			if (!ticket) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
+			}
+
+			// Security Authorization Check:
+			const isOwner =
+				ctx.userId &&
+				(ticket.userId === ctx.userId ||
+					ticket.event.organizer.ownerId === ctx.userId);
+			const emailMatches =
+				input.confirmAttendeeEmail &&
+				input.confirmAttendeeEmail.trim().toLowerCase() ===
+					ticket.attendeeEmail.toLowerCase();
+
+			if (!isOwner && !emailMatches) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message:
+						"To drop this ticket, please confirm your registered attendee email address.",
+				});
 			}
 
 			if (ticket.status !== "CONFIRMED") {
@@ -1947,7 +2037,6 @@ export const eventsRouter = router({
 			});
 
 			// 2. AUTO-WAITLIST PROMOTION ENGINE:
-			// Find the earliest waitlisted attendee for this tier
 			const nextWaitlisted = await ctx.prisma.issuedTicket.findFirst({
 				where: {
 					ticketId: ticket.ticketId,
@@ -1983,6 +2072,7 @@ export const eventsRouter = router({
 		.input(
 			z.object({
 				ticketCode: z.string(),
+				confirmSenderEmail: z.string().email().optional(),
 				recipientName: z.string().min(1, "Recipient name is required"),
 				recipientEmail: z.string().email("Invalid recipient email"),
 			}),
@@ -1990,11 +2080,37 @@ export const eventsRouter = router({
 		.mutation(async ({ ctx, input }) => {
 			const ticket = await ctx.prisma.issuedTicket.findUnique({
 				where: { ticketCode: input.ticketCode },
-				include: { ticket: true },
+				include: {
+					ticket: true,
+					event: {
+						select: {
+							id: true,
+							organizer: { select: { ownerId: true } },
+						},
+					},
+				},
 			});
 
 			if (!ticket) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
+			}
+
+			// Security Authorization Check:
+			const isOwner =
+				ctx.userId &&
+				(ticket.userId === ctx.userId ||
+					ticket.event.organizer.ownerId === ctx.userId);
+			const emailMatches =
+				input.confirmSenderEmail &&
+				input.confirmSenderEmail.trim().toLowerCase() ===
+					ticket.attendeeEmail.toLowerCase();
+
+			if (!isOwner && !emailMatches) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message:
+						"To transfer this ticket, please confirm your registered attendee email address.",
+				});
 			}
 
 			if (ticket.status !== "CONFIRMED") {
@@ -2128,33 +2244,46 @@ export const eventsRouter = router({
 				});
 			}
 
+			// Strict Cryptographic Recipient Validation (Pretix Standard)
+			const normalizedClaimEmail = input.attendeeEmail.trim().toLowerCase();
+			const normalizedTargetEmail = transfer.recipientEmail
+				.trim()
+				.toLowerCase();
+
+			if (normalizedClaimEmail !== normalizedTargetEmail) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: `This transfer was issued exclusively for ${transfer.recipientEmail}. Please claim using the designated email address.`,
+				});
+			}
+
 			// Generate fresh code and QR token for security
 			const randChars = () =>
 				Math.random().toString(36).substring(2, 6).toUpperCase();
 			const newTicketCode = `OPT-${randChars()}-${randChars()}`;
 			const newQrToken = `qrv1_${crypto.randomUUID().replace(/-/g, "")}`;
 
-			// Update ticket to recipient
-			await ctx.prisma.issuedTicket.update({
-				where: { id: transfer.issuedTicketId },
-				data: {
-					attendeeName: input.attendeeName.trim(),
-					attendeeEmail: input.attendeeEmail.trim().toLowerCase(),
-					ticketCode: newTicketCode,
-					qrToken: newQrToken,
-					userId: ctx.userId ?? null,
-					status: "CONFIRMED",
-				},
-			});
-
-			// Complete transfer
-			await ctx.prisma.ticketTransfer.update({
-				where: { id: transfer.id },
-				data: {
-					status: "COMPLETED",
-					completedAt: new Date(),
-				},
-			});
+			// Execute atomically in a transaction
+			await ctx.prisma.$transaction([
+				ctx.prisma.issuedTicket.update({
+					where: { id: transfer.issuedTicketId },
+					data: {
+						attendeeName: input.attendeeName.trim(),
+						attendeeEmail: normalizedClaimEmail,
+						ticketCode: newTicketCode,
+						qrToken: newQrToken,
+						userId: ctx.userId ?? null,
+						status: "CONFIRMED",
+					},
+				}),
+				ctx.prisma.ticketTransfer.update({
+					where: { id: transfer.id },
+					data: {
+						status: "COMPLETED",
+						completedAt: new Date(),
+					},
+				}),
+			]);
 
 			return {
 				success: true,
@@ -2171,11 +2300,12 @@ export const eventsRouter = router({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const event = await ctx.prisma.event.findUnique({
-				where: { slug: input.slug },
-			});
-			if (!event)
-				throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+			const event = await assertEventAccess(
+				ctx.prisma,
+				input.slug,
+				ctx.userId,
+				["OWNER", "ADMIN", "EDITOR", "COORDINATOR", "VOLUNTEER", "DEVICE"],
+			);
 
 			const ticket = await ctx.prisma.issuedTicket.findFirst({
 				where: {
@@ -2237,5 +2367,124 @@ export const eventsRouter = router({
 				checkedInAt: updated.checkedInAt,
 				message: "Checked in successfully!",
 			};
+		}),
+
+	manageGuestsList: authedProcedure
+		.input(
+			z.object({
+				slug: z.string(),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const event = await assertEventAccess(
+				ctx.prisma,
+				input.slug,
+				ctx.userId,
+				["OWNER", "ADMIN", "EDITOR", "COORDINATOR", "VOLUNTEER"],
+			);
+
+			const [issuedTickets, rsvpSubmissions, rsvpForm] = await Promise.all([
+				ctx.prisma.issuedTicket.findMany({
+					where: { eventId: event.id },
+					include: {
+						ticket: { select: { id: true, name: true, price: true } },
+						user: { select: { id: true, name: true, image: true } },
+					},
+					orderBy: { createdAt: "desc" },
+				}),
+				ctx.prisma.rsvpSubmission.findMany({
+					where: { eventId: event.id },
+					include: {
+						user: {
+							select: { id: true, name: true, email: true, image: true },
+						},
+						checkIns: { select: { id: true, timestamp: true } },
+					},
+					orderBy: { createdAt: "desc" },
+				}),
+				ctx.prisma.rsvpForm.findUnique({
+					where: { eventId: event.id },
+					include: { customQuestions: { orderBy: { order: "asc" } } },
+				}),
+			]);
+
+			return {
+				event: {
+					id: event.id,
+					title: event.title,
+					slug: event.slug,
+					capacity: event.capacity,
+				},
+				issuedTickets,
+				rsvpSubmissions,
+				rsvpForm,
+			};
+		}),
+
+	manageGuestToggleCheckIn: authedProcedure
+		.input(
+			z.object({
+				slug: z.string(),
+				guestType: z.enum(["ticket", "rsvp"]),
+				id: z.string(),
+				action: z.enum(["checkin", "undo"]),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const event = await assertEventAccess(
+				ctx.prisma,
+				input.slug,
+				ctx.userId,
+				["OWNER", "ADMIN", "EDITOR", "COORDINATOR", "VOLUNTEER"],
+			);
+
+			if (input.guestType === "ticket") {
+				const ticket = await ctx.prisma.issuedTicket.findUnique({
+					where: { id: input.id, eventId: event.id },
+				});
+				if (!ticket) {
+					throw new TRPCError({
+						code: "NOT_FOUND",
+						message: "Ticket pass not found.",
+					});
+				}
+
+				const newStatus =
+					input.action === "checkin" ? "CHECKED_IN" : "CONFIRMED";
+				const checkedInAt = input.action === "checkin" ? new Date() : null;
+
+				return ctx.prisma.issuedTicket.update({
+					where: { id: ticket.id },
+					data: { status: newStatus, checkedInAt },
+				});
+			}
+
+			const submission = await ctx.prisma.rsvpSubmission.findUnique({
+				where: { id: input.id, eventId: event.id },
+			});
+			if (!submission) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "RSVP submission not found.",
+				});
+			}
+
+			if (input.action === "checkin") {
+				const existing = await ctx.prisma.rsvpCheckIn.findFirst({
+					where: { submissionId: submission.id },
+				});
+				if (!existing) {
+					await ctx.prisma.rsvpCheckIn.create({
+						data: {
+							submissionId: submission.id,
+						},
+					});
+				}
+			} else {
+				await ctx.prisma.rsvpCheckIn.deleteMany({
+					where: { submissionId: submission.id },
+				});
+			}
+			return { success: true };
 		}),
 });

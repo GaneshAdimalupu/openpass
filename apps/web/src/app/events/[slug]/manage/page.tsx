@@ -723,15 +723,15 @@ export default function EventManagePage() {
 			)}
 
 			{/* Form Action Bar at bottom */}
-			<div className="fixed bottom-0 right-0 left-0 md:left-[250px] bg-paper border-t border-perforation px-8 py-4 flex justify-between items-center z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-				<div className="text-sm text-ink/50 font-medium">
+			<div className="fixed bottom-0 right-0 left-0 md:left-64 bg-paper/95 backdrop-blur-xs border-t border-perforation px-4 sm:px-8 py-3.5 flex justify-between items-center z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+				<div className="text-xs sm:text-sm text-ink/60 font-medium">
 					{updateEvent.isPending ? "Saving..." : "Unsaved changes"}
 				</div>
 				<button
 					type="button"
 					onClick={() => handleSave()}
 					disabled={updateEvent.isPending}
-					className="px-6 py-2 text-sm bg-stamp text-paper rounded-md hover:opacity-90 transition-opacity font-medium flex items-center gap-2 disabled:opacity-50"
+					className="px-4 sm:px-6 py-2 text-xs sm:text-sm bg-stamp text-paper rounded-md hover:opacity-90 transition-opacity font-medium flex items-center gap-2 disabled:opacity-50 shadow-xs cursor-pointer"
 				>
 					<Edit3 size={16} />
 					{updateEvent.isPending ? "Saving..." : "Update Details"}
