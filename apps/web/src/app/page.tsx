@@ -87,7 +87,7 @@ export default function Home(): JSX.Element {
 							There are no events happening near you right now.
 						</p>
 						<Link
-							href="/events/new"
+							href="/dashboard?action=create"
 							className="bg-stamp text-paper label px-4 py-2 rounded-md hover:opacity-90 inline-block transition-opacity"
 						>
 							Host an event

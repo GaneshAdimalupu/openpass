@@ -5,14 +5,36 @@ import { trpc } from "@/lib/trpc";
 import { Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 
 type DashboardMode = "organized" | "participated";
 
 export default function DashboardPage(): JSX.Element {
+	return (
+		<Suspense
+			fallback={
+				<div className="min-h-screen bg-paper flex flex-col">
+					<DashboardHeader />
+					<main className="flex-1 w-full px-4 lg:px-6 py-8">
+						<div className="space-y-6 animate-pulse">
+							<div className="h-16 bg-perforation/30 rounded-lg" />
+						</div>
+					</main>
+				</div>
+			}
+		>
+			<DashboardContent />
+		</Suspense>
+	);
+}
+
+function DashboardContent(): JSX.Element {
 	const { data: session, status } = useSession();
+	const searchParams = useSearchParams();
+	const actionParam = searchParams.get("action");
+
 	const [mode, setMode] = useState<DashboardMode>("organized");
 	const [searchQuery, setSearchQuery] = useState<string>("");
 	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
@@ -24,7 +46,20 @@ export default function DashboardPage(): JSX.Element {
 	const [newEventTitle, setNewEventTitle] = useState<string>("");
 	const [createEventError, setCreateEventError] = useState<string | null>(null);
 	const router = useRouter();
-	const createEvent = trpc.events.create.useMutation();
+	const utils = trpc.useUtils();
+	const createEvent = trpc.events.create.useMutation({
+		onSuccess: () => {
+			utils.events.byOrganizer.invalidate();
+			utils.organizers.myOrganizers.invalidate();
+		},
+	});
+
+	// Auto-open create modal if navigated with ?action=create
+	useEffect(() => {
+		if (actionParam === "create") {
+			setIsCreateModalOpen(true);
+		}
+	}, [actionParam]);
 
 	const handleCreateEventSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -443,12 +478,17 @@ export default function DashboardPage(): JSX.Element {
 													? "No published events match your search."
 													: "No live published events right now."}
 											</p>
-											<Link
-												href="/events/new"
-												className="label text-xs text-stamp hover:underline"
+											<button
+												type="button"
+												onClick={() => {
+													setNewEventTitle("");
+													setCreateEventError(null);
+													setIsCreateModalOpen(true);
+												}}
+												className="label text-xs text-stamp hover:underline cursor-pointer"
 											>
-												+ Publish your first event
-											</Link>
+												+ Create your first event
+											</button>
 										</div>
 									) : (
 										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

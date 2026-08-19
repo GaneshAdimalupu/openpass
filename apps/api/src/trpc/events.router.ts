@@ -65,12 +65,19 @@ export const eventsRouter = router({
 	}),
 
 	byOrganizer: publicProcedure
-		.input(z.object({ organizerId: z.string() }))
+		.input(
+			z.object({
+				organizerId: z.string(),
+				status: z
+					.enum(["published", "draft", "completed", "cancelled"])
+					.optional(),
+			}),
+		)
 		.query(({ ctx, input }) => {
 			return ctx.prisma.event.findMany({
 				where: {
 					organizerId: input.organizerId,
-					status: "published",
+					...(input.status ? { status: input.status } : {}),
 				},
 				orderBy: { eventStart: "desc" },
 				select: {

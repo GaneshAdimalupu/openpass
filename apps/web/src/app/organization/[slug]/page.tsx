@@ -296,7 +296,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 
 					{canCreateEvent && (
 						<Link
-							href="/events/new"
+							href="/dashboard?action=create"
 							className="group inline-flex items-center gap-2 pl-3.5 pr-1.5 py-1 bg-stamp text-paper rounded-full font-medium text-xs hover:opacity-95 transition-all shadow-xs"
 						>
 							<span>Host Event</span>
@@ -714,7 +714,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 
 									{canCreateEvent && (
 										<Link
-											href="/events/new"
+											href="/dashboard?action=create"
 											className="bg-stamp text-paper label text-xs px-3.5 py-1.5 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5"
 										>
 											<span>+ Host Event</span>
@@ -782,7 +782,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 										</p>
 										{canCreateEvent && (
 											<Link
-												href="/events/new"
+												href="/dashboard?action=create"
 												className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 transition-opacity inline-block"
 											>
 												Host Your First Event

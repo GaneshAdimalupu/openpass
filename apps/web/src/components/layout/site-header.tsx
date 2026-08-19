@@ -120,7 +120,11 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 				<div className="flex items-center gap-2 sm:gap-4">
 					{/* Host an Event — icon-only on xs, full on sm+ */}
 					<Link
-						href={status === "authenticated" ? "/events/new" : "/login"}
+						href={
+							status === "authenticated"
+								? "/dashboard?action=create"
+								: "/login?callbackUrl=/dashboard"
+						}
 						className="group inline-flex items-center gap-2 px-3 sm:pl-4 sm:pr-1 py-1 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs"
 					>
 						<span className="hidden sm:inline">Host an event</span>
