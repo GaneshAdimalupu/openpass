@@ -1481,6 +1481,8 @@ export const eventsRouter = router({
 					id: true,
 					title: true,
 					slug: true,
+					description: true,
+					status: true,
 					capacity: true,
 					eventStart: true,
 					eventEnd: true,
@@ -1754,6 +1756,15 @@ export const eventsRouter = router({
 
 			if (!event)
 				throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+
+			if (event.status !== "published") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message:
+						"This event is currently in draft mode and not accepting registrations. The organizer must publish the event first.",
+				});
+			}
+
 			const tier = event.tickets[0];
 			if (!tier)
 				throw new TRPCError({

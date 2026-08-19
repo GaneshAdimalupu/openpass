@@ -178,11 +178,35 @@ export default function PublicEventPage(): JSX.Element {
 		<div className="min-h-screen bg-paper text-ink flex flex-col">
 			<SiteHeader />
 
+			{/* Draft Preview Banner */}
+			{event.status !== "published" && (
+				<div className="bg-alert/10 border-b border-alert/20 px-4 py-3 text-center text-xs font-mono text-alert flex flex-wrap items-center justify-center gap-2">
+					<AlertCircle className="w-4 h-4 shrink-0" />
+					<span>
+						<strong>DRAFT PREVIEW:</strong> This event is unpublished.
+						Registrations are disabled until the organizer publishes it.
+					</span>
+					{session?.user?.id === event.organizer.ownerId && (
+						<Link
+							href={`/events/${event.slug}/manage`}
+							className="underline font-semibold hover:opacity-80 ml-2"
+						>
+							Manage & Publish Event →
+						</Link>
+					)}
+				</div>
+			)}
+
 			{/* Hero & Overview Section */}
 			<section className="border-b border-perforation bg-paper/50 py-10 md:py-16">
 				<div className="max-w-6xl mx-auto px-4 md:px-8 space-y-6">
 					{/* Badges */}
 					<div className="flex flex-wrap items-center gap-2">
+						{event.status !== "published" && (
+							<span className="text-[11px] font-mono uppercase tracking-wider bg-alert/10 text-alert font-semibold px-2.5 py-1 rounded-full border border-alert/20">
+								Draft
+							</span>
+						)}
 						<span className="text-[11px] font-mono uppercase tracking-wider bg-stamp/10 text-stamp font-semibold px-2.5 py-1 rounded-full border border-stamp/20">
 							{event.organizer.name}
 						</span>
@@ -220,13 +244,29 @@ export default function PublicEventPage(): JSX.Element {
 			<main className="max-w-6xl mx-auto px-4 md:px-8 py-10 grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
 				{/* Left Column: Event Details, Schedule, Sponsors */}
 				<div className="lg:col-span-7 space-y-10">
+					{/* Description */}
+					<div className="space-y-4">
+						<h2 className="font-display font-semibold text-xl border-b border-perforation pb-3">
+							About Event
+						</h2>
+						{event.description ? (
+							<div className="prose prose-sm max-w-none text-ink/90 leading-relaxed font-sans whitespace-pre-wrap">
+								{event.description}
+							</div>
+						) : (
+							<p className="opacity-60 text-sm">
+								No detailed description provided by the host yet.
+							</p>
+						)}
+					</div>
+
 					{/* Schedule Items */}
 					{scheduleData?.items && scheduleData.items.length > 0 && (
 						<div className="space-y-4">
 							<div className="flex items-center gap-2 border-b border-perforation pb-3">
 								<Clock className="w-5 h-5 text-stamp" />
 								<h2 className="font-display font-semibold text-xl">
-									Event Schedule
+									Schedule & Sessions
 								</h2>
 							</div>
 
@@ -234,14 +274,14 @@ export default function PublicEventPage(): JSX.Element {
 								{scheduleData.items.map((item) => (
 									<div
 										key={item.id}
-										className="p-4 border border-perforation rounded-lg bg-paper/60 space-y-1 hover:border-stamp/40 transition-colors"
+										className="p-4 border border-perforation rounded-xl bg-paper/60 space-y-1 hover:border-ink/20 transition-colors"
 									>
-										<div className="flex items-center justify-between gap-2 text-xs font-mono opacity-70">
+										<div className="flex items-center justify-between gap-2 text-xs font-mono text-stamp">
 											<span>
-												{item.startTime} – {item.endTime}
+												{item.startTime} - {item.endTime}
 											</span>
 											{item.stage && (
-												<span className="bg-perforation/40 px-2 py-0.5 rounded text-[10px]">
+												<span className="px-2 py-0.5 rounded bg-perforation/40 text-ink text-[10px]">
 													{item.stage}
 												</span>
 											)}
@@ -318,188 +358,212 @@ export default function PublicEventPage(): JSX.Element {
 							</h2>
 						</div>
 
-						{bookingError && (
-							<div className="bg-alert/10 text-alert p-3 rounded text-xs flex items-center gap-2">
-								<AlertCircle className="w-4 h-4 shrink-0" />
-								{bookingError}
-							</div>
-						)}
-
-						{tiers.length === 0 ? (
-							<div className="text-center py-6 opacity-60 text-sm">
-								No ticket tiers are currently available for registration.
+						{event.status !== "published" ? (
+							<div className="border border-alert/30 bg-alert/5 p-6 rounded-xl text-center space-y-3">
+								<AlertCircle className="w-8 h-8 text-alert mx-auto" />
+								<h3 className="font-display font-semibold text-sm text-ink">
+									Registration Not Open
+								</h3>
+								<p className="text-xs text-ink/70 leading-relaxed">
+									This event is currently in draft mode. Only published events
+									can accept ticket registrations and RSVPs.
+								</p>
+								{session?.user?.id === event.organizer.ownerId && (
+									<Link
+										href={`/events/${event.slug}/manage`}
+										className="inline-block px-4 py-2 bg-stamp text-paper rounded-lg text-xs font-medium hover:opacity-90 transition-opacity"
+									>
+										Go to Manage Overview to Publish →
+									</Link>
+								)}
 							</div>
 						) : (
-							<form onSubmit={handleBookingSubmit} className="space-y-6">
-								{/* Tier Selector */}
-								<div className="space-y-3">
-									<span className="block text-xs font-semibold uppercase tracking-wider opacity-80">
-										Select Ticket Type
-									</span>
+							<>
+								{bookingError && (
+									<div className="bg-alert/10 text-alert p-3 rounded text-xs flex items-center gap-2">
+										<AlertCircle className="w-4 h-4 shrink-0" />
+										{bookingError}
+									</div>
+								)}
 
-									<div className="space-y-2">
-										{tiers.map((t) => {
-											const isSelected = selectedTierId === t.id;
-											const isSoldOut = t.isSoldOut;
+								{tiers.length === 0 ? (
+									<div className="text-center py-6 opacity-60 text-sm">
+										No ticket tiers are currently available for registration.
+									</div>
+								) : (
+									<form onSubmit={handleBookingSubmit} className="space-y-6">
+										{/* Tier Selector */}
+										<div className="space-y-3">
+											<span className="block text-xs font-semibold uppercase tracking-wider opacity-80">
+												Select Ticket Type
+											</span>
 
-											return (
-												<button
-													type="button"
-													key={t.id}
-													onClick={() => setSelectedTierId(t.id)}
-													className={`w-full p-4 border rounded-xl text-left cursor-pointer transition-all flex items-center justify-between gap-4 ${
-														isSelected
-															? "border-stamp bg-stamp/5 shadow-xs ring-1 ring-stamp"
-															: "border-perforation hover:border-perforation/80 bg-paper/60"
-													}`}
-												>
-													<div className="space-y-1 min-w-0">
-														<div className="flex items-center gap-2">
-															<span className="font-display font-semibold text-sm">
-																{t.name}
-															</span>
-															{isSoldOut && (
-																<span className="text-[10px] font-mono uppercase bg-alert/10 text-alert px-1.5 py-0.5 rounded font-semibold">
-																	Sold Out
+											<div className="space-y-2">
+												{tiers.map((t) => {
+													const isSelected = selectedTierId === t.id;
+													const isSoldOut = t.isSoldOut;
+
+													return (
+														<button
+															type="button"
+															key={t.id}
+															onClick={() => setSelectedTierId(t.id)}
+															className={`w-full p-4 border rounded-xl text-left cursor-pointer transition-all flex items-center justify-between gap-4 ${
+																isSelected
+																	? "border-stamp bg-stamp/5 shadow-xs ring-1 ring-stamp"
+																	: "border-perforation hover:border-perforation/80 bg-paper/60"
+															}`}
+														>
+															<div className="space-y-1 min-w-0">
+																<div className="flex items-center gap-2">
+																	<span className="font-display font-semibold text-sm">
+																		{t.name}
+																	</span>
+																	{isSoldOut && (
+																		<span className="text-[10px] font-mono uppercase bg-alert/10 text-alert px-1.5 py-0.5 rounded font-semibold">
+																			Sold Out
+																		</span>
+																	)}
+																</div>
+																{t.description && (
+																	<p className="text-xs opacity-70 truncate max-w-xs">
+																		{t.description}
+																	</p>
+																)}
+																{isSoldOut && t.allowWaitlist && (
+																	<p className="text-[11px] text-ink/70 font-mono">
+																		Waitlist queue active
+																	</p>
+																)}
+															</div>
+
+															<div className="text-right shrink-0">
+																<span className="font-display font-bold text-base">
+																	{t.price === 0 ? "FREE" : `₹${t.price}`}
 																</span>
-															)}
-														</div>
-														{t.description && (
-															<p className="text-xs opacity-70 truncate max-w-xs">
-																{t.description}
-															</p>
-														)}
-														{isSoldOut && t.allowWaitlist && (
-															<p className="text-[11px] text-ink/70 font-mono">
-																Waitlist queue active
-															</p>
-														)}
-													</div>
-
-													<div className="text-right shrink-0">
-														<span className="font-display font-bold text-base">
-															{t.price === 0 ? "FREE" : `₹${t.price}`}
-														</span>
-													</div>
-												</button>
-											);
-										})}
-									</div>
-								</div>
-
-								{/* Attendee Input Fields */}
-								<div className="space-y-3 pt-2">
-									<div>
-										<label
-											htmlFor="public-booking-name-input"
-											className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
-										>
-											Full Name *
-										</label>
-										<input
-											id="public-booking-name-input"
-											type="text"
-											required
-											value={attendeeName}
-											onChange={(e) => setAttendeeName(e.target.value)}
-											placeholder="e.g. Alex Morgan"
-											className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp"
-										/>
-									</div>
-
-									<div>
-										<label
-											htmlFor="public-booking-email-input"
-											className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
-										>
-											Email Address *
-										</label>
-										<input
-											id="public-booking-email-input"
-											type="email"
-											required
-											value={attendeeEmail}
-											onChange={(e) => setAttendeeEmail(e.target.value)}
-											placeholder="e.g. alex@example.com"
-											className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp"
-										/>
-									</div>
-
-									<div>
-										<label
-											htmlFor="public-booking-phone-input"
-											className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
-										>
-											Phone Number (Optional)
-										</label>
-										<input
-											id="public-booking-phone-input"
-											type="tel"
-											value={attendeePhone}
-											onChange={(e) => setAttendeePhone(e.target.value)}
-											placeholder="+91 98765 43210"
-											className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp font-mono"
-										/>
-									</div>
-								</div>
-
-								{/* Attendee Pricing Summary for Paid Pass */}
-								{selectedTier &&
-									selectedTier.price > 0 &&
-									!selectedTier.isSoldOut && (
-										<div className="p-3.5 rounded-xl border border-perforation bg-paper/80 space-y-1.5 font-mono text-xs">
-											<div className="flex items-center justify-between text-ink/70">
-												<span>Pass Price:</span>
-												<span>₹{selectedTier.price.toFixed(2)}</span>
-											</div>
-											<div className="flex items-center justify-between text-ink/70">
-												<span>Taxes & Gateway Fees:</span>
-												<span className="text-stamp font-semibold">
-													Included
-												</span>
-											</div>
-											<div className="border-t border-perforation pt-1.5 flex items-center justify-between font-bold text-sm text-ink">
-												<span className="font-sans">Total Payable:</span>
-												<span className="text-stamp">
-													₹{selectedTier.price.toFixed(2)}
-												</span>
+															</div>
+														</button>
+													);
+												})}
 											</div>
 										</div>
-									)}
 
-								{/* Submit Action */}
-								<button
-									type="submit"
-									disabled={isBooking}
-									className="w-full py-3.5 bg-stamp text-paper rounded-xl font-medium text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg cursor-pointer"
-								>
-									{isBooking ? (
-										<>
-											<RefreshCw className="w-4 h-4 animate-spin" />
-											Processing Registration...
-										</>
-									) : selectedTier?.isSoldOut ? (
-										<>
-											<Clock className="w-4 h-4" />
-											Join Waitlist Queue
-										</>
-									) : selectedTier && selectedTier.price > 0 ? (
-										<>
-											<CreditCard className="w-4 h-4" />
-											Proceed to Pay ₹{selectedTier.price.toFixed(2)} & Get Pass
-										</>
-									) : (
-										<>
-											<Check className="w-4 h-4" />
-											Confirm Free Pass
-										</>
-									)}
-								</button>
+										{/* Attendee Input Fields */}
+										<div className="space-y-3 pt-2">
+											<div>
+												<label
+													htmlFor="public-booking-name-input"
+													className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
+												>
+													Full Name *
+												</label>
+												<input
+													id="public-booking-name-input"
+													type="text"
+													required
+													value={attendeeName}
+													onChange={(e) => setAttendeeName(e.target.value)}
+													placeholder="e.g. Alex Morgan"
+													className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp"
+												/>
+											</div>
 
-								<p className="text-[11px] opacity-60 text-center font-mono">
-									Instant QR code pass issued upon registration.
-								</p>
-							</form>
+											<div>
+												<label
+													htmlFor="public-booking-email-input"
+													className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
+												>
+													Email Address *
+												</label>
+												<input
+													id="public-booking-email-input"
+													type="email"
+													required
+													value={attendeeEmail}
+													onChange={(e) => setAttendeeEmail(e.target.value)}
+													placeholder="e.g. alex@example.com"
+													className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp"
+												/>
+											</div>
+
+											<div>
+												<label
+													htmlFor="public-booking-phone-input"
+													className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
+												>
+													Phone Number (Optional)
+												</label>
+												<input
+													id="public-booking-phone-input"
+													type="tel"
+													value={attendeePhone}
+													onChange={(e) => setAttendeePhone(e.target.value)}
+													placeholder="+91 98765 43210"
+													className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp font-mono"
+												/>
+											</div>
+										</div>
+
+										{/* Attendee Pricing Summary for Paid Pass */}
+										{selectedTier &&
+											selectedTier.price > 0 &&
+											!selectedTier.isSoldOut && (
+												<div className="p-3.5 rounded-xl border border-perforation bg-paper/80 space-y-1.5 font-mono text-xs">
+													<div className="flex items-center justify-between text-ink/70">
+														<span>Pass Price:</span>
+														<span>₹{selectedTier.price.toFixed(2)}</span>
+													</div>
+													<div className="flex items-center justify-between text-ink/70">
+														<span>Taxes & Gateway Fees:</span>
+														<span className="text-stamp font-semibold">
+															Included
+														</span>
+													</div>
+													<div className="border-t border-perforation pt-1.5 flex items-center justify-between font-bold text-sm text-ink">
+														<span className="font-sans">Total Payable:</span>
+														<span className="text-stamp">
+															₹{selectedTier.price.toFixed(2)}
+														</span>
+													</div>
+												</div>
+											)}
+
+										{/* Submit Action */}
+										<button
+											type="submit"
+											disabled={isBooking}
+											className="w-full py-3.5 bg-stamp text-paper rounded-xl font-medium text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+										>
+											{isBooking ? (
+												<>
+													<RefreshCw className="w-4 h-4 animate-spin" />
+													Processing Registration...
+												</>
+											) : selectedTier?.isSoldOut ? (
+												<>
+													<Clock className="w-4 h-4" />
+													Join Waitlist Queue
+												</>
+											) : selectedTier && selectedTier.price > 0 ? (
+												<>
+													<CreditCard className="w-4 h-4" />
+													Proceed to Pay ₹{selectedTier.price.toFixed(2)} & Get
+													Pass
+												</>
+											) : (
+												<>
+													<Check className="w-4 h-4" />
+													Confirm Free Pass
+												</>
+											)}
+										</button>
+
+										<p className="text-[11px] opacity-60 text-center font-mono">
+											Instant QR code pass issued upon registration.
+										</p>
+									</form>
+								)}
+							</>
 						)}
 					</div>
 				</div>
