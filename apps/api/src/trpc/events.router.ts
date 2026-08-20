@@ -1835,34 +1835,87 @@ export const eventsRouter = router({
 					message: "Ticket tier not found",
 				});
 
-			// Check if this attendee already has an active confirmed ticket for this tier
-			const existingConfirmed = tier.issuedTickets.find(
-				(t) =>
-					t.attendeeEmail.toLowerCase() === input.attendeeEmail.toLowerCase() &&
-					(t.status === "CONFIRMED" || t.status === "CHECKED_IN"),
-			);
-			if (existingConfirmed) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "You already have a confirmed ticket for this tier.",
+			// Execute booking inside atomic transaction to eliminate concurrency overselling race conditions
+			return ctx.prisma.$transaction(async (tx) => {
+				// 1. Check if this attendee already has an active confirmed ticket for this tier
+				const existingConfirmed = await tx.issuedTicket.findFirst({
+					where: {
+						ticketId: tier.id,
+						attendeeEmail: {
+							equals: input.attendeeEmail.trim(),
+							mode: "insensitive",
+						},
+						status: { in: ["CONFIRMED", "CHECKED_IN"] },
+					},
 				});
-			}
 
-			const confirmedCount = tier.issuedTickets.filter(
-				(t) => t.status === "CONFIRMED" || t.status === "CHECKED_IN",
-			).length;
-			const isSoldOut =
-				tier.quantity !== null && confirmedCount >= tier.quantity;
+				if (existingConfirmed) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "You already have a confirmed ticket for this tier.",
+					});
+				}
 
-			// Generate code: OPT-XXXX-YYYY
-			const randChars = () =>
-				Math.random().toString(36).substring(2, 6).toUpperCase();
-			const ticketCode = `OPT-${randChars()}-${randChars()}`;
-			const qrToken = `qrv1_${crypto.randomUUID().replace(/-/g, "")}`;
+				// 2. Compute current confirmed count atomically
+				const confirmedCount = await tx.issuedTicket.count({
+					where: {
+						ticketId: tier.id,
+						status: { in: ["CONFIRMED", "CHECKED_IN"] },
+					},
+				});
 
-			if (!isSoldOut) {
-				// Capacity available -> Issue CONFIRMED ticket
-				const issued = await ctx.prisma.issuedTicket.create({
+				const isSoldOut =
+					tier.quantity !== null && confirmedCount >= tier.quantity;
+
+				// Generate code: OPT-XXXX-YYYY
+				const randChars = () =>
+					Math.random().toString(36).substring(2, 6).toUpperCase();
+				const ticketCode = `OPT-${randChars()}-${randChars()}`;
+				const qrToken = `qrv1_${crypto.randomUUID().replace(/-/g, "")}`;
+
+				if (!isSoldOut) {
+					// Capacity available -> Issue CONFIRMED ticket
+					const issued = await tx.issuedTicket.create({
+						data: {
+							ticketId: tier.id,
+							eventId: event.id,
+							userId: ctx.userId ?? null,
+							ticketCode,
+							qrToken,
+							attendeeName: input.attendeeName.trim(),
+							attendeeEmail: input.attendeeEmail.trim().toLowerCase(),
+							attendeePhone: input.attendeePhone?.trim() || null,
+							answers: input.answers || null,
+							status: "CONFIRMED",
+						},
+					});
+
+					return {
+						status: "CONFIRMED" as const,
+						ticketCode: issued.ticketCode,
+						qrToken: issued.qrToken,
+						message: "Your ticket has been confirmed!",
+					};
+				}
+
+				// Sold Out -> Check waitlist eligibility
+				if (!tier.allowWaitlist) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message:
+							"This ticket tier is sold out and waitlisting is disabled.",
+					});
+				}
+
+				const waitlistedCount = await tx.issuedTicket.count({
+					where: {
+						ticketId: tier.id,
+						status: "WAITLISTED",
+					},
+				});
+				const waitlistOrder = waitlistedCount + 1;
+
+				const issuedWaitlist = await tx.issuedTicket.create({
 					data: {
 						ticketId: tier.id,
 						eventId: event.id,
@@ -1873,62 +1926,19 @@ export const eventsRouter = router({
 						attendeeEmail: input.attendeeEmail.trim().toLowerCase(),
 						attendeePhone: input.attendeePhone?.trim() || null,
 						answers: input.answers || null,
-						status: "CONFIRMED",
-					},
-					include: {
-						ticket: true,
-						event: true,
+						status: "WAITLISTED",
+						waitlistOrder,
 					},
 				});
 
 				return {
-					status: "CONFIRMED" as const,
-					ticketCode: issued.ticketCode,
-					qrToken: issued.qrToken,
-					message: "Your ticket has been confirmed!",
-				};
-			}
-
-			// Sold Out -> Check waitlist eligibility
-			if (!tier.allowWaitlist) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "This ticket tier is sold out and waitlisting is disabled.",
-				});
-			}
-
-			const waitlistedCount = tier.issuedTickets.filter(
-				(t) => t.status === "WAITLISTED",
-			).length;
-			const waitlistOrder = waitlistedCount + 1;
-
-			const issuedWaitlist = await ctx.prisma.issuedTicket.create({
-				data: {
-					ticketId: tier.id,
-					eventId: event.id,
-					userId: ctx.userId ?? null,
-					ticketCode,
-					qrToken,
-					attendeeName: input.attendeeName.trim(),
-					attendeeEmail: input.attendeeEmail.trim().toLowerCase(),
-					attendeePhone: input.attendeePhone?.trim() || null,
-					answers: input.answers || null,
-					status: "WAITLISTED",
+					status: "WAITLISTED" as const,
+					ticketCode: issuedWaitlist.ticketCode,
+					qrToken: issuedWaitlist.qrToken,
 					waitlistOrder,
-				},
-				include: {
-					ticket: true,
-					event: true,
-				},
+					message: `You are #${waitlistOrder} in the queue on the waitlist.`,
+				};
 			});
-
-			return {
-				status: "WAITLISTED" as const,
-				ticketCode: issuedWaitlist.ticketCode,
-				qrToken: issuedWaitlist.qrToken,
-				waitlistOrder,
-				message: `You are #${waitlistOrder} in the queue on the waitlist.`,
-			};
 		}),
 
 	ticketGetByCode: publicProcedure
@@ -2030,42 +2040,45 @@ export const eventsRouter = router({
 				});
 			}
 
-			// 1. Mark ticket as DROPPED
-			await ctx.prisma.issuedTicket.update({
-				where: { id: ticket.id },
-				data: { status: "DROPPED" },
-			});
-
-			// 2. AUTO-WAITLIST PROMOTION ENGINE:
-			const nextWaitlisted = await ctx.prisma.issuedTicket.findFirst({
-				where: {
-					ticketId: ticket.ticketId,
-					status: "WAITLISTED",
-				},
-				orderBy: [{ waitlistOrder: "asc" }, { createdAt: "asc" }],
-			});
-
-			let promotedAttendeeEmail: string | null = null;
-
-			if (nextWaitlisted) {
-				// Promote waitlisted attendee to CONFIRMED
-				await ctx.prisma.issuedTicket.update({
-					where: { id: nextWaitlisted.id },
-					data: {
-						status: "CONFIRMED",
-						waitlistOrder: null,
-					},
+			// Atomic Drop and Waitlist Promotion Transaction
+			return ctx.prisma.$transaction(async (tx) => {
+				// 1. Mark ticket as DROPPED
+				await tx.issuedTicket.update({
+					where: { id: ticket.id },
+					data: { status: "DROPPED" },
 				});
-				promotedAttendeeEmail = nextWaitlisted.attendeeEmail;
-			}
 
-			return {
-				success: true,
-				promotedAttendeeEmail,
-				message: promotedAttendeeEmail
-					? "Ticket dropped. The next attendee on the waitlist was automatically promoted to Confirmed!"
-					: "Ticket dropped successfully.",
-			};
+				// 2. AUTO-WAITLIST PROMOTION ENGINE:
+				const nextWaitlisted = await tx.issuedTicket.findFirst({
+					where: {
+						ticketId: ticket.ticketId,
+						status: "WAITLISTED",
+					},
+					orderBy: [{ waitlistOrder: "asc" }, { createdAt: "asc" }],
+				});
+
+				let promotedAttendeeEmail: string | null = null;
+
+				if (nextWaitlisted) {
+					// Promote waitlisted attendee to CONFIRMED
+					await tx.issuedTicket.update({
+						where: { id: nextWaitlisted.id },
+						data: {
+							status: "CONFIRMED",
+							waitlistOrder: null,
+						},
+					});
+					promotedAttendeeEmail = nextWaitlisted.attendeeEmail;
+				}
+
+				return {
+					success: true,
+					promotedAttendeeEmail,
+					message: promotedAttendeeEmail
+						? "Ticket dropped. The next attendee on the waitlist was automatically promoted to Confirmed!"
+						: "Ticket dropped successfully.",
+				};
+			});
 		}),
 
 	ticketTransferInitiate: publicProcedure
@@ -2141,23 +2154,34 @@ export const eventsRouter = router({
 			const transferToken = `tr_${crypto.randomUUID().replace(/-/g, "")}`;
 			const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
-			const transfer = await ctx.prisma.ticketTransfer.create({
-				data: {
-					issuedTicketId: ticket.id,
-					senderEmail: ticket.attendeeEmail,
-					recipientName: input.recipientName.trim(),
-					recipientEmail: input.recipientEmail.trim().toLowerCase(),
-					transferToken,
-					expiresAt,
-					status: "PENDING",
-				},
-			});
+			return ctx.prisma.$transaction(async (tx) => {
+				// Invalidate any previously pending transfer tokens for this ticket
+				await tx.ticketTransfer.updateMany({
+					where: {
+						issuedTicketId: ticket.id,
+						status: "PENDING",
+					},
+					data: { status: "CANCELLED" },
+				});
 
-			return {
-				success: true,
-				transferToken: transfer.transferToken,
-				expiresAt: transfer.expiresAt,
-			};
+				const transfer = await tx.ticketTransfer.create({
+					data: {
+						issuedTicketId: ticket.id,
+						senderEmail: ticket.attendeeEmail,
+						recipientName: input.recipientName.trim(),
+						recipientEmail: input.recipientEmail.trim().toLowerCase(),
+						transferToken,
+						expiresAt,
+						status: "PENDING",
+					},
+				});
+
+				return {
+					success: true,
+					transferToken: transfer.transferToken,
+					expiresAt: transfer.expiresAt,
+				};
+			});
 		}),
 
 	ticketTransferGet: publicProcedure

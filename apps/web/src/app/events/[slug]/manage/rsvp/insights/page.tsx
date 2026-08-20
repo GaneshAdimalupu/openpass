@@ -26,24 +26,40 @@ export default function RsvpInsightsPage(): JSX.Element {
 
 	// Analytics calculations
 	const analytics = useMemo(() => {
-		const tickets = guestHubData?.issuedTickets || [];
-		const rsvps = guestHubData?.rsvpSubmissions || [];
+		const rawTickets = (guestHubData?.issuedTickets || []) as unknown as Array<{
+			id: string;
+			status: string;
+			createdAt: string | Date;
+			ticket?: { name: string; price: number } | null;
+		}>;
+		const rawRsvps = (guestHubData?.rsvpSubmissions || []) as unknown as Array<{
+			id: string;
+			status: string;
+			createdAt: string | Date;
+			checkIns?: Array<{ id: string; timestamp: string | Date }>;
+		}>;
 
-		const total = tickets.length + rsvps.length;
-		const confirmedTickets = tickets.filter(
+		const total = rawTickets.length + rawRsvps.length;
+		const confirmedTickets = rawTickets.filter(
 			(t) => t.status === "CONFIRMED" || t.status === "CHECKED_IN",
 		);
-		const confirmedRsvps = rsvps.filter(
+		const confirmedRsvps = rawRsvps.filter(
 			(r) => r.status === "Accepted" || (r.checkIns || []).length > 0,
 		);
 		const totalConfirmed = confirmedTickets.length + confirmedRsvps.length;
 
-		const checkedInTickets = tickets.filter((t) => t.status === "CHECKED_IN");
-		const checkedInRsvps = rsvps.filter((r) => (r.checkIns || []).length > 0);
+		const checkedInTickets = rawTickets.filter(
+			(t) => t.status === "CHECKED_IN",
+		);
+		const checkedInRsvps = rawRsvps.filter(
+			(r) => (r.checkIns || []).length > 0,
+		);
 		const totalCheckedIn = checkedInTickets.length + checkedInRsvps.length;
 
-		const waitlistedTickets = tickets.filter((t) => t.status === "WAITLISTED");
-		const pendingRsvps = rsvps.filter((r) => r.status === "Pending");
+		const waitlistedTickets = rawTickets.filter(
+			(t) => t.status === "WAITLISTED",
+		);
+		const pendingRsvps = rawRsvps.filter((r) => r.status === "Pending");
 		const totalWaitlisted = waitlistedTickets.length + pendingRsvps.length;
 
 		const checkInRate =
@@ -53,22 +69,22 @@ export default function RsvpInsightsPage(): JSX.Element {
 
 		// Tier Breakdown
 		const tierCounts: Record<string, { count: number; name: string }> = {};
-		for (const t of tickets) {
+		for (const t of rawTickets) {
 			const tierName = t.ticket?.name || "General Pass";
 			if (!tierCounts[tierName]) {
 				tierCounts[tierName] = { count: 0, name: tierName };
 			}
 			tierCounts[tierName].count += 1;
 		}
-		if (rsvps.length > 0) {
-			tierCounts["RSVP Form"] = { count: rsvps.length, name: "RSVP Form" };
+		if (rawRsvps.length > 0) {
+			tierCounts["RSVP Form"] = { count: rawRsvps.length, name: "RSVP Form" };
 		}
 
 		// Daily Registration Timeline (Last 7 days)
 		const dayMap: Record<string, number> = {};
 		const allRegistrations = [
-			...tickets.map((t) => new Date(t.createdAt)),
-			...rsvps.map((r) => new Date(r.createdAt)),
+			...rawTickets.map((t) => new Date(t.createdAt)),
+			...rawRsvps.map((r) => new Date(r.createdAt)),
 		];
 
 		const now = new Date();
