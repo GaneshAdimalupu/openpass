@@ -1,5 +1,6 @@
 "use client";
 
+import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { trpc } from "@/lib/trpc";
 import {
@@ -568,6 +569,7 @@ export default function PublicEventPage(): JSX.Element {
 					</div>
 				</div>
 			</main>
+			<SiteFooter />
 		</div>
 	);
 }

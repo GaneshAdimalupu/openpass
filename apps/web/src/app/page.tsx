@@ -1,4 +1,5 @@
 "use client";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { trpc } from "@/lib/trpc";
 import Link from "next/link";
@@ -158,6 +159,7 @@ export default function Home(): JSX.Element {
 					</div>
 				)}
 			</main>
+			<SiteFooter />
 		</div>
 	);
 }
