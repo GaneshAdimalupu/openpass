@@ -366,7 +366,7 @@ export function OnboardingFlow(): JSX.Element {
 				ownerId: session.user.id,
 			});
 
-			window.location.href = "/dashboard";
+			router.push("/dashboard");
 		} catch (err: unknown) {
 			const msg =
 				err instanceof Error ? err.message : "Failed to create organizer";
@@ -600,7 +600,9 @@ export function OnboardingFlow(): JSX.Element {
 							</label>
 							<div className="flex items-center rounded-md border border-perforation bg-paper overflow-hidden focus-within:border-stamp focus-within:ring-1 focus-within:ring-stamp">
 								<span className="px-3 py-3 text-sm text-ink opacity-50 bg-perforation/20 font-mono border-r border-perforation">
-									openevents.in/
+									{typeof window !== "undefined"
+										? `${window.location.host}/`
+										: "openpass.me/"}
 								</span>
 								<input
 									id="orgSlug"

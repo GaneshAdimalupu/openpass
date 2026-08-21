@@ -1,22 +1,133 @@
 "use client";
 
-import { SiteHeader } from "@/components/layout/site-header";
+import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { trpc } from "@/lib/trpc";
+import { Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 
 type DashboardMode = "organized" | "participated";
 
 export default function DashboardPage(): JSX.Element {
+	return (
+		<Suspense
+			fallback={
+				<div className="min-h-screen bg-paper flex flex-col">
+					<DashboardHeader />
+					<main className="flex-1 w-full px-4 lg:px-6 py-8">
+						<div className="space-y-6 animate-pulse">
+							<div className="h-16 bg-perforation/30 rounded-lg" />
+						</div>
+					</main>
+				</div>
+			}
+		>
+			<DashboardContent />
+		</Suspense>
+	);
+}
+
+function DashboardContent(): JSX.Element {
 	const { data: session, status } = useSession();
+	const searchParams = useSearchParams();
+	const actionParam = searchParams.get("action");
+
 	const [mode, setMode] = useState<DashboardMode>("organized");
 	const [searchQuery, setSearchQuery] = useState<string>("");
 	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 	const [isCompletedExpanded, setIsCompletedExpanded] =
 		useState<boolean>(false);
 	const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
+	const [deletingEvent, setDeletingEvent] = useState<{
+		id: string;
+		title: string;
+	} | null>(null);
+
+	const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+	const [newEventTitle, setNewEventTitle] = useState<string>("");
+	const [createEventError, setCreateEventError] = useState<string | null>(null);
+	const router = useRouter();
+	const utils = trpc.useUtils();
+	const createEvent = trpc.events.create.useMutation({
+		onSuccess: () => {
+			utils.events.byOrganizer.invalidate();
+			utils.organizers.myOrganizers.invalidate();
+		},
+	});
+
+	const deleteEvent = trpc.events.delete.useMutation({
+		onSuccess: () => {
+			utils.events.byOrganizer.invalidate();
+			utils.organizers.myOrganizers.invalidate();
+			setDeletingEvent(null);
+		},
+		onError: (err) => {
+			alert(err.message);
+		},
+	});
+
+	// Auto-open create modal if navigated with ?action=create
+	useEffect(() => {
+		if (actionParam === "create") {
+			setIsCreateModalOpen(true);
+		}
+	}, [actionParam]);
+
+	const handleCreateEventSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setCreateEventError(null);
+
+		if (!currentOrgId) {
+			setCreateEventError("Please select an organization.");
+			return;
+		}
+
+		if (!newEventTitle.trim()) {
+			setCreateEventError("Event name is required.");
+			return;
+		}
+
+		try {
+			const now = new Date();
+			const later = new Date(now.getTime() + 60 * 60 * 1000); // +1 hour
+			const detectedTimezone =
+				typeof Intl !== "undefined"
+					? Intl.DateTimeFormat().resolvedOptions().timeZone
+					: "UTC";
+
+			const autoSlug = newEventTitle
+				.trim()
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, "-")
+				.replace(/^-|-$/g, "");
+
+			const result = await createEvent.mutateAsync({
+				title: newEventTitle.trim(),
+				organizerId: currentOrgId as string,
+				slug: autoSlug || `event-${Math.random().toString(36).substring(2, 6)}`,
+				eventStart: now.toISOString(),
+				eventEnd: later.toISOString(),
+				timezone: detectedTimezone || "UTC",
+				capacity: 300,
+				tickets: [
+					{
+						name: "General Pass",
+						price: 0,
+						quantity: 300,
+					},
+				],
+			});
+
+			router.push(`/events/${result.slug}/manage`);
+		} catch (err: unknown) {
+			setCreateEventError(
+				err instanceof Error ? err.message : "Failed to create event",
+			);
+		}
+	};
 
 	const userId = session?.user?.id;
 
@@ -76,7 +187,7 @@ export default function DashboardPage(): JSX.Element {
 	}, [allOrganizerEvents]);
 
 	const handleCopyLink = (slug: string, eventId: string) => {
-		const url = `${window.location.origin}/events#${slug}`;
+		const url = `${window.location.origin}/events/${slug}`;
 		navigator.clipboard.writeText(url);
 		setCopiedEventId(eventId);
 		setTimeout(() => setCopiedEventId(null), 2000);
@@ -85,8 +196,8 @@ export default function DashboardPage(): JSX.Element {
 	if (status === "unauthenticated") {
 		return (
 			<div className="min-h-screen bg-paper flex flex-col">
-				<SiteHeader />
-				<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-16 flex flex-col items-center justify-center text-center">
+				<DashboardHeader />
+				<main className="flex-1 w-full px-4 lg:px-6 py-16 flex flex-col items-center justify-center text-center">
 					<h1 className="font-display font-semibold text-h2 mb-4">
 						Access Restricted
 					</h1>
@@ -107,9 +218,9 @@ export default function DashboardPage(): JSX.Element {
 
 	return (
 		<div className="min-h-screen bg-paper flex flex-col">
-			<SiteHeader />
+			<DashboardHeader />
 
-			<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-8">
+			<main className="flex-1 w-full px-4 lg:px-6 py-8">
 				{orgsLoading ? (
 					<div className="space-y-6 animate-pulse">
 						<div className="h-16 bg-perforation/30 rounded-lg" />
@@ -121,8 +232,8 @@ export default function DashboardPage(): JSX.Element {
 					</div>
 				) : !organizers || organizers.length === 0 ? (
 					<div className="border border-perforation rounded-lg p-12 text-center bg-paper/60 my-8">
-						<div className="w-16 h-16 rounded-full bg-stamp/10 text-stamp flex items-center justify-center mx-auto mb-4 font-mono text-2xl font-semibold">
-							⚡
+						<div className="w-16 h-16 rounded-full bg-stamp/10 text-stamp flex items-center justify-center mx-auto mb-4">
+							<Sparkles className="w-8 h-8 text-stamp" />
 						</div>
 						<h1 className="font-display font-semibold text-h2 mb-2">
 							Create your Organizer Profile
@@ -143,9 +254,9 @@ export default function DashboardPage(): JSX.Element {
 						{/* Top Control Bar: Search + Participated/Organized Pill + Switcher + Create Event */}
 						<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-perforation pb-6">
 							{/* Left: Search Bar & Segmented Toggle */}
-							<div className="flex flex-wrap items-center gap-3">
+							<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
 								{/* Search Input */}
-								<div className="relative min-w-56">
+								<div className="relative flex-1 sm:min-w-56">
 									<svg
 										aria-hidden="true"
 										className="absolute left-3 top-1/2 -translate-y-1/2 text-ink opacity-40"
@@ -172,11 +283,11 @@ export default function DashboardPage(): JSX.Element {
 								</div>
 
 								{/* Segmented Pill: Participated / Organized */}
-								<div className="inline-flex rounded-md border border-perforation p-0.5 bg-paper/50">
+								<div className="inline-flex justify-center rounded-md border border-perforation p-0.5 bg-paper/50 shrink-0">
 									<button
 										type="button"
 										onClick={() => setMode("participated")}
-										className={`px-3 py-1.5 rounded text-xs label transition-all ${
+										className={`flex-1 sm:flex-initial px-3 py-1.5 rounded text-xs label transition-all ${
 											mode === "participated"
 												? "bg-ink text-paper font-semibold shadow-xs"
 												: "text-ink opacity-60 hover:opacity-100"
@@ -187,7 +298,7 @@ export default function DashboardPage(): JSX.Element {
 									<button
 										type="button"
 										onClick={() => setMode("organized")}
-										className={`px-3 py-1.5 rounded text-xs label transition-all ${
+										className={`flex-1 sm:flex-initial px-3 py-1.5 rounded text-xs label transition-all ${
 											mode === "organized"
 												? "bg-ink text-paper font-semibold shadow-xs"
 												: "text-ink opacity-60 hover:opacity-100"
@@ -199,19 +310,19 @@ export default function DashboardPage(): JSX.Element {
 							</div>
 
 							{/* Right: Organizer Switcher & Create Event */}
-							<div className="flex items-center gap-3">
+							<div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-3 w-full lg:w-auto">
 								{/* Active Organizer Selector */}
-								<div className="relative flex items-center">
+								<div className="relative flex-1 sm:flex-initial flex items-center">
 									<select
 										value={currentOrgId}
 										onChange={(e) => {
 											if (e.target.value === "__new__") {
-												window.location.href = "/onboarding";
+												router.push("/onboarding");
 											} else {
 												setSelectedOrgId(e.target.value);
 											}
 										}}
-										className="bg-paper border border-perforation text-xs rounded-md pl-7 pr-8 py-2 text-ink font-medium focus:outline-none focus:border-stamp appearance-none cursor-pointer"
+										className="w-full sm:w-auto bg-paper border border-perforation text-xs rounded-md pl-7 pr-8 py-2 text-ink font-medium focus:outline-none focus:border-stamp appearance-none cursor-pointer"
 										aria-label="Select active organizer profile"
 									>
 										{organizers.map((org) => (
@@ -241,9 +352,14 @@ export default function DashboardPage(): JSX.Element {
 								</div>
 
 								{/* Create Event Pill Button */}
-								<Link
-									href="/events/new"
-									className="group inline-flex items-center gap-2 pl-4 pr-1.5 py-1.5 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs"
+								<button
+									type="button"
+									onClick={() => {
+										setNewEventTitle("");
+										setCreateEventError(null);
+										setIsCreateModalOpen(true);
+									}}
+									className="group inline-flex items-center gap-2 pl-4 pr-1.5 py-1.5 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs shrink-0"
 								>
 									<span>Create Event</span>
 									<span className="w-5 h-5 rounded-full bg-ink flex items-center justify-center text-paper transition-transform duration-200 group-hover:translate-x-0.5">
@@ -263,7 +379,7 @@ export default function DashboardPage(): JSX.Element {
 											<path d="m12 5 7 7-7 7" />
 										</svg>
 									</span>
-								</Link>
+								</button>
 
 								{/* Organization Settings Gear Icon Button at the end */}
 								{activeOrg && (
@@ -348,9 +464,12 @@ export default function DashboardPage(): JSX.Element {
 											{activeOrg?.category.replace(/_/g, " ")}
 										</span>
 										<span className="opacity-50">•</span>
-										<span className="opacity-60">
-											openevents.in/{activeOrg?.slug}
-										</span>
+										<Link
+											href={`/organization/${activeOrg?.slug}`}
+											className="opacity-60 hover:opacity-100 hover:underline transition-opacity text-stamp font-medium"
+										>
+											/{activeOrg?.slug} ↗
+										</Link>
 									</div>
 									<div className="flex items-center gap-4 text-ink opacity-70">
 										<span>{publishedEvents.length} published</span>
@@ -382,21 +501,29 @@ export default function DashboardPage(): JSX.Element {
 													? "No published events match your search."
 													: "No live published events right now."}
 											</p>
-											<Link
-												href="/events/new"
-												className="label text-xs text-stamp hover:underline"
+											<button
+												type="button"
+												onClick={() => {
+													setNewEventTitle("");
+													setCreateEventError(null);
+													setIsCreateModalOpen(true);
+												}}
+												className="label text-xs text-stamp hover:underline cursor-pointer"
 											>
-												+ Publish your first event
-											</Link>
+												+ Create your first event
+											</button>
 										</div>
 									) : (
-										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
 											{publishedEvents.map((evt) => (
 												<EventCard
 													key={evt.id}
 													event={evt}
 													onCopyLink={() => handleCopyLink(evt.slug, evt.id)}
 													isCopied={copiedEventId === evt.id}
+													onDelete={() =>
+														setDeletingEvent({ id: evt.id, title: evt.title })
+													}
 												/>
 											))}
 										</div>
@@ -419,13 +546,16 @@ export default function DashboardPage(): JSX.Element {
 											No draft events in progress.
 										</div>
 									) : (
-										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
 											{draftEvents.map((evt) => (
 												<EventCard
 													key={evt.id}
 													event={evt}
 													onCopyLink={() => handleCopyLink(evt.slug, evt.id)}
 													isCopied={copiedEventId === evt.id}
+													onDelete={() =>
+														setDeletingEvent({ id: evt.id, title: evt.title })
+													}
 												/>
 											))}
 										</div>
@@ -457,7 +587,7 @@ export default function DashboardPage(): JSX.Element {
 													No past completed events yet.
 												</div>
 											) : (
-												<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+												<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
 													{completedEvents.map((evt) => (
 														<EventCard
 															key={evt.id}
@@ -466,6 +596,12 @@ export default function DashboardPage(): JSX.Element {
 																handleCopyLink(evt.slug, evt.id)
 															}
 															isCopied={copiedEventId === evt.id}
+															onDelete={() =>
+																setDeletingEvent({
+																	id: evt.id,
+																	title: evt.title,
+																})
+															}
 														/>
 													))}
 												</div>
@@ -478,6 +614,145 @@ export default function DashboardPage(): JSX.Element {
 					</div>
 				)}
 			</main>
+
+			{/* Create Event Modal */}
+			{isCreateModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-paper border border-perforation rounded-xl shadow-lg max-w-md w-full animate-in zoom-in-95 duration-200">
+						<div className="flex items-center justify-between p-4 border-b border-perforation">
+							<h2 className="font-display font-semibold text-h3 text-ink">
+								Create New Event
+							</h2>
+							<button
+								type="button"
+								onClick={() => setIsCreateModalOpen(false)}
+								className="text-ink/50 hover:text-ink transition-colors"
+								aria-label="Close modal"
+							>
+								<X className="w-5 h-5" />
+							</button>
+						</div>
+						<form onSubmit={handleCreateEventSubmit} className="p-5 space-y-6">
+							{createEventError && (
+								<div className="text-sm text-alert bg-alert/10 p-3 rounded-md">
+									{createEventError}
+								</div>
+							)}
+							<div className="space-y-2">
+								<label
+									htmlFor="modalEventTitle"
+									className="block text-xs label text-ink/70"
+								>
+									Event Name*
+								</label>
+								<input
+									id="modalEventTitle"
+									type="text"
+									required
+									value={newEventTitle}
+									onChange={(e) => setNewEventTitle(e.target.value)}
+									placeholder="Enter the new event name"
+									className="w-full bg-perforation/10 border border-perforation rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-stamp transition-colors"
+								/>
+							</div>
+
+							<div className="space-y-2 relative">
+								<label
+									htmlFor="modalOrg"
+									className="block text-xs label text-ink/70 mb-1"
+								>
+									Organization*
+									<span className="block font-normal text-[10px] opacity-60">
+										Select Personal if you do not want any organization
+									</span>
+								</label>
+								<select
+									id="modalOrg"
+									value={currentOrgId}
+									onChange={(e) => setSelectedOrgId(e.target.value)}
+									className="w-full bg-perforation/10 border border-perforation rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-stamp transition-colors appearance-none"
+								>
+									{organizers?.map((org) => (
+										<option key={org.id} value={org.id}>
+											{org.name}
+										</option>
+									))}
+								</select>
+								<svg
+									aria-hidden="true"
+									className="w-4 h-4 absolute right-3 bottom-3 text-ink opacity-50 pointer-events-none"
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								>
+									<path d="m6 9 6 6 6-6" />
+								</svg>
+							</div>
+
+							<button
+								type="submit"
+								disabled={createEvent.isPending}
+								className="w-full py-2.5 bg-ink text-paper rounded-lg text-sm font-medium hover:bg-ink/90 transition-colors disabled:opacity-50"
+							>
+								{createEvent.isPending ? "Creating..." : "Create Event"}
+							</button>
+						</form>
+					</div>
+				</div>
+			)}
+
+			{/* Delete Event Confirmation Modal */}
+			{deletingEvent && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-xs">
+					<div className="bg-paper border border-perforation rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+						<div className="flex items-center gap-3 text-alert">
+							<div className="w-10 h-10 rounded-full bg-alert/10 flex items-center justify-center shrink-0">
+								<Trash2 className="w-5 h-5 text-alert" />
+							</div>
+							<div>
+								<h3 className="font-display font-semibold text-base text-ink">
+									Delete Event
+								</h3>
+								<p className="text-xs text-ink/60">
+									This action cannot be undone.
+								</p>
+							</div>
+						</div>
+
+						<p className="text-xs text-ink/80 leading-relaxed">
+							Are you sure you want to permanently delete{" "}
+							<strong className="text-ink font-semibold">
+								"{deletingEvent.title}"
+							</strong>
+							? All tickets, RSVPs, and check-in records will be permanently
+							removed.
+						</p>
+
+						<div className="flex items-center justify-end gap-3 pt-2">
+							<button
+								type="button"
+								onClick={() => setDeletingEvent(null)}
+								disabled={deleteEvent.isPending}
+								className="px-4 py-2 text-xs font-medium text-ink bg-perforation/30 hover:bg-perforation/50 rounded-lg transition-colors cursor-pointer"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								onClick={() => deleteEvent.mutate({ id: deletingEvent.id })}
+								disabled={deleteEvent.isPending}
+								className="px-4 py-2 text-xs font-semibold text-paper bg-alert hover:bg-alert/90 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+							>
+								{deleteEvent.isPending ? "Deleting..." : "Yes, Delete Event"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -504,12 +779,14 @@ interface EventCardProps {
 	};
 	onCopyLink: () => void;
 	isCopied: boolean;
+	onDelete?: () => void;
 }
 
 function EventCard({
 	event,
 	onCopyLink,
 	isCopied,
+	onDelete,
 }: EventCardProps): JSX.Element {
 	const startDate = new Date(event.eventStart);
 	const formattedDate = startDate.toLocaleDateString("en-US", {
@@ -528,30 +805,30 @@ function EventCard({
 		event.tickets.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
 	return (
-		<div className="border border-perforation rounded-lg p-5 bg-paper hover:border-ink/20 transition-all flex flex-col justify-between space-y-4 shadow-xs">
-			<div className="flex items-start gap-3.5">
+		<div className="border border-perforation rounded-lg p-3.5 bg-paper hover:border-ink/30 transition-all flex flex-col justify-between space-y-3 shadow-xs hover:shadow-sm">
+			<div className="flex items-start gap-3">
 				{/* Square Thumbnail with Initial */}
-				<div className="w-12 h-12 rounded-md bg-perforation/30 text-ink flex items-center justify-center font-display font-semibold text-lg shrink-0 border border-perforation/40">
+				<div className="w-9 h-9 rounded-md bg-perforation/20 text-ink flex items-center justify-center font-display font-semibold text-sm shrink-0 border border-perforation/40">
 					{initial}
 				</div>
 
 				{/* Title and Date */}
 				<div className="flex-1 min-w-0">
-					<p className="font-mono text-xs opacity-60 mb-0.5 truncate">
+					<p className="font-mono text-[11px] opacity-60 mb-0.5 truncate leading-tight">
 						{formattedDate}
 					</p>
 					<h3
-						className="font-display font-semibold text-sm text-ink truncate"
+						className="font-display font-semibold text-xs sm:text-sm text-ink truncate leading-snug"
 						title={event.title}
 					>
 						{event.title}
 					</h3>
-					<div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-						<span className="label text-xs px-2 py-0.5 rounded bg-stamp/10 text-stamp uppercase">
+					<div className="flex items-center gap-1.5 mt-1 flex-wrap">
+						<span className="label text-[10px] px-1.5 py-0.5 rounded bg-stamp/10 text-stamp uppercase font-medium">
 							{event.format}
 						</span>
 						{event.isOnline && (
-							<span className="label text-xs px-2 py-0.5 rounded bg-perforation/40 text-ink opacity-70">
+							<span className="label text-[10px] px-1.5 py-0.5 rounded bg-perforation/40 text-ink opacity-70">
 								Online
 							</span>
 						)}
@@ -560,20 +837,20 @@ function EventCard({
 			</div>
 
 			{/* Footer: Manage Button, Guests Count, Context Actions */}
-			<div className="border-t border-perforation pt-3 flex items-center justify-between">
+			<div className="border-t border-perforation pt-2.5 flex items-center justify-between">
 				<Link
-					href={`/events#${event.slug}`}
-					className="label inline-flex items-center gap-1 text-xs text-ink hover:text-stamp transition-colors font-medium"
+					href={`/events/${event.slug}/manage`}
+					className="label inline-flex items-center gap-1 text-[11px] text-ink hover:text-stamp transition-colors font-medium"
 				>
 					<span>Manage</span>
 					<span aria-hidden="true">→</span>
 				</Link>
 
-				<div className="flex items-center gap-3">
-					<span className="text-xs font-mono opacity-60 flex items-center gap-1">
+				<div className="flex items-center gap-1.5">
+					<span className="text-[10px] font-mono opacity-60 flex items-center gap-1 mr-1">
 						<svg
 							aria-hidden="true"
-							className="w-3.5 h-3.5"
+							className="w-3 h-3"
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
 							fill="none"
@@ -595,17 +872,17 @@ function EventCard({
 						type="button"
 						onClick={onCopyLink}
 						title="Copy Event URL"
-						className="p-1 rounded text-ink opacity-60 hover:opacity-100 hover:bg-perforation/30 transition-colors"
+						className="p-1 rounded text-ink opacity-60 hover:opacity-100 hover:bg-perforation/30 transition-colors cursor-pointer"
 						aria-label="Copy event link"
 					>
 						{isCopied ? (
-							<span className="text-xs font-mono text-stamp font-semibold">
+							<span className="text-[10px] font-mono text-stamp font-semibold">
 								Copied!
 							</span>
 						) : (
 							<svg
 								aria-hidden="true"
-								className="w-3.5 h-3.5"
+								className="w-3 h-3"
 								xmlns="http://www.w3.org/2000/svg"
 								viewBox="0 0 24 24"
 								fill="none"
@@ -619,6 +896,19 @@ function EventCard({
 							</svg>
 						)}
 					</button>
+
+					{/* Delete Event Button */}
+					{onDelete && (
+						<button
+							type="button"
+							onClick={onDelete}
+							title="Delete Event"
+							className="p-1 rounded text-alert hover:text-alert hover:bg-alert/15 transition-colors cursor-pointer"
+							aria-label="Delete event"
+						>
+							<Trash2 className="w-3 h-3 text-alert" />
+						</button>
+					)}
 				</div>
 			</div>
 		</div>

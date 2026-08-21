@@ -120,7 +120,11 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 				<div className="flex items-center gap-2 sm:gap-4">
 					{/* Host an Event — icon-only on xs, full on sm+ */}
 					<Link
-						href={status === "authenticated" ? "/events/new" : "/login"}
+						href={
+							status === "authenticated"
+								? "/dashboard?action=create"
+								: "/login?callbackUrl=/dashboard"
+						}
 						className="group inline-flex items-center gap-2 px-3 sm:pl-4 sm:pr-1 py-1 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs"
 					>
 						<span className="hidden sm:inline">Host an event</span>
@@ -143,6 +147,33 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 							</svg>
 						</span>
 					</Link>
+
+					{/* GitHub Repository Link */}
+					<a
+						href="https://github.com/GaneshAdimalupu/openpass"
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label="GitHub Repository"
+						title="GitHub Repository"
+						className="p-2 rounded-full text-ink opacity-70 hover:opacity-100 hover:bg-perforation/20 transition-all cursor-pointer"
+					>
+						<svg
+							aria-hidden="true"
+							xmlns="http://www.w3.org/2000/svg"
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+							<path d="M9 18c-4.51 2-5-2-7-2" />
+						</svg>
+						<span className="sr-only">GitHub Repository</span>
+					</a>
 
 					{/* Theme Switcher */}
 					<ThemeToggle />

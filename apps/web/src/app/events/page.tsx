@@ -13,6 +13,7 @@ import {
 	EventsToolbar,
 	type ViewMode,
 } from "@/components/events/events-toolbar";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { trpc } from "@/lib/trpc";
 import { useMemo, useState } from "react";
@@ -265,6 +266,8 @@ export default function EventsPage(): JSX.Element {
 				availableFormats={availableFormats}
 				availableLocations={availableLocations}
 			/>
+
+			<SiteFooter />
 		</div>
 	);
 }

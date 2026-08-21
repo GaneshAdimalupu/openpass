@@ -1,5 +1,6 @@
 "use client";
 
+import { Clock, MapPin } from "lucide-react";
 import Link from "next/link";
 import type { JSX } from "react";
 import type { EventItem } from "./events-grid-view";
@@ -60,7 +61,6 @@ export function EventsTimelineView({
 					<div className="relative pl-6 md:pl-8 border-l border-perforation space-y-8 ml-3 md:ml-4">
 						{monthEvents.map((event) => {
 							const ticket = event.tickets[0];
-							const soldOut = ticket?.quantity === 0;
 							const eventDate = new Date(event.eventStart);
 							const dayOfMonth = eventDate.getDate();
 							const dayOfWeek = eventDate.toLocaleDateString("en-IN", {
@@ -121,10 +121,16 @@ export function EventsTimelineView({
 													</p>
 												)}
 
-												<div className="font-mono text-ticket opacity-60 flex flex-wrap items-center gap-3 pt-1">
-													<span>🕒 {timeStr}</span>
+												<div className="font-mono text-ticket opacity-60 flex flex-wrap items-center gap-3 pt-1 text-xs">
+													<span className="flex items-center gap-1">
+														<Clock className="w-3.5 h-3.5 text-stamp" />
+														{timeStr}
+													</span>
 													<span>·</span>
-													<span>📍 {event.location}</span>
+													<span className="flex items-center gap-1">
+														<MapPin className="w-3.5 h-3.5 text-stamp" />
+														{event.location}
+													</span>
 												</div>
 											</div>
 										</div>
@@ -133,28 +139,16 @@ export function EventsTimelineView({
 										<div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-perforation pt-4 md:pt-0">
 											<div className="text-right">
 												<div className="label text-xs opacity-50">PRICE</div>
-												<div
-													className={`font-mono text-ticket font-medium ${
-														soldOut ? "text-alert" : "text-ink"
-													}`}
-												>
-													{soldOut
-														? "Sold out"
-														: ticket?.price
-															? `₹${ticket.price}`
-															: "Free"}
+												<div className="font-mono text-ticket font-medium text-ink">
+													{ticket?.price ? `₹${ticket.price}` : "Free"}
 												</div>
 											</div>
 
 											<Link
 												href={`/events/${event.slug}`}
-												className={`label px-4 py-2 rounded-md transition-all whitespace-nowrap ${
-													soldOut
-														? "bg-perforation text-ink/70 hover:opacity-80"
-														: "bg-stamp text-paper hover:opacity-90"
-												}`}
+												className="label px-4 py-2 rounded-md transition-all whitespace-nowrap bg-stamp text-paper hover:opacity-90"
 											>
-												{soldOut ? "View Details" : "Register"}
+												Register
 											</Link>
 										</div>
 									</div>

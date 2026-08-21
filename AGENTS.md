@@ -105,3 +105,4 @@ just the enforcement rule:
   PR.
 - Don't silently change the design system, the schema, or the API
   contract as a side effect of an unrelated fix.
+- Do not use the `browser_subagent` for purely capturing screenshots of complex React state or multi-step modal workflows (it is prone to infinite loops and timeouts). Verify UI changes manually or ask the user to verify.
