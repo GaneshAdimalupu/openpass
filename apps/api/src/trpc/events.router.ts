@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { EventStatus, PrismaClient } from "db";
 import { z } from "zod";
+import { sendTicketEmail } from "../services/email.service";
 import { authedProcedure, publicProcedure, router } from "./trpc";
 
 /**
@@ -1890,6 +1891,20 @@ export const eventsRouter = router({
 						},
 					});
 
+					// Dispatch ticket confirmation email with embedded QR code
+					sendTicketEmail({
+						toEmail: issued.attendeeEmail,
+						attendeeName: issued.attendeeName,
+						eventTitle: event.title,
+						eventStart: event.eventStart,
+						location: event.location,
+						ticketCode: issued.ticketCode,
+						qrToken: issued.qrToken,
+						tierName: tier.name,
+					}).catch((err) =>
+						console.error("Ticket email dispatch background error:", err),
+					);
+
 					return {
 						status: "CONFIRMED" as const,
 						ticketCode: issued.ticketCode,
@@ -2069,6 +2084,27 @@ export const eventsRouter = router({
 						},
 					});
 					promotedAttendeeEmail = nextWaitlisted.attendeeEmail;
+
+					// Fetch ticket & event context for email dispatch
+					const promotedTicket = await tx.issuedTicket.findUnique({
+						where: { id: nextWaitlisted.id },
+						include: { event: true, ticket: true },
+					});
+
+					if (promotedTicket) {
+						sendTicketEmail({
+							toEmail: promotedTicket.attendeeEmail,
+							attendeeName: promotedTicket.attendeeName,
+							eventTitle: promotedTicket.event.title,
+							eventStart: promotedTicket.event.eventStart,
+							location: promotedTicket.event.location,
+							ticketCode: promotedTicket.ticketCode,
+							qrToken: promotedTicket.qrToken,
+							tierName: promotedTicket.ticket.name,
+						}).catch((err) =>
+							console.error("Promoted waitlist ticket email error:", err),
+						);
+					}
 				}
 
 				return {
@@ -2309,6 +2345,27 @@ export const eventsRouter = router({
 				}),
 			]);
 
+			// Fetch updated ticket pass context for email receipt
+			const claimedPass = await ctx.prisma.issuedTicket.findUnique({
+				where: { id: transfer.issuedTicketId },
+				include: { event: true, ticket: true },
+			});
+
+			if (claimedPass) {
+				sendTicketEmail({
+					toEmail: claimedPass.attendeeEmail,
+					attendeeName: claimedPass.attendeeName,
+					eventTitle: claimedPass.event.title,
+					eventStart: claimedPass.event.eventStart,
+					location: claimedPass.event.location,
+					ticketCode: claimedPass.ticketCode,
+					qrToken: claimedPass.qrToken,
+					tierName: claimedPass.ticket.name,
+				}).catch((err) =>
+					console.error("Transferred ticket email dispatch error:", err),
+				);
+			}
+
 			return {
 				success: true,
 				ticketCode: newTicketCode,
@@ -2345,6 +2402,12 @@ export const eventsRouter = router({
 			if (!ticket) {
 				return {
 					valid: false,
+					alreadyCheckedIn: false,
+					attendeeName: null,
+					attendeeEmail: null,
+					ticketCode: null,
+					tierName: null,
+					checkedInAt: null,
 					message: "Ticket not found for this event.",
 				};
 			}
@@ -2354,6 +2417,9 @@ export const eventsRouter = router({
 					valid: false,
 					alreadyCheckedIn: true,
 					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					ticketCode: ticket.ticketCode,
+					tierName: ticket.ticket.name,
 					checkedInAt: ticket.checkedInAt,
 					message: `Already checked in at ${ticket.checkedInAt?.toLocaleTimeString()}`,
 				};
@@ -2362,6 +2428,12 @@ export const eventsRouter = router({
 			if (ticket.status === "DROPPED" || ticket.status === "CANCELLED") {
 				return {
 					valid: false,
+					alreadyCheckedIn: false,
+					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					ticketCode: ticket.ticketCode,
+					tierName: ticket.ticket.name,
+					checkedInAt: null,
 					message: `This ticket was ${ticket.status.toLowerCase()} and is invalid.`,
 				};
 			}
@@ -2369,26 +2441,56 @@ export const eventsRouter = router({
 			if (ticket.status === "WAITLISTED") {
 				return {
 					valid: false,
+					alreadyCheckedIn: false,
+					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					ticketCode: ticket.ticketCode,
+					tierName: ticket.ticket.name,
+					checkedInAt: null,
 					message:
 						"This attendee is on the waitlist and has not been confirmed.",
 				};
 			}
 
-			// Valid -> Check in
-			const updated = await ctx.prisma.issuedTicket.update({
-				where: { id: ticket.id },
+			// Atomic State Transition (Eliminates Multi-Scanner Race Conditions)
+			const now = new Date();
+			const updateResult = await ctx.prisma.issuedTicket.updateMany({
+				where: {
+					id: ticket.id,
+					status: "CONFIRMED", // Strictly matches only if still CONFIRMED
+				},
 				data: {
 					status: "CHECKED_IN",
-					checkedInAt: new Date(),
+					checkedInAt: now,
 				},
 			});
 
+			if (updateResult.count === 0) {
+				// Another scanner checked in this exact ticket milliseconds ago!
+				const reChecked = await ctx.prisma.issuedTicket.findUnique({
+					where: { id: ticket.id },
+				});
+
+				return {
+					valid: false,
+					alreadyCheckedIn: true,
+					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					ticketCode: ticket.ticketCode,
+					tierName: ticket.ticket.name,
+					checkedInAt: reChecked?.checkedInAt || now,
+					message: `Already checked in at ${(reChecked?.checkedInAt || now).toLocaleTimeString()}`,
+				};
+			}
+
 			return {
 				valid: true,
-				attendeeName: updated.attendeeName,
-				attendeeEmail: updated.attendeeEmail,
+				alreadyCheckedIn: false,
+				attendeeName: ticket.attendeeName,
+				attendeeEmail: ticket.attendeeEmail,
+				ticketCode: ticket.ticketCode,
 				tierName: ticket.ticket.name,
-				checkedInAt: updated.checkedInAt,
+				checkedInAt: now,
 				message: "Checked in successfully!",
 			};
 		}),
