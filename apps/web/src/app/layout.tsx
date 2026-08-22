@@ -20,7 +20,10 @@ const plexMono = IBM_Plex_Mono({
 	variable: "--font-mono",
 });
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://makemyevent.org";
+
 export const metadata: Metadata = {
+	metadataBase: new URL(baseUrl),
 	title: {
 		default: "openevents | Find and host events",
 		template: "%s | openevents",
@@ -39,7 +42,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		type: "website",
 		locale: "en_US",
-		url: "https://openevents.vercel.app",
+		url: baseUrl,
 		title: "openevents | Find and host events",
 		description:
 			"Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
