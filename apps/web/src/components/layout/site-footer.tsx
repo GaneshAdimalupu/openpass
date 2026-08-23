@@ -41,6 +41,12 @@ export function SiteFooter(): JSX.Element {
 						>
 							Dashboard
 						</Link>
+						<a
+							href="mailto:contact@makemyevent.org"
+							className="opacity-70 hover:opacity-100 transition-opacity"
+						>
+							Contact
+						</a>
 
 						{/* GitHub Link */}
 						<a
