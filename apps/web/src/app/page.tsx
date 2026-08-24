@@ -123,14 +123,15 @@ export default function Home(): JSX.Element {
 				)}
 
 				{!isLoading && !isError && events && events.length > 0 && (
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 						{events.map((event) => {
 							const ticket = event.tickets[0];
 							return (
 								<div
 									key={event.id}
-									className="group border border-perforation rounded-lg overflow-hidden bg-paper hover:border-ink/30 transition-all flex flex-col justify-between"
+									className="group border border-perforation rounded-xl overflow-hidden bg-paper hover:border-stamp/40 hover:-translate-y-1 hover:shadow-md transition-all duration-200 flex flex-col justify-between relative"
 								>
+									{/* Banner Header with Format Tag */}
 									<Link
 										href={`/events/${event.slug}`}
 										className="relative block h-36 w-full overflow-hidden bg-perforation/20 group"
@@ -151,45 +152,53 @@ export default function Home(): JSX.Element {
 												</span>
 											</div>
 										)}
+										<div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 bg-paper/90 backdrop-blur-xs rounded-md font-mono text-[10px] font-semibold text-stamp uppercase border border-perforation shadow-xs">
+											{event.format}
+										</div>
 									</Link>
-									<div className="p-4 flex-1 flex flex-col justify-between">
+
+									{/* Card Content Body */}
+									<div className="p-4 flex-1 flex flex-col justify-between relative">
 										<div>
-											<div className="flex items-center justify-between gap-2 mb-1">
-												<span className="label text-xs text-stamp uppercase">
-													{event.format}
-												</span>
-												<span className="label text-xs opacity-50 font-mono">
+											<div className="flex items-center justify-between gap-2 mb-1.5">
+												<span className="label text-[11px] text-stamp font-semibold uppercase tracking-wider font-mono">
 													{event.organizer.name}
+												</span>
+												<span className="text-[11px] font-mono text-ink/60">
+													{new Date(event.eventStart).toLocaleDateString(
+														"en-IN",
+														{
+															month: "short",
+															day: "numeric",
+														},
+													)}
 												</span>
 											</div>
 											<Link
 												href={`/events/${event.slug}`}
 												className="block hover:underline"
 											>
-												<h3 className="font-display font-medium text-h3 my-1">
+												<h3 className="font-display font-semibold text-base text-ink my-1 line-clamp-1">
 													{event.title}
 												</h3>
 											</Link>
-											<div className="font-mono text-ticket opacity-60">
-												{new Date(event.eventStart).toLocaleDateString(
-													"en-IN",
-													{
-														month: "short",
-														day: "numeric",
-													},
-												)}{" "}
-												· {event.isOnline ? "Online" : event.location || "TBA"}
-											</div>
+											<p className="font-mono text-xs text-ink/60 truncate mt-1">
+												{event.isOnline
+													? "Online Event"
+													: event.location || "Location TBA"}
+											</p>
 										</div>
-										<div className="tear-line mt-4 pt-4 flex justify-between items-center">
-											<span className="font-mono text-ticket">
-												{ticket?.price ? `₹${ticket.price}` : "Free"}
+
+										{/* Perforated Tear Line Stub Cutouts */}
+										<div className="relative mt-4 pt-3 border-t border-dashed border-perforation flex justify-between items-center">
+											<span className="font-mono text-xs font-semibold text-ink">
+												{ticket?.price ? `₹${ticket.price}` : "Free Pass"}
 											</span>
 											<Link
 												href={`/events/${event.slug}`}
-												className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-opacity bg-stamp text-paper hover:opacity-90"
+												className="px-4 py-1.5 rounded-full text-xs font-mono font-medium transition-opacity bg-stamp text-paper hover:opacity-90 shadow-xs"
 											>
-												Register
+												Register →
 											</Link>
 										</div>
 									</div>
@@ -200,22 +209,32 @@ export default function Home(): JSX.Element {
 				)}
 			</main>
 
-			{/* ── Host CTA Banner ── */}
-			<section className="border-b border-perforation py-16 md:py-24">
-				<div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 text-center">
-					<h2 className="font-display font-semibold text-h2 mb-4 max-w-xl mx-auto">
-						Ready to host your next event?
-					</h2>
-					<p className="opacity-60 text-body max-w-lg mx-auto mb-8 leading-relaxed">
-						Set up tickets, collect registrations, manage guests, and check in
-						attendees — all in one place, for free.
-					</p>
-					<Link
-						href="/dashboard?action=create"
-						className="inline-block bg-stamp text-paper font-semibold px-6 py-3 rounded-full hover:opacity-90 transition-opacity text-sm shadow-sm"
-					>
-						Host your first event →
-					</Link>
+			{/* ── Host CTA Banner (Framed Glassmorphic Card) ── */}
+			<section className="py-16 md:py-20 border-b border-perforation">
+				<div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
+					<div className="border border-perforation rounded-2xl bg-paper/80 p-8 md:p-12 text-center shadow-xs relative overflow-hidden">
+						<div className="max-w-xl mx-auto space-y-4">
+							<span className="inline-block px-3 py-1 rounded-full bg-stamp/10 text-stamp text-xs font-mono font-semibold uppercase tracking-wider border border-stamp/20">
+								Organizer Platform
+							</span>
+							<h2 className="font-display font-semibold text-2xl md:text-3xl text-ink">
+								Ready to host your next event?
+							</h2>
+							<p className="opacity-70 text-body text-sm md:text-base leading-relaxed">
+								Set up tickets, collect registrations, manage guests, and check
+								in attendees — all in one place, for free.
+							</p>
+							<div className="pt-2">
+								<Link
+									href="/dashboard?action=create"
+									className="inline-flex items-center gap-2 bg-stamp text-paper font-medium px-6 py-3 rounded-full hover:opacity-95 transition-opacity text-sm shadow-xs"
+								>
+									<span>Host your first event</span>
+									<span>→</span>
+								</Link>
+							</div>
+						</div>
+					</div>
 				</div>
 			</section>
 
