@@ -109,7 +109,11 @@ export default function ManagePartnersPage() {
 	}, [data]);
 
 	const handleCopy = () => {
-		navigator.clipboard.writeText(`https://openevents.local/${slug}#partners`);
+		const origin =
+			typeof window !== "undefined"
+				? window.location.origin
+				: "https://makemyevent.org";
+		navigator.clipboard.writeText(`${origin}/events/${slug}#partners`);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
@@ -342,7 +346,7 @@ export default function ManagePartnersPage() {
 						</span>
 						<div className="flex items-center gap-2 flex-1 sm:max-w-md">
 							<code className="px-3 py-1.5 bg-perforation/20 rounded font-mono text-xs border border-perforation text-ink flex-1 truncate">
-								https://openevents.local/{slug}#partners
+								https://makemyevent.org/events/{slug}#partners
 							</code>
 							<button
 								type="button"

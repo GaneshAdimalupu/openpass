@@ -187,6 +187,9 @@ export default function EventRsvpPage(): JSX.Element {
 					<span className="text-ink font-medium">RSVP</span>
 				</div>
 
+				{/* Dynamic SEO Title */}
+				<title>{`RSVP for ${event.title} | makemyevent`}</title>
+
 				{/* Dedicated RSVP Card (FOSS United Style) */}
 				{completedTicketCode ? (
 					<div className="border border-perforation rounded-2xl p-8 md:p-10 bg-paper shadow-md text-center space-y-6">

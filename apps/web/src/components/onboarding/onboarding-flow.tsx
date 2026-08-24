@@ -525,7 +525,7 @@ export function OnboardingFlow(): JSX.Element {
 								? "This profile will be the public home for events you host as an individual creator or host."
 								: selectedGroupId === "venue"
 									? "This profile will be the public home for all events hosted at your space."
-									: "This profile will be the public home for all the events you host on openevents."}
+									: "This profile will be the public home for all the events you host on makemyevent."}
 						</p>
 					</div>
 

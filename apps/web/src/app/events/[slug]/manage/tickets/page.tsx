@@ -504,7 +504,7 @@ export default function ManageTicketsPage(): JSX.Element {
 								No ticket types configured
 							</h3>
 							<p className="text-xs opacity-60 max-w-sm mb-6">
-								OpenEvents provides a default Free General Pass (limit 300) so
+								MakeMyEvent provides a default Free General Pass (limit 300) so
 								your event is always ready to receive registrations.
 							</p>
 							<button
@@ -852,7 +852,7 @@ export default function ManageTicketsPage(): JSX.Element {
 														<p className="text-xs opacity-60 font-mono mt-0.5">
 															Hosted by{" "}
 															{data?.event?.organizer?.name ||
-																"OpenEvents Community"}
+																"MakeMyEvent Community"}
 														</p>
 													</div>
 
@@ -1561,7 +1561,9 @@ export default function ManageTicketsPage(): JSX.Element {
 							: tierName
 					}
 					eventTitle={data?.event?.title || "Sudo Reboot"}
-					organizerName={data?.event?.organizer?.name || "OpenEvents Community"}
+					organizerName={
+						data?.event?.organizer?.name || "MakeMyEvent Community"
+					}
 					eventStart={
 						data?.event?.eventStart
 							? new Date(data.event.eventStart).toISOString()

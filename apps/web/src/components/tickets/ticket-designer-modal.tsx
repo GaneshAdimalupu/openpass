@@ -429,7 +429,7 @@ export function TicketDesignerModal({
 			case "tier_name":
 				return tierName || "General Pass";
 			case "organizer_name":
-				return `Hosted by ${organizerName || "OpenEvents"}`;
+				return `Hosted by ${organizerName || "MakeMyEvent"}`;
 			case "event_date_time":
 				return eventStart
 					? `${new Date(eventStart).toLocaleDateString("en-US", {

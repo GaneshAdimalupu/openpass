@@ -140,6 +140,48 @@ export default function PublicEventPage(): JSX.Element {
 					)}
 				</div>
 
+				{/* Dynamic Title and JSON-LD Structured Data for Rich Search Snippets & SEO */}
+				<title>{`${event.title} | makemyevent`}</title>
+				<script
+					type="application/ld+json"
+					/* biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data */
+					dangerouslySetInnerHTML={{
+						__html: JSON.stringify({
+							"@context": "https://schema.org",
+							"@type": "Event",
+							name: event.title,
+							startDate: event.eventStart,
+							endDate: event.eventEnd || event.eventStart,
+							eventAttendanceMode:
+								event.isOnline || event.format === "online"
+									? "https://schema.org/OnlineEventAttendanceMode"
+									: "https://schema.org/OfflineEventAttendanceMode",
+							eventStatus: "https://schema.org/EventScheduled",
+							location: {
+								"@type": "Place",
+								name: event.location || "Venue TBA",
+								address: {
+									"@type": "PostalAddress",
+									name: event.location || "Venue TBA",
+								},
+							},
+							image: event.bannerUrl ? [event.bannerUrl] : [],
+							description: event.description || event.title,
+							organizer: {
+								"@type": "Organization",
+								name: event.organizer.name,
+							},
+							offers: {
+								"@type": "Offer",
+								url: `https://makemyevent.org/events/${event.slug}/rsvp`,
+								price: "0",
+								priceCurrency: "INR",
+								availability: "https://schema.org/InStock",
+							},
+						}),
+					}}
+				/>
+
 				{/* Main Event Hero Card (FOSS United Style) */}
 				<div className="border border-perforation rounded-2xl p-5 sm:p-7 md:p-8 bg-paper shadow-sm">
 					<div className="grid grid-cols-1 sm:grid-cols-12 gap-6 sm:gap-8 items-start">
@@ -187,7 +229,7 @@ export default function PublicEventPage(): JSX.Element {
 												const icsContent = [
 													"BEGIN:VCALENDAR",
 													"VERSION:2.0",
-													"PRODID:-//MakeMyEvent//OpenEvents//EN",
+													"PRODID:-//MakeMyEvent//EN",
 													"BEGIN:VEVENT",
 													`UID:${event.title.replace(/\s+/g, "_")}-${start}@makemyevent.org`,
 													`DTSTAMP:${now}`,

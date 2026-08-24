@@ -136,7 +136,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
 				try {
 					const cookieStore = await cookies();
-					deviceId = cookieStore.get("openevents_device_id")?.value || null;
+					deviceId =
+						cookieStore.get("makemyevent_device_id")?.value ||
+						cookieStore.get("openevents_device_id")?.value ||
+						null;
 				} catch {
 					// safe fallback in environments where cookies() is not available
 				}

@@ -1689,6 +1689,7 @@ export const eventsRouter = router({
 					eventStart: true,
 					eventEnd: true,
 					location: true,
+					isOnline: true,
 					organizerId: true,
 					organizer: {
 						select: {

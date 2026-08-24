@@ -77,7 +77,7 @@ export function SiteFooter(): JSX.Element {
 
 				{/* Bottom copyright line */}
 				<div className="border-t border-perforation/60 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-mono opacity-60">
-					<p>© {new Date().getFullYear()} openevents. Open Source.</p>
+					<p>© {new Date().getFullYear()} makemyevent. Open Source.</p>
 					<a
 						href="https://github.com/GaneshAdimalupu/openpass"
 						target="_blank"

@@ -97,14 +97,18 @@ export function getClientDeviceId(): string {
 		return "";
 	}
 
-	const KEY = "openevents_device_id";
+	const KEY = "makemyevent_device_id";
+	const LEGACY_KEY = "openevents_device_id";
 
 	try {
 		// 1. Try local storage
-		let deviceId = localStorage.getItem(KEY);
+		let deviceId =
+			localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY);
 		if (!deviceId) {
 			// 2. Try cookie
-			const match = document.cookie.match(new RegExp(`(^| )${KEY}=([^;]+)`));
+			const match = document.cookie.match(
+				new RegExp(`(^| )(${KEY}|${LEGACY_KEY})=([^;]+)`),
+			);
 			if (match?.[2]) {
 				deviceId = decodeURIComponent(match[2]);
 			}

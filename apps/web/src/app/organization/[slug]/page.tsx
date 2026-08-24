@@ -346,6 +346,23 @@ export default function OrganizationOverviewPage(): JSX.Element {
 					</div>
 				) : (
 					<>
+						{/* Dynamic SEO Title & Structured Data */}
+						<title>{`${org.title || org.name} | makemyevent`}</title>
+						<script
+							type="application/ld+json"
+							/* biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data */
+							dangerouslySetInnerHTML={{
+								__html: JSON.stringify({
+									"@context": "https://schema.org",
+									"@type": "Organization",
+									name: org.title || org.name,
+									url: `https://makemyevent.org/organization/${org.slug}`,
+									logo: org.logoUrl || undefined,
+									description: org.description || undefined,
+								}),
+							}}
+						/>
+
 						{/* Organization Page Header & Profile Details */}
 						<div className="space-y-4">
 							<div className="flex items-center gap-3.5">
@@ -1450,7 +1467,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 						</p>
 
 						<div className="p-3 bg-perforation/20 rounded border border-perforation font-mono text-[11px] break-all select-all text-ink">
-							{`<iframe src="${typeof window !== "undefined" ? window.location.origin : "https://openevents.app"}/embed/org/${slug}" width="100%" height="450" frameborder="0"></iframe>`}
+							{`<iframe src="${typeof window !== "undefined" ? window.location.origin : "https://makemyevent.org"}/embed/org/${slug}" width="100%" height="450" frameborder="0"></iframe>`}
 						</div>
 
 						<div className="flex justify-end gap-3 pt-2">

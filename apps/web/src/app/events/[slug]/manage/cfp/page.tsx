@@ -139,7 +139,11 @@ export function ManageCFPPage() {
 		useState<CustomField>(defaultFieldState);
 
 	const handleCopy = () => {
-		navigator.clipboard.writeText(`https://openevents.local/${slug}/cfp`);
+		const origin =
+			typeof window !== "undefined"
+				? window.location.origin
+				: "https://makemyevent.org";
+		navigator.clipboard.writeText(`${origin}/events/${slug}/cfp`);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
@@ -332,7 +336,7 @@ export function ManageCFPPage() {
 						<span className="text-ink/70 font-medium">Public CFP Route:</span>
 						<div className="flex items-center gap-2 flex-1 sm:max-w-md">
 							<code className="px-3 py-1.5 bg-perforation/20 rounded font-mono text-xs border border-perforation text-ink flex-1 truncate">
-								https://openevents.local/{slug}/cfp
+								https://makemyevent.org/events/{slug}/cfp
 							</code>
 							<button
 								type="button"
