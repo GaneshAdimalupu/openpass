@@ -2,7 +2,7 @@
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { trpc } from "@/lib/trpc";
-import { Sparkles, Trash2, X } from "lucide-react";
+import { Sparkles, Ticket, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -144,6 +144,11 @@ function DashboardContent(): JSX.Element {
 			{ organizerId: currentOrgId as string },
 			{ enabled: !!currentOrgId },
 		);
+
+	const { data: participatedTickets, isLoading: participatedLoading } =
+		trpc.events.participatedList.useQuery(undefined, {
+			enabled: status === "authenticated",
+		});
 
 	// Filter events by search query
 	const allOrganizerEvents = useMemo(() => {
@@ -413,41 +418,99 @@ function DashboardContent(): JSX.Element {
 						{/* ──────────────── MODE: PARTICIPATED ──────────────── */}
 						{mode === "participated" && (
 							<div className="space-y-6">
-								<div className="border border-perforation rounded-lg p-12 text-center bg-paper/40">
-									<div className="w-14 h-14 rounded-full bg-perforation/30 text-ink flex items-center justify-center mx-auto mb-4">
-										<svg
-											aria-hidden="true"
-											xmlns="http://www.w3.org/2000/svg"
-											width="24"
-											height="24"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											strokeWidth="2"
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											className="opacity-70"
-										>
-											<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
-											<path d="M13 5v2" />
-											<path d="M13 17v2" />
-											<path d="M13 11v2" />
-										</svg>
+								{participatedLoading ? (
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-pulse">
+										<div className="h-44 bg-perforation/30 rounded-lg" />
+										<div className="h-44 bg-perforation/30 rounded-lg" />
 									</div>
-									<h2 className="font-display font-semibold text-xl mb-2 text-ink">
-										No Registered Events Yet
-									</h2>
-									<p className="text-body opacity-70 max-w-md mx-auto mb-6 text-sm">
-										When you register for workshops, fests, or meetups, your
-										tickets and entry passes will appear here.
-									</p>
-									<Link
-										href="/events"
-										className="bg-stamp text-paper label px-6 py-2.5 rounded-md hover:opacity-90 inline-block transition-opacity text-xs"
-									>
-										Explore Events Directory →
-									</Link>
-								</div>
+								) : !participatedTickets || participatedTickets.length === 0 ? (
+									<div className="border border-perforation rounded-lg p-12 text-center bg-paper/40">
+										<div className="w-14 h-14 rounded-full bg-perforation/30 text-ink flex items-center justify-center mx-auto mb-4">
+											<Ticket className="w-6 h-6 opacity-70 text-stamp" />
+										</div>
+										<h2 className="font-display font-semibold text-xl mb-2 text-ink">
+											No Registered Events Yet
+										</h2>
+										<p className="text-body opacity-70 max-w-md mx-auto mb-6 text-sm">
+											When you register for workshops, fests, or meetups, your
+											tickets and entry passes will appear here.
+										</p>
+										<Link
+											href="/events"
+											className="bg-stamp text-paper label px-6 py-2.5 rounded-md hover:opacity-90 inline-block transition-opacity text-xs font-medium"
+										>
+											Explore Events Directory →
+										</Link>
+									</div>
+								) : (
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+										{participatedTickets.map((t) => (
+											<div
+												key={t.id}
+												className="border border-perforation rounded-xl bg-paper overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+											>
+												{/* Banner */}
+												<div className="relative h-28 w-full bg-perforation/20 overflow-hidden">
+													{t.event.bannerUrl ? (
+														<Image
+															src={t.event.bannerUrl}
+															alt={t.event.title}
+															fill
+															className="object-cover"
+														/>
+													) : (
+														<div className="absolute inset-0 bg-gradient-to-br from-stamp/10 to-paper flex items-center justify-center">
+															<span className="font-display font-semibold text-xl text-ink/30">
+																{t.event.title.charAt(0)}
+															</span>
+														</div>
+													)}
+													<div className="absolute top-2 right-2 px-2 py-0.5 bg-paper/90 backdrop-blur-xs rounded font-mono text-[10px] font-bold text-stamp border border-perforation">
+														{t.ticket.name}
+													</div>
+												</div>
+
+												{/* Content */}
+												<div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+													<div>
+														<div className="text-[11px] font-mono text-stamp uppercase mb-1">
+															{t.event.organizer.name}
+														</div>
+														<h3 className="font-display font-medium text-base text-ink line-clamp-1">
+															{t.event.title}
+														</h3>
+														<p className="text-xs text-ink/60 font-mono mt-1">
+															{new Date(t.event.eventStart).toLocaleDateString(
+																"en-US",
+																{
+																	weekday: "short",
+																	month: "short",
+																	day: "numeric",
+																},
+															)}{" "}
+															• {t.event.location || "Online"}
+														</p>
+													</div>
+
+													<div className="pt-3 border-t border-perforation flex items-center justify-between gap-2">
+														<span className="font-mono text-xs text-ink/70 truncate">
+															Code:{" "}
+															<strong className="text-ink truncate">
+																{t.ticketCode}
+															</strong>
+														</span>
+														<Link
+															href={`/tickets/${t.ticketCode}`}
+															className="px-3 py-1.5 bg-stamp text-paper rounded text-xs font-mono font-medium hover:opacity-90 transition-opacity inline-flex items-center gap-1 shrink-0"
+														>
+															View Pass ↗
+														</Link>
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
+								)}
 							</div>
 						)}
 

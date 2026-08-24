@@ -2113,6 +2113,55 @@ export const eventsRouter = router({
 			});
 		}),
 
+	participatedList: authedProcedure.query(async ({ ctx }) => {
+		const user = await ctx.prisma.user.findUnique({
+			where: { id: ctx.userId },
+			select: { email: true },
+		});
+		const userEmail = user?.email;
+
+		const issuedTickets = await ctx.prisma.issuedTicket.findMany({
+			where: {
+				OR: [
+					{ userId: ctx.userId },
+					...(userEmail ? [{ attendeeEmail: userEmail }] : []),
+				],
+				status: { in: ["CONFIRMED", "CHECKED_IN"] },
+			},
+			include: {
+				ticket: {
+					select: {
+						id: true,
+						name: true,
+						price: true,
+					},
+				},
+				event: {
+					select: {
+						id: true,
+						title: true,
+						slug: true,
+						bannerUrl: true,
+						format: true,
+						eventStart: true,
+						eventEnd: true,
+						location: true,
+						organizer: {
+							select: {
+								id: true,
+								name: true,
+								slug: true,
+							},
+						},
+					},
+				},
+			},
+			orderBy: { createdAt: "desc" },
+		});
+
+		return issuedTickets;
+	}),
+
 	ticketGetByCode: publicProcedure
 		.input(z.object({ ticketCode: z.string() }))
 		.query(async ({ ctx, input }) => {
