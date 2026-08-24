@@ -116,6 +116,7 @@ export const eventsRouter = router({
 				slug: true,
 				description: true,
 				format: true,
+				bannerUrl: true,
 				topic: true,
 				tags: true,
 				eventStart: true,

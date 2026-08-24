@@ -3,6 +3,7 @@ import { OrbitalDiagram } from "@/components/landing/orbital-section";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { trpc } from "@/lib/trpc";
+import Image from "next/image";
 import Link from "next/link";
 import type { JSX } from "react";
 
@@ -132,10 +133,24 @@ export default function Home(): JSX.Element {
 								>
 									<Link
 										href={`/events/${event.slug}`}
-										className="block"
+										className="relative block h-36 w-full overflow-hidden bg-perforation/20 group"
 										aria-label={`View details for ${event.title}`}
 									>
-										<div className="h-36 bg-perforation/40 group-hover:bg-perforation/60 transition-colors" />
+										{event.bannerUrl ? (
+											<Image
+												src={event.bannerUrl}
+												alt={`Banner for ${event.title}`}
+												fill
+												sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+												className="object-cover group-hover:scale-105 transition-transform duration-300"
+											/>
+										) : (
+											<div className="absolute inset-0 bg-gradient-to-br from-stamp/10 via-perforation/20 to-paper flex items-center justify-center">
+												<span className="font-display font-semibold text-2xl text-ink/30 select-none">
+													{event.title.charAt(0).toUpperCase()}
+												</span>
+											</div>
+										)}
 									</Link>
 									<div className="p-4 flex-1 flex flex-col justify-between">
 										<div>

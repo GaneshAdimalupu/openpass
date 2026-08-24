@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { JSX } from "react";
 
@@ -9,6 +10,7 @@ export interface EventItem {
 	slug: string;
 	description?: string | null;
 	format: string;
+	bannerUrl?: string | null;
 	topic: string;
 	tags: string[];
 	eventStart: string | Date;
@@ -60,9 +62,18 @@ export function EventsGridView({ events }: EventsGridViewProps): JSX.Element {
 						className="flex flex-col justify-between border border-perforation rounded-lg overflow-hidden bg-paper hover:border-ink/20 transition-all shadow-sm hover:shadow-md"
 					>
 						<div>
-							{/* Ticket Header Graphic */}
-							<div className="h-32 bg-perforation/40 relative flex items-end p-4 border-b border-perforation">
-								<span className="label bg-paper text-ink px-2.5 py-1 rounded shadow-sm">
+							{/* Ticket Header Graphic / Banner */}
+							<div className="h-32 bg-perforation/40 relative flex items-end p-4 border-b border-perforation overflow-hidden">
+								{event.bannerUrl && (
+									<Image
+										src={event.bannerUrl}
+										alt={`Banner for ${event.title}`}
+										fill
+										sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+										className="object-cover"
+									/>
+								)}
+								<span className="label relative z-10 bg-paper/90 backdrop-blur-xs text-ink px-2.5 py-1 rounded shadow-sm border border-perforation">
 									{event.organizer.name}
 								</span>
 							</div>
