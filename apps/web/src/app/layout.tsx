@@ -24,6 +24,9 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://makemyevent.org";
 
 export const metadata: Metadata = {
 	metadataBase: new URL(baseUrl),
+	alternates: {
+		canonical: "./",
+	},
 	title: {
 		default: "makemyevent | Find and host community events",
 		template: "%s | makemyevent",
