@@ -183,12 +183,12 @@ export default function PublicEventPage(): JSX.Element {
 				/>
 
 				{/* Main Event Hero Card (FOSS United Style) */}
-				<div className="border border-perforation rounded-2xl p-5 sm:p-7 md:p-8 bg-paper shadow-sm">
-					<div className="grid grid-cols-1 sm:grid-cols-12 gap-6 sm:gap-8 items-start">
+				<div className="border border-perforation rounded-xl p-4 sm:p-5 md:p-6 bg-paper shadow-sm">
+					<div className="grid grid-cols-1 sm:grid-cols-12 gap-5 sm:gap-6 items-start">
 						{/* Info Column */}
 						<div
-							className={`space-y-5 ${
-								event.bannerUrl ? "sm:col-span-7" : "sm:col-span-12"
+							className={`space-y-4 ${
+								event.bannerUrl ? "sm:col-span-8" : "sm:col-span-12"
 							}`}
 						>
 							{/* Organization Branding Chip */}
@@ -326,8 +326,8 @@ export default function PublicEventPage(): JSX.Element {
 
 						{/* Banner Poster Column (FOSS United Square Aspect Ratio Style) */}
 						{event.bannerUrl && (
-							<div className="sm:col-span-5 flex justify-center sm:justify-end">
-								<div className="relative w-full max-w-[220px] sm:max-w-[260px] aspect-square rounded-xl overflow-hidden border border-perforation shadow-md">
+							<div className="sm:col-span-4 flex justify-center sm:justify-end">
+								<div className="relative w-full max-w-[160px] sm:max-w-[200px] aspect-square rounded-lg overflow-hidden border border-perforation shadow-sm">
 									<Image
 										src={event.bannerUrl}
 										alt={`Poster banner for ${event.title}`}

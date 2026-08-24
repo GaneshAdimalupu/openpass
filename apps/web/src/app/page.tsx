@@ -10,7 +10,7 @@ import type { JSX } from "react";
 function CardSkeleton(): JSX.Element {
 	return (
 		<div className="border border-perforation rounded-lg overflow-hidden animate-pulse bg-paper">
-			<div className="h-36 bg-perforation/40" />
+			<div className="h-28 bg-perforation/40" />
 			<div className="p-4 space-y-2">
 				<div className="h-3 w-16 bg-perforation/60 rounded" />
 				<div className="h-5 w-3/4 bg-perforation/60 rounded" />

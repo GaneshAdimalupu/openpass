@@ -230,10 +230,11 @@ function DashboardContent(): JSX.Element {
 				{orgsLoading ? (
 					<div className="space-y-6 animate-pulse">
 						<div className="h-16 bg-perforation/30 rounded-lg" />
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-							<div className="h-32 bg-perforation/30 rounded-lg" />
-							<div className="h-32 bg-perforation/30 rounded-lg" />
-							<div className="h-32 bg-perforation/30 rounded-lg" />
+						<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+							<div className="h-36 bg-perforation/30 rounded-lg" />
+							<div className="h-36 bg-perforation/30 rounded-lg" />
+							<div className="h-36 bg-perforation/30 rounded-lg" />
+							<div className="h-36 bg-perforation/30 rounded-lg" />
 						</div>
 					</div>
 				) : !organizers || organizers.length === 0 ? (
@@ -419,9 +420,11 @@ function DashboardContent(): JSX.Element {
 						{mode === "participated" && (
 							<div className="space-y-6">
 								{participatedLoading ? (
-									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-pulse">
-										<div className="h-44 bg-perforation/30 rounded-lg" />
-										<div className="h-44 bg-perforation/30 rounded-lg" />
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 animate-pulse">
+										<div className="h-36 bg-perforation/30 rounded-lg" />
+										<div className="h-36 bg-perforation/30 rounded-lg" />
+										<div className="h-36 bg-perforation/30 rounded-lg" />
+										<div className="h-36 bg-perforation/30 rounded-lg" />
 									</div>
 								) : !participatedTickets || participatedTickets.length === 0 ? (
 									<div className="border border-perforation rounded-lg p-12 text-center bg-paper/40">
@@ -450,7 +453,7 @@ function DashboardContent(): JSX.Element {
 												className="border border-perforation rounded-lg bg-paper overflow-hidden shadow-xs hover:shadow-sm transition-all flex flex-col justify-between"
 											>
 												{/* Banner */}
-												<div className="relative h-20 sm:h-24 w-full bg-perforation/20 overflow-hidden">
+												<div className="relative h-16 sm:h-20 w-full bg-perforation/20 overflow-hidden">
 													{t.event.bannerUrl ? (
 														<Image
 															src={t.event.bannerUrl}
@@ -467,13 +470,13 @@ function DashboardContent(): JSX.Element {
 															</span>
 														</div>
 													)}
-													<div className="absolute top-2 right-2 px-2 py-0.5 bg-paper/90 backdrop-blur-xs rounded font-mono text-[10px] font-bold text-stamp border border-perforation">
+													<div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-paper/90 backdrop-blur-xs rounded font-mono text-[9px] font-bold text-stamp border border-perforation">
 														{t.ticket.name}
 													</div>
 												</div>
 
 												{/* Content */}
-												<div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+												<div className="p-3 flex-1 flex flex-col justify-between space-y-2">
 													<div>
 														<div className="text-[11px] font-mono text-stamp uppercase mb-1">
 															{t.event.organizer.name}
@@ -892,7 +895,7 @@ function EventCard({
 	return (
 		<div className="border border-perforation rounded-lg bg-paper hover:border-ink/30 transition-all flex flex-col justify-between shadow-xs hover:shadow-sm overflow-hidden">
 			{/* Banner Area — compact wide header strip */}
-			<div className="relative w-full h-20 sm:h-24 overflow-hidden">
+			<div className="relative w-full h-16 sm:h-20 overflow-hidden">
 				{event.bannerUrl ? (
 					<Image
 						src={event.bannerUrl}
