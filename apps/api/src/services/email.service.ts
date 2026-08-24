@@ -56,13 +56,13 @@ export async function sendTicketEmail(params: TicketEmailParams) {
 		);
 
 		const fromEmail =
-			process.env.EMAIL_FROM || "openevents <onboarding@resend.dev>";
+			process.env.EMAIL_FROM || "makemyevent <onboarding@resend.dev>";
 
 		// 2. Send email via Resend API with inline CID QR attachment
 		const response = await resend.emails.send({
 			from: fromEmail,
 			to: [params.toEmail],
-			subject: `🎟️ Your Entry Ticket for ${params.eventTitle} [${params.ticketCode}]`,
+			subject: `Your Entry Ticket for ${params.eventTitle} [${params.ticketCode}]`,
 			attachments: [
 				{
 					filename: "ticket-qr.png",
@@ -82,7 +82,7 @@ export async function sendTicketEmail(params: TicketEmailParams) {
 						
 						<!-- Header Banner -->
 						<div style="background-color: #1f7a4d; padding: 24px; text-align: center; color: #ffffff;">
-							<h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">openevents</h1>
+							<h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">makemyevent</h1>
 							<p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;">Your Event Pass is Confirmed!</p>
 						</div>
 

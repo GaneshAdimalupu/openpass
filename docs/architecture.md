@@ -1,6 +1,6 @@
 # Architecture
 
-This is a quick tour of how openevents fits together — what talks to
+This is a quick tour of how makemyevent fits together — what talks to
 what, and why we made a few of the calls we made. If you're about to
 open your first PR, this should be enough context to know where your
 change belongs.
@@ -97,7 +97,7 @@ The schema (`packages/db/prisma/schema.prisma`) covers the core domain models:
 
 ## Auth
 
-Powered by NextAuth with JWT strategies and tRPC auth context, supporting credentials and OAuth identity providers (OpenEvents, Google, GitHub).
+Powered by NextAuth with JWT strategies and tRPC auth context, supporting credentials and OAuth identity providers (MakeMyEvent, Google, GitHub).
 
 ## Running it locally
 

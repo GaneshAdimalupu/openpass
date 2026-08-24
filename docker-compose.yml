@@ -3,13 +3,13 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: openevents
-      POSTGRES_PASSWORD: openevents
-      POSTGRES_DB: openevents
+      POSTGRES_USER: makemyevent
+      POSTGRES_PASSWORD: makemyevent
+      POSTGRES_DB: makemyevent
     ports:
       - "5434:5432"
     volumes:
-      - openevents_pgdata:/var/lib/postgresql/data
+      - makemyevent_pgdata:/var/lib/postgresql/data
 
 volumes:
-  openevents_pgdata:
+  makemyevent_pgdata:

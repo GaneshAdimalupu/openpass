@@ -1,6 +1,6 @@
 # Design System
 
-This is the source of truth for how openevents looks. If you're
+This is the source of truth for how makemyevent looks. If you're
 building a UI — human or agent — pull values from here rather than
 picking a color or size that "looks about right." The point isn't
 to be restrictive, it's that a ticketing platform should feel

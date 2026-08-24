@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="apps/web/public/openpass.svg" alt="openevents Logo" width="280" />
+  <img src="apps/web/public/openpass.svg" alt="makemyevent Logo" width="280" />
   <br />
   <br />
   <a href="https://turbo.build/">
@@ -14,37 +14,37 @@
   <a href="https://pnpm.io/">
     <img src="https://img.shields.io/badge/pnpm-orange?style=flat-square&logo=pnpm" alt="pnpm" />
   </a>
-  <a href="https://openevents.vercel.app">
-    <img src="https://img.shields.io/badge/Deployed_on-Vercel-black?style=flat-square&logo=vercel" alt="Deployed on Vercel" />
+  <a href="https://makemyevent.org">
+    <img src="https://img.shields.io/badge/Deployed_on-makemyevent.org-1f7a4d.svg?style=flat-square" alt="Deployed on makemyevent.org" />
   </a>
 </div>
 
-openevents is a modern, high-performance event management and ticketing platform built with scalability and developer experience in mind. This monorepo houses the entire ecosystem, from the core business logic to the web application.
+makemyevent is a modern, high-performance event management and ticketing platform built with scalability and developer experience in mind. This monorepo houses the entire ecosystem, from the core business logic to the web application.
 
-**🟢 Live Deployment:** [https://openevents.vercel.app](https://openevents.vercel.app)
+**Live Deployment:** [https://makemyevent.org](https://makemyevent.org)
 
 ---
 
-## 🌍 Our Mission
+## Our Mission
 
-openevents isn't just a ticketing platform; it is built to be the bridge for the open-source and tech community. We believe that discovering, hosting, and attending tech events should be entirely frictionless.
+makemyevent isn't just a ticketing platform; it is built to be the bridge for the open-source and tech community. We believe that discovering, hosting, and attending tech events should be entirely frictionless.
 
 Our goal is to build an ecosystem where:
 
-- **🔍 Anyone can Discover:** Whether you are in a major tech hub or a small town, you can instantly see daily and upcoming open-source events happening around you.
-- **🎟️ Seamless Registration & Entry:** Attendees can register with a single click and instantly receive dynamic, QR-coded digital passes delivered straight to their inboxes.
-- **🎓 Beyond the Door:** The experience doesn't end when the event starts. openevents seamlessly handles post-event engagement, automating participation certificates and collecting valuable community feedback.
+- **Anyone can Discover:** Whether you are in a major tech hub or a small town, you can instantly see daily and upcoming open-source events happening around you.
+- **Seamless Registration & Entry:** Attendees can register with a single click and instantly receive dynamic, QR-coded digital passes delivered straight to their inboxes.
+- **Beyond the Door:** The experience doesn't end when the event starts. makemyevent seamlessly handles post-event engagement, automating participation certificates and collecting valuable community feedback.
 
-By eliminating the friction of event management, openevents empowers community leaders to focus on what actually matters: sharing knowledge, building connections, and writing great software.
+By eliminating the friction of event management, makemyevent empowers community leaders to focus on what actually matters: sharing knowledge, building connections, and writing great software.
 
 ---
 
-## ✨ Features
+## Features
 
 - **Monorepo Architecture**: Powered by Turborepo for lightning-fast builds and task execution.
 - **Type-Safe**: 100% TypeScript across all apps and packages.
-- **Modern UI**: Built with Next.js, Tailwind CSS, and a shared component library.
-- **Robust Auth**: Integrated authentication via `@openevents/auth`.
+- **Modern UI**: Built with Next.js App Router and design system components.
+- **Robust Auth**: Integrated authentication.
 - **Database Power**: Prisma ORM with PostgreSQL (hosted on [Supabase](https://supabase.com)).
 - **Developer-First**: Automated setup scripts and Docker-ready environment.
 
