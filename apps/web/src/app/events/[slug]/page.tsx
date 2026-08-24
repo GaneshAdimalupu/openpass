@@ -327,7 +327,7 @@ export default function PublicEventPage(): JSX.Element {
 						{/* Banner Poster Column (FOSS United Square Aspect Ratio Style) */}
 						{event.bannerUrl && (
 							<div className="sm:col-span-5 flex justify-center sm:justify-end">
-								<div className="relative w-full max-w-[280px] sm:max-w-full aspect-square rounded-xl overflow-hidden border border-perforation shadow-md">
+								<div className="relative w-full max-w-[220px] sm:max-w-[260px] aspect-square rounded-xl overflow-hidden border border-perforation shadow-md">
 									<Image
 										src={event.bannerUrl}
 										alt={`Poster banner for ${event.title}`}

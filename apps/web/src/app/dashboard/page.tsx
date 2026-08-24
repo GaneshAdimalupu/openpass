@@ -443,19 +443,21 @@ function DashboardContent(): JSX.Element {
 										</Link>
 									</div>
 								) : (
-									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 										{participatedTickets.map((t) => (
 											<div
 												key={t.id}
-												className="border border-perforation rounded-xl bg-paper overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+												className="border border-perforation rounded-lg bg-paper overflow-hidden shadow-xs hover:shadow-sm transition-all flex flex-col justify-between"
 											>
 												{/* Banner */}
-												<div className="relative h-28 w-full bg-perforation/20 overflow-hidden">
+												<div className="relative h-20 sm:h-24 w-full bg-perforation/20 overflow-hidden">
 													{t.event.bannerUrl ? (
 														<Image
 															src={t.event.bannerUrl}
 															alt={t.event.title}
 															fill
+															priority
+															sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
 															className="object-cover"
 														/>
 													) : (
@@ -890,7 +892,7 @@ function EventCard({
 	return (
 		<div className="border border-perforation rounded-lg bg-paper hover:border-ink/30 transition-all flex flex-col justify-between shadow-xs hover:shadow-sm overflow-hidden">
 			{/* Banner Area — compact wide header strip */}
-			<div className="relative w-full h-24 sm:h-28 overflow-hidden">
+			<div className="relative w-full h-20 sm:h-24 overflow-hidden">
 				{event.bannerUrl ? (
 					<Image
 						src={event.bannerUrl}
