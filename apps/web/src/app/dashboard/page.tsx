@@ -314,7 +314,7 @@ function DashboardContent(): JSX.Element {
 										}`}
 									>
 										<Ticket className="w-3.5 h-3.5 text-stamp" />
-										<span>My Tickets & Passes</span>
+										<span>My Tickets</span>
 									</button>
 									<button
 										type="button"
@@ -430,7 +430,7 @@ function DashboardContent(): JSX.Element {
 							</div>
 						</div>
 
-						{/* ──────────────── MODE: MY TICKETS & PASSES ──────────────── */}
+						{/* ──────────────── MODE: MY TICKETS ──────────────── */}
 						{mode === "my_tickets" && (
 							<div className="space-y-6">
 								{participatedLoading ? (
