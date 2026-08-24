@@ -214,6 +214,18 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 									</div>
 
 									<Link
+										href="/dashboard?tab=tickets"
+										role="menuitem"
+										onClick={() => setIsMenuOpen(false)}
+										className="px-4 py-2 text-ink hover:bg-perforation/20 transition-colors font-medium text-stamp flex items-center justify-between"
+									>
+										<span>My Tickets & Passes</span>
+										<span className="text-[10px] font-mono border border-stamp/30 px-1.5 py-0.5 rounded bg-stamp/10">
+											Passes
+										</span>
+									</Link>
+
+									<Link
 										href="/profile"
 										role="menuitem"
 										onClick={() => setIsMenuOpen(false)}

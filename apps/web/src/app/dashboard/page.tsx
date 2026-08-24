@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 
-type DashboardMode = "organized" | "participated";
+type DashboardMode = "hosted" | "my_tickets";
 
 export default function DashboardPage(): JSX.Element {
 	return (
@@ -35,8 +35,21 @@ function DashboardContent(): JSX.Element {
 	const { data: session, status } = useSession();
 	const searchParams = useSearchParams();
 	const actionParam = searchParams.get("action");
+	const tabParam = searchParams.get("tab");
 
-	const [mode, setMode] = useState<DashboardMode>("organized");
+	const [mode, setMode] = useState<DashboardMode>(
+		tabParam === "tickets" || tabParam === "my_tickets"
+			? "my_tickets"
+			: "hosted",
+	);
+
+	useEffect(() => {
+		if (tabParam === "tickets" || tabParam === "my_tickets") {
+			setMode("my_tickets");
+		} else if (tabParam === "hosted" || tabParam === "organized") {
+			setMode("hosted");
+		}
+	}, [tabParam]);
 	const [searchQuery, setSearchQuery] = useState<string>("");
 	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 	const [isCompletedExpanded, setIsCompletedExpanded] =
@@ -289,29 +302,30 @@ function DashboardContent(): JSX.Element {
 									/>
 								</div>
 
-								{/* Segmented Pill: Participated / Organized */}
+								{/* Segmented Pill: My Tickets / Hosted Events */}
 								<div className="inline-flex justify-center rounded-md border border-perforation p-0.5 bg-paper/50 shrink-0">
 									<button
 										type="button"
-										onClick={() => setMode("participated")}
-										className={`flex-1 sm:flex-initial px-3 py-1.5 rounded text-xs label transition-all ${
-											mode === "participated"
+										onClick={() => setMode("my_tickets")}
+										className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded text-xs label transition-all inline-flex items-center gap-1.5 ${
+											mode === "my_tickets"
 												? "bg-ink text-paper font-semibold shadow-xs"
 												: "text-ink opacity-60 hover:opacity-100"
 										}`}
 									>
-										Participated
+										<Ticket className="w-3.5 h-3.5 text-stamp" />
+										<span>My Tickets & Passes</span>
 									</button>
 									<button
 										type="button"
-										onClick={() => setMode("organized")}
-										className={`flex-1 sm:flex-initial px-3 py-1.5 rounded text-xs label transition-all ${
-											mode === "organized"
+										onClick={() => setMode("hosted")}
+										className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded text-xs label transition-all ${
+											mode === "hosted"
 												? "bg-ink text-paper font-semibold shadow-xs"
 												: "text-ink opacity-60 hover:opacity-100"
 										}`}
 									>
-										Organized
+										Hosted Events
 									</button>
 								</div>
 							</div>
@@ -416,8 +430,8 @@ function DashboardContent(): JSX.Element {
 							</div>
 						</div>
 
-						{/* ──────────────── MODE: PARTICIPATED ──────────────── */}
-						{mode === "participated" && (
+						{/* ──────────────── MODE: MY TICKETS & PASSES ──────────────── */}
+						{mode === "my_tickets" && (
 							<div className="space-y-6">
 								{participatedLoading ? (
 									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 animate-pulse">
@@ -519,8 +533,8 @@ function DashboardContent(): JSX.Element {
 							</div>
 						)}
 
-						{/* ──────────────── MODE: ORGANIZED ──────────────── */}
-						{mode === "organized" && (
+						{/* ──────────────── MODE: HOSTED EVENTS ──────────────── */}
+						{mode === "hosted" && (
 							<div className="space-y-10">
 								{/* Active Profile Info Strip */}
 								<div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg bg-perforation/15 border border-perforation text-xs font-mono">
