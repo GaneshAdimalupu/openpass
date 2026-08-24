@@ -153,7 +153,7 @@ export default function RsvpInsightsPage(): JSX.Element {
 			</div>
 
 			{/* Metric Cards */}
-			<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 my-6">
+			<div className="grid grid-cols-2 sm:grid-cols-4 gap-4 my-6">
 				<div className="p-5 rounded-xl border border-perforation bg-paper/60 shadow-xs flex flex-col justify-between">
 					<div className="flex items-center justify-between text-ink/60 mb-2">
 						<span className="text-[0.81rem] font-medium uppercase tracking-[0.04em]">
@@ -215,9 +215,9 @@ export default function RsvpInsightsPage(): JSX.Element {
 			</div>
 
 			{/* Charts & Breakdown Grid */}
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 my-6">
+			<div className="grid grid-cols-1 sm:grid-cols-3 gap-6 my-6">
 				{/* 7-Day Velocity Chart */}
-				<div className="lg:col-span-2 p-6 rounded-xl border border-perforation bg-paper shadow-xs flex flex-col justify-between">
+				<div className="sm:col-span-2 p-6 rounded-xl border border-perforation bg-paper shadow-xs flex flex-col justify-between">
 					<div className="flex items-center justify-between mb-6">
 						<div>
 							<h2 className="font-display font-semibold text-base text-ink">

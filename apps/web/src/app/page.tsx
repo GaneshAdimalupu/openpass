@@ -1,4 +1,5 @@
 "use client";
+import { OrbitalDiagram } from "@/components/landing/orbital-section";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { trpc } from "@/lib/trpc";
@@ -8,7 +9,7 @@ import type { JSX } from "react";
 function CardSkeleton(): JSX.Element {
 	return (
 		<div className="border border-perforation rounded-lg overflow-hidden animate-pulse bg-paper">
-			<div className="h-32 bg-perforation/40" />
+			<div className="h-36 bg-perforation/40" />
 			<div className="p-4 space-y-2">
 				<div className="h-3 w-16 bg-perforation/60 rounded" />
 				<div className="h-5 w-3/4 bg-perforation/60 rounded" />
@@ -25,30 +26,54 @@ export default function Home(): JSX.Element {
 		<div className="min-h-screen">
 			<SiteHeader />
 
-			<section className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-12 border-b border-perforation flex flex-col items-center text-center">
-				<h1 className="font-display font-semibold text-h1 mb-4 max-w-2xl">
-					Find and host events, all in one place
-				</h1>
-				<p className="opacity-80 text-body max-w-xl mb-6">
-					openevents is an open, self-hostable platform for running conferences,
-					workshops, fests, and meetups — from a college club night to a
-					city-wide summit.
-				</p>
-				<div className="flex justify-center gap-4">
-					<Link
-						href="#events"
-						className="bg-stamp text-paper label px-4 py-2 rounded-md hover:opacity-90 transition-opacity"
-					>
-						Explore Events
-					</Link>
+			{/* ── Unified Hero (Text + Orbital Diagram) ── */}
+			<section className="border-b border-perforation py-12 md:py-20 overflow-hidden">
+				<div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8">
+					<div className="flex flex-col md:flex-row items-center gap-12 md:gap-16 lg:gap-20 min-h-[calc(100vh-140px)]">
+						{/* ── Left Column: Pitch & Action ── */}
+						<div className="flex-1 max-w-xl text-center md:text-left">
+							<p className="label text-stamp mb-4 tracking-widest text-xs">
+								Open Source · Free Forever
+							</p>
+							<h1 className="font-display font-semibold text-h1 mb-5 leading-tight">
+								Find and host events,{" "}
+								<span className="text-stamp">all in one place</span>
+							</h1>
+							<p className="opacity-70 text-body mb-8 leading-relaxed">
+								makemyevent is an open, self-hostable platform for running
+								conferences, workshops, fests, and meetups — from a college club
+								night to a city-wide summit.
+							</p>
+							<div className="flex flex-wrap justify-center md:justify-start gap-3">
+								<Link
+									href="#events"
+									className="bg-stamp text-paper font-medium px-5 py-2.5 rounded-full hover:opacity-90 transition-opacity text-sm"
+								>
+									Explore Events
+								</Link>
+								<Link
+									href="/dashboard?action=create"
+									className="bg-paper text-ink font-medium px-5 py-2.5 rounded-full border border-perforation hover:border-ink/40 transition-colors text-sm"
+								>
+									Host an event →
+								</Link>
+							</div>
+						</div>
+
+						{/* ── Right Column: Orbital Architecture Diagram ── */}
+						<div className="shrink-0 w-full max-w-[540px] mx-auto">
+							<OrbitalDiagram />
+						</div>
+					</div>
 				</div>
 			</section>
 
+			{/* ── Events listing ── */}
 			<main
 				id="events"
-				className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-6"
+				className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-12 border-b border-perforation"
 			>
-				<div className="mb-4 flex items-center justify-between">
+				<div className="mb-6 flex items-center justify-between">
 					<h2 className="font-display font-semibold text-h2">
 						Happening near you
 					</h2>
@@ -56,7 +81,7 @@ export default function Home(): JSX.Element {
 						href="/events"
 						className="label text-stamp hover:opacity-80 transition-opacity text-xs"
 					>
-						View all Events ↗
+						View all ↗
 					</Link>
 				</div>
 
@@ -85,11 +110,11 @@ export default function Home(): JSX.Element {
 							Host your first event
 						</h3>
 						<p className="opacity-60 mb-6 text-body">
-							There are no events happening near you right now.
+							There are no events happening right now. Be the first to host one.
 						</p>
 						<Link
 							href="/dashboard?action=create"
-							className="bg-stamp text-paper label px-4 py-2 rounded-md hover:opacity-90 inline-block transition-opacity"
+							className="bg-stamp text-paper label px-5 py-2.5 rounded-full hover:opacity-90 inline-block transition-opacity text-sm"
 						>
 							Host an event
 						</Link>
@@ -108,9 +133,9 @@ export default function Home(): JSX.Element {
 									<Link
 										href={`/events/${event.slug}`}
 										className="block"
-										aria-label={`View ${event.title}`}
+										aria-label={`View details for ${event.title}`}
 									>
-										<div className="h-32 bg-perforation/40 group-hover:bg-perforation/60 transition-colors" />
+										<div className="h-36 bg-perforation/40 group-hover:bg-perforation/60 transition-colors" />
 									</Link>
 									<div className="p-4 flex-1 flex flex-col justify-between">
 										<div>
@@ -147,7 +172,7 @@ export default function Home(): JSX.Element {
 											</span>
 											<Link
 												href={`/events/${event.slug}`}
-												className="label px-3 py-1 rounded text-xs transition-opacity bg-stamp text-paper hover:opacity-90"
+												className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-opacity bg-stamp text-paper hover:opacity-90"
 											>
 												Register
 											</Link>
@@ -159,6 +184,26 @@ export default function Home(): JSX.Element {
 					</div>
 				)}
 			</main>
+
+			{/* ── Host CTA Banner ── */}
+			<section className="border-b border-perforation py-16 md:py-24">
+				<div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 text-center">
+					<h2 className="font-display font-semibold text-h2 mb-4 max-w-xl mx-auto">
+						Ready to host your next event?
+					</h2>
+					<p className="opacity-60 text-body max-w-lg mx-auto mb-8 leading-relaxed">
+						Set up tickets, collect registrations, manage guests, and check in
+						attendees — all in one place, for free.
+					</p>
+					<Link
+						href="/dashboard?action=create"
+						className="inline-block bg-stamp text-paper font-semibold px-6 py-3 rounded-full hover:opacity-90 transition-opacity text-sm shadow-sm"
+					>
+						Host your first event →
+					</Link>
+				</div>
+			</section>
+
 			<SiteFooter />
 		</div>
 	);

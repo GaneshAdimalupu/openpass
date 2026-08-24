@@ -3,6 +3,7 @@
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { trpc } from "@/lib/trpc";
 import { Sparkles, Trash2, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -765,6 +766,7 @@ interface EventCardProps {
 		format: string;
 		topic: string;
 		status: string;
+		bannerUrl?: string | null;
 		eventStart: string | Date;
 		eventEnd: string | Date;
 		isOnline: boolean;
@@ -782,6 +784,22 @@ interface EventCardProps {
 	onDelete?: () => void;
 }
 
+/**
+ * Topic-based gradient backgrounds for events without a banner image.
+ * Uses design system tokens mixed with opacity for subtle variety.
+ */
+const TOPIC_GRADIENTS: Record<string, string> = {
+	technology: "from-stamp/20 to-ink/10",
+	business: "from-ink/15 to-perforation/40",
+	opensource: "from-stamp/25 to-stamp/5",
+	design: "from-perforation/30 to-stamp/10",
+	science: "from-ink/10 to-stamp/15",
+	arts: "from-perforation/40 to-ink/8",
+	social: "from-stamp/10 to-perforation/30",
+	campus: "from-ink/8 to-stamp/20",
+	other: "from-perforation/30 to-ink/10",
+};
+
 function EventCard({
 	event,
 	onCopyLink,
@@ -796,7 +814,7 @@ function EventCard({
 		year: "numeric",
 	});
 
-	// Initial letter for square thumbnail
+	// Initial letter for fallback thumbnail
 	const initial = event.title.charAt(0).toUpperCase();
 
 	// Calculate total guest count across tiers
@@ -804,16 +822,41 @@ function EventCard({
 		event.capacity ||
 		event.tickets.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
-	return (
-		<div className="border border-perforation rounded-lg p-3.5 bg-paper hover:border-ink/30 transition-all flex flex-col justify-between space-y-3 shadow-xs hover:shadow-sm">
-			<div className="flex items-start gap-3">
-				{/* Square Thumbnail with Initial */}
-				<div className="w-9 h-9 rounded-md bg-perforation/20 text-ink flex items-center justify-center font-display font-semibold text-sm shrink-0 border border-perforation/40">
-					{initial}
-				</div>
+	const gradientClass = TOPIC_GRADIENTS[event.topic] || TOPIC_GRADIENTS.other;
 
+	return (
+		<div className="border border-perforation rounded-lg bg-paper hover:border-ink/30 transition-all flex flex-col justify-between shadow-xs hover:shadow-sm overflow-hidden">
+			{/* Banner Area — compact wide header strip */}
+			<div className="relative w-full h-24 sm:h-28 overflow-hidden">
+				{event.bannerUrl ? (
+					<Image
+						src={event.bannerUrl}
+						alt={`Banner for ${event.title}`}
+						fill
+						sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+						className="object-cover"
+					/>
+				) : (
+					<div
+						className={`absolute inset-0 bg-gradient-to-br ${gradientClass} flex items-center justify-center`}
+					>
+						<span className="font-display font-semibold text-2xl text-ink/40 select-none">
+							{initial}
+						</span>
+					</div>
+				)}
+				{/* Status badge overlay */}
+				{event.status === "draft" && (
+					<span className="absolute top-2 right-2 label text-[10px] px-2 py-1 rounded bg-ink/70 text-paper font-medium">
+						Draft
+					</span>
+				)}
+			</div>
+
+			{/* Card Body */}
+			<div className="p-3 flex flex-col gap-2 flex-1">
 				{/* Title and Date */}
-				<div className="flex-1 min-w-0">
+				<div className="min-w-0">
 					<p className="font-mono text-[11px] opacity-60 mb-0.5 truncate leading-tight">
 						{formattedDate}
 					</p>
@@ -837,7 +880,7 @@ function EventCard({
 			</div>
 
 			{/* Footer: Manage Button, Guests Count, Context Actions */}
-			<div className="border-t border-perforation pt-2.5 flex items-center justify-between">
+			<div className="border-t border-perforation mx-3 pt-2 pb-3 flex items-center justify-between">
 				<Link
 					href={`/events/${event.slug}/manage`}
 					className="label inline-flex items-center gap-1 text-[11px] text-ink hover:text-stamp transition-colors font-medium"

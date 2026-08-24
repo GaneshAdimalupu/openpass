@@ -6,27 +6,24 @@ import { trpc } from "@/lib/trpc";
 import {
 	AlertCircle,
 	Calendar,
-	Check,
 	Clock,
-	CreditCard,
+	Info,
+	Mail,
 	MapPin,
-	RefreshCw,
 	Sparkles,
 	Ticket as TicketIcon,
+	Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
 import type { JSX } from "react";
 
 export default function PublicEventPage(): JSX.Element {
 	const params = useParams();
-	const router = useRouter();
 	const slug = params.slug as string;
 	const { data: session } = useSession();
-	const searchParams = useSearchParams();
-	const ticketParam = searchParams.get("ticket");
 
 	// Query Event data and ticket tiers
 	const { data: ticketData, isLoading: ticketsLoading } =
@@ -41,83 +38,6 @@ export default function PublicEventPage(): JSX.Element {
 		{ slug },
 		{ enabled: !!slug },
 	);
-
-	// Booking form state
-	const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
-	const [attendeeName, setAttendeeName] = useState("");
-	const [attendeeEmail, setAttendeeEmail] = useState("");
-	const [attendeePhone, setAttendeePhone] = useState("");
-	const [bookingError, setBookingError] = useState<string | null>(null);
-
-	// Pre-fill user details if logged in
-	useEffect(() => {
-		if (session?.user) {
-			if (session.user.name && !attendeeName) {
-				setAttendeeName(session.user.name);
-			}
-			if (session.user.email && !attendeeEmail) {
-				setAttendeeEmail(session.user.email);
-			}
-		}
-	}, [session, attendeeName, attendeeEmail]);
-
-	// Auto-select tier (match ?ticket= query param or default to first available General Pass)
-	useEffect(() => {
-		if (ticketData?.tiers && ticketData.tiers.length > 0) {
-			if (ticketParam) {
-				const matching = ticketData.tiers.find(
-					(t) =>
-						t.id === ticketParam ||
-						t.id?.toLowerCase() === ticketParam.toLowerCase(),
-				);
-				if (matching) {
-					setSelectedTierId(matching.id);
-					return;
-				}
-			}
-
-			if (!selectedTierId) {
-				const firstPublished = ticketData.tiers.find((t) => t.isPublished);
-				if (firstPublished) {
-					setSelectedTierId(firstPublished.id);
-				}
-			}
-		}
-	}, [ticketData, selectedTierId, ticketParam]);
-
-	// Mutation to book ticket
-	const { mutate: bookTicket, isPending: isBooking } =
-		trpc.events.ticketBook.useMutation({
-			onSuccess: (res) => {
-				router.push(`/tickets/${res.ticketCode}`);
-			},
-			onError: (err) => {
-				setBookingError(err.message);
-			},
-		});
-
-	const handleBookingSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		setBookingError(null);
-
-		if (!selectedTierId) {
-			setBookingError("Please select a ticket tier.");
-			return;
-		}
-
-		if (!attendeeName.trim() || !attendeeEmail.trim()) {
-			setBookingError("Full name and email are required.");
-			return;
-		}
-
-		bookTicket({
-			slug,
-			tierId: selectedTierId,
-			attendeeName: attendeeName.trim(),
-			attendeeEmail: attendeeEmail.trim(),
-			attendeePhone: attendeePhone.trim() || undefined,
-		});
-	};
 
 	if (ticketsLoading) {
 		return (
@@ -156,8 +76,6 @@ export default function PublicEventPage(): JSX.Element {
 	}
 
 	const event = ticketData.event;
-	const tiers = ticketData.tiers.filter((t) => t.isPublished);
-	const selectedTier = tiers.find((t) => t.id === selectedTierId);
 
 	const formattedStart = event.eventStart
 		? new Date(event.eventStart).toLocaleDateString("en-US", {
@@ -198,377 +116,366 @@ export default function PublicEventPage(): JSX.Element {
 				</div>
 			)}
 
-			{/* Hero & Overview Section */}
-			<section className="border-b border-perforation bg-paper/50 py-10 md:py-16">
-				<div className="max-w-6xl mx-auto px-4 md:px-8 space-y-6">
-					{/* Badges */}
-					<div className="flex flex-wrap items-center gap-2">
-						{event.status !== "published" && (
-							<span className="text-[11px] font-mono uppercase tracking-wider bg-alert/10 text-alert font-semibold px-2.5 py-1 rounded-full border border-alert/20">
-								Draft
-							</span>
-						)}
-						<span className="text-[11px] font-mono uppercase tracking-wider bg-stamp/10 text-stamp font-semibold px-2.5 py-1 rounded-full border border-stamp/20">
-							{event.organizer.name}
-						</span>
-						{event.location && (
-							<span className="text-[11px] font-mono opacity-70 bg-perforation/30 px-2.5 py-1 rounded-full">
-								{event.location}
-							</span>
-						)}
+			<div className="max-w-6xl mx-auto px-4 md:px-8 py-6 flex-1 w-full space-y-6">
+				{/* Breadcrumb Navigation Bar */}
+				<div className="flex items-center justify-between text-xs font-mono text-ink/60">
+					<div className="flex items-center gap-2 truncate">
+						<Link href="/" className="hover:text-stamp transition-colors">
+							Home
+						</Link>
+						<span>/</span>
+						<Link href="/events" className="hover:text-stamp transition-colors">
+							Events
+						</Link>
+						<span>/</span>
+						<span className="text-ink font-medium truncate">{event.title}</span>
 					</div>
-
-					{/* Title */}
-					<h1 className="font-display font-bold text-3xl md:text-5xl leading-tight max-w-4xl">
-						{event.title}
-					</h1>
-
-					{/* Meta Grid */}
-					<div className="flex flex-wrap items-center gap-6 text-sm opacity-80 pt-2 font-mono">
-						{formattedStart && (
-							<div className="flex items-center gap-2">
-								<Calendar className="w-4 h-4 text-stamp" />
-								<span>
-									{formattedStart} {formattedTime ? `at ${formattedTime}` : ""}
-								</span>
-							</div>
-						)}
-						<div className="flex items-center gap-2">
-							<MapPin className="w-4 h-4 text-stamp" />
-							<span>{event.location || "Venue TBA"}</span>
-						</div>
-					</div>
+					{session?.user?.id === event.organizer.ownerId && (
+						<Link
+							href={`/events/${event.slug}/manage`}
+							className="px-3 py-1 bg-perforation/40 hover:bg-perforation/70 text-ink rounded-md text-xs font-medium transition-colors flex items-center gap-1 shrink-0"
+						>
+							Edit Event ↗
+						</Link>
+					)}
 				</div>
-			</section>
 
-			{/* Main Content Layout */}
-			<main className="max-w-6xl mx-auto px-4 md:px-8 py-10 grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
-				{/* Left Column: Event Details, Schedule, Sponsors */}
-				<div className="lg:col-span-7 space-y-10">
-					{/* Description */}
-					<div className="space-y-4">
-						<h2 className="font-display font-semibold text-xl border-b border-perforation pb-3">
-							About Event
-						</h2>
-						{event.description ? (
-							<div className="prose prose-sm max-w-none text-ink/90 leading-relaxed font-sans whitespace-pre-wrap">
-								{event.description}
-							</div>
-						) : (
-							<p className="opacity-60 text-sm">
-								No detailed description provided by the host yet.
-							</p>
-						)}
-					</div>
-
-					{/* Schedule Items */}
-					{scheduleData?.items && scheduleData.items.length > 0 && (
-						<div className="space-y-4">
-							<div className="flex items-center gap-2 border-b border-perforation pb-3">
-								<Clock className="w-5 h-5 text-stamp" />
-								<h2 className="font-display font-semibold text-xl">
-									Schedule & Sessions
-								</h2>
+				{/* Main Event Hero Card (FOSS United Style) */}
+				<div className="border border-perforation rounded-2xl p-5 sm:p-7 md:p-8 bg-paper shadow-sm">
+					<div className="grid grid-cols-1 sm:grid-cols-12 gap-6 sm:gap-8 items-start">
+						{/* Info Column */}
+						<div
+							className={`space-y-5 ${
+								event.bannerUrl ? "sm:col-span-7" : "sm:col-span-12"
+							}`}
+						>
+							{/* Organization Branding Chip */}
+							<div className="flex flex-wrap items-center gap-2">
+								<span className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-stamp/10 text-stamp border border-stamp/20 text-xs font-semibold uppercase tracking-wider font-mono">
+									<span className="w-2 h-2 rounded-full bg-stamp animate-pulse" />
+									{event.organizer.name}
+								</span>
+								{event.format && (
+									<span className="text-[11px] font-mono opacity-70 bg-perforation/30 px-2.5 py-1 rounded-md capitalize">
+										{event.format}
+									</span>
+								)}
 							</div>
 
-							<div className="space-y-3">
-								{scheduleData.items.map((item) => (
-									<div
-										key={item.id}
-										className="p-4 border border-perforation rounded-xl bg-paper/60 space-y-1 hover:border-ink/20 transition-colors"
-									>
-										<div className="flex items-center justify-between gap-2 text-xs font-mono text-stamp">
-											<span>
-												{item.startTime} - {item.endTime}
-											</span>
-											{item.stage && (
-												<span className="px-2 py-0.5 rounded bg-perforation/40 text-ink text-[10px]">
-													{item.stage}
-												</span>
+							{/* Title */}
+							<h1 className="font-display font-bold text-2xl sm:text-3xl md:text-4xl leading-tight text-ink">
+								{event.title}
+							</h1>
+
+							{/* Event Meta Rows with Icon Boxes (FOSS United Style) */}
+							<div className="space-y-3 pt-1 text-sm font-mono text-ink/80">
+								{formattedStart && (
+									<div className="flex items-center gap-3">
+										<button
+											type="button"
+											onClick={() => {
+												const formatIcsDate = (dateStr: string) => {
+													return new Date(dateStr)
+														.toISOString()
+														.replace(/-|:|\.\d+/g, "");
+												};
+												const start = formatIcsDate(event.eventStart);
+												const end = formatIcsDate(
+													event.eventEnd || event.eventStart,
+												);
+												const now = formatIcsDate(new Date().toISOString());
+												const icsContent = [
+													"BEGIN:VCALENDAR",
+													"VERSION:2.0",
+													"PRODID:-//MakeMyEvent//OpenEvents//EN",
+													"BEGIN:VEVENT",
+													`UID:${event.title.replace(/\s+/g, "_")}-${start}@makemyevent.org`,
+													`DTSTAMP:${now}`,
+													`DTSTART:${start}`,
+													`DTEND:${end}`,
+													`SUMMARY:${event.title}`,
+													`DESCRIPTION:${(event.description || "").replace(/\n/g, "\\n")}`,
+													`LOCATION:${event.location || "Location TBA"}`,
+													"END:VEVENT",
+													"END:VCALENDAR",
+												].join("\r\n");
+
+												const blob = new Blob([icsContent], {
+													type: "text/calendar;charset=utf-8",
+												});
+												const url = URL.createObjectURL(blob);
+												const link = document.createElement("a");
+												link.href = url;
+												link.download = `${event.title.replace(/\s+/g, "_")}.ics`;
+												document.body.appendChild(link);
+												link.click();
+												document.body.removeChild(link);
+												URL.revokeObjectURL(url);
+											}}
+											title="Download calendar file (.ics)"
+											className="w-11 h-11 rounded-lg border border-perforation bg-paper/60 hover:bg-perforation/40 flex items-center justify-center text-stamp shrink-0 shadow-xs cursor-pointer transition-colors"
+										>
+											<Calendar className="w-5 h-5" />
+										</button>
+										<div>
+											<div className="font-semibold text-ink">
+												{formattedStart}
+											</div>
+											{formattedTime && (
+												<div className="text-xs opacity-70 mt-0.5">
+													{formattedTime}
+												</div>
 											)}
 										</div>
-										<h3 className="font-display font-semibold text-base">
-											{item.title}
-										</h3>
-										{item.speakerName && (
-											<p className="text-xs text-stamp font-medium">
-												By {item.speakerName}
-											</p>
-										)}
-										{item.description && (
-											<p className="text-xs opacity-75 pt-1">
-												{item.description}
-											</p>
-										)}
 									</div>
-								))}
-							</div>
-						</div>
-					)}
+								)}
 
-					{/* Sponsors & Partners */}
-					{partnerData?.sponsors && partnerData.sponsors.length > 0 && (
-						<div className="space-y-4">
-							<div className="flex items-center gap-2 border-b border-perforation pb-3">
-								<Sparkles className="w-5 h-5 text-stamp" />
-								<h2 className="font-display font-semibold text-xl">
-									Event Partners & Sponsors
-								</h2>
-							</div>
-
-							<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-								{partnerData.sponsors.map((sponsor) => (
-									<div
-										key={sponsor.id}
-										className="p-4 border border-perforation rounded-lg bg-paper text-center space-y-2 flex flex-col items-center justify-center"
-									>
-										{sponsor.logoUrl ? (
-											/* biome-ignore lint/performance/noImgElement: Dynamic sponsor logo */
-											<img
-												src={sponsor.logoUrl}
-												alt={sponsor.name}
-												className="h-10 object-contain max-w-full"
-											/>
+								<div className="flex items-center gap-3">
+									{event.location ? (
+										<a
+											href={`https://maps.google.com/?q=${encodeURIComponent(event.location)}`}
+											target="_blank"
+											rel="noopener noreferrer"
+											title={`View ${event.location} on Google Maps`}
+											className="w-11 h-11 rounded-lg border border-perforation bg-paper/60 hover:bg-perforation/40 flex items-center justify-center text-stamp shrink-0 shadow-xs transition-colors"
+										>
+											<MapPin className="w-5 h-5" />
+										</a>
+									) : (
+										<div className="w-11 h-11 rounded-lg border border-perforation bg-paper/60 flex items-center justify-center text-stamp shrink-0 shadow-xs">
+											<MapPin className="w-5 h-5" />
+										</div>
+									)}
+									<div>
+										{event.location ? (
+											<a
+												href={`https://maps.google.com/?q=${encodeURIComponent(event.location)}`}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="font-semibold text-ink hover:text-stamp transition-colors"
+											>
+												{event.location}
+											</a>
 										) : (
-											<span className="font-display font-semibold text-sm">
-												{sponsor.name}
-											</span>
+											<div className="font-semibold text-ink">Location TBA</div>
 										)}
-										<span className="text-[10px] font-mono opacity-60 uppercase">
-											{sponsor.tier || "Partner"}
-										</span>
 									</div>
-								))}
+								</div>
 							</div>
-						</div>
-					)}
-				</div>
 
-				{/* Right Column: Ticketing & Registration Box */}
-				<div className="lg:col-span-5">
-					<div className="sticky top-20 border border-perforation rounded-2xl p-6 md:p-8 bg-paper shadow-xl space-y-6">
-						<div className="border-b border-perforation pb-4">
-							<div className="flex items-center gap-2 text-stamp mb-1">
-								<TicketIcon className="w-5 h-5" />
-								<span className="text-xs font-mono font-semibold uppercase tracking-wider">
-									Get Your Pass
-								</span>
-							</div>
-							<h2 className="font-display font-bold text-2xl">
-								Register for Event
-							</h2>
-						</div>
-
-						{event.status !== "published" ? (
-							<div className="border border-alert/30 bg-alert/5 p-6 rounded-xl text-center space-y-3">
-								<AlertCircle className="w-8 h-8 text-alert mx-auto" />
-								<h3 className="font-display font-semibold text-sm text-ink">
-									Registration Not Open
-								</h3>
-								<p className="text-xs text-ink/70 leading-relaxed">
-									This event is currently in draft mode. Only published events
-									can accept ticket registrations and RSVPs.
-								</p>
+							{/* Primary CTA Buttons */}
+							<div className="pt-2 flex flex-wrap items-center gap-3">
+								<Link
+									href={`/events/${event.slug}/rsvp`}
+									className="px-7 py-3 bg-stamp hover:opacity-90 text-paper font-mono font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-xs flex items-center gap-2"
+								>
+									REGISTER
+								</Link>
 								{session?.user?.id === event.organizer.ownerId && (
 									<Link
 										href={`/events/${event.slug}/manage`}
-										className="inline-block px-4 py-2 bg-stamp text-paper rounded-lg text-xs font-medium hover:opacity-90 transition-opacity"
+										className="px-4 py-3 border border-perforation hover:bg-ink/5 text-ink rounded-xl font-display font-medium text-xs uppercase tracking-wider font-mono transition-colors"
 									>
-										Go to Manage Overview to Publish →
+										Manage Event
 									</Link>
 								)}
 							</div>
-						) : (
-							<>
-								{bookingError && (
-									<div className="bg-alert/10 text-alert p-3 rounded text-xs flex items-center gap-2">
-										<AlertCircle className="w-4 h-4 shrink-0" />
-										{bookingError}
-									</div>
-								)}
+						</div>
 
-								{tiers.length === 0 ? (
-									<div className="text-center py-6 opacity-60 text-sm">
-										No ticket tiers are currently available for registration.
-									</div>
-								) : (
-									<form onSubmit={handleBookingSubmit} className="space-y-6">
-										{/* Tier Selector */}
-										<div className="space-y-3">
-											<span className="block text-xs font-semibold uppercase tracking-wider opacity-80">
-												Select Ticket Type
+						{/* Banner Poster Column (FOSS United Square Aspect Ratio Style) */}
+						{event.bannerUrl && (
+							<div className="sm:col-span-5 flex justify-center sm:justify-end">
+								<div className="relative w-full max-w-[280px] sm:max-w-full aspect-square rounded-xl overflow-hidden border border-perforation shadow-md">
+									<Image
+										src={event.bannerUrl}
+										alt={`Poster banner for ${event.title}`}
+										fill
+										priority
+										sizes="(max-width: 640px) 280px, 320px"
+										className="object-cover"
+									/>
+									{ticketData?.stats?.totalConfirmed !== undefined && (
+										<div className="absolute bottom-3 right-3 bg-paper/90 backdrop-blur-xs text-ink px-3 py-1 rounded-lg text-xs font-mono font-semibold border border-perforation shadow-xs flex items-center gap-1.5">
+											<span className="w-2 h-2 rounded-full bg-stamp" />
+											<span>
+												{ticketData.stats.totalConfirmed}{" "}
+												{ticketData.stats.totalConfirmed === 1
+													? "Attending"
+													: "Attending"}
 											</span>
-
-											<div className="space-y-2">
-												{tiers.map((t) => {
-													const isSelected = selectedTierId === t.id;
-													const isSoldOut = t.isSoldOut;
-
-													return (
-														<button
-															type="button"
-															key={t.id}
-															onClick={() => setSelectedTierId(t.id)}
-															className={`w-full p-4 border rounded-xl text-left cursor-pointer transition-all flex items-center justify-between gap-4 ${
-																isSelected
-																	? "border-stamp bg-stamp/5 shadow-xs ring-1 ring-stamp"
-																	: "border-perforation hover:border-perforation/80 bg-paper/60"
-															}`}
-														>
-															<div className="space-y-1 min-w-0">
-																<div className="flex items-center gap-2">
-																	<span className="font-display font-semibold text-sm">
-																		{t.name}
-																	</span>
-																	{isSoldOut && (
-																		<span className="text-[10px] font-mono uppercase bg-alert/10 text-alert px-1.5 py-0.5 rounded font-semibold">
-																			Sold Out
-																		</span>
-																	)}
-																</div>
-																{t.description && (
-																	<p className="text-xs opacity-70 truncate max-w-xs">
-																		{t.description}
-																	</p>
-																)}
-																{isSoldOut && t.allowWaitlist && (
-																	<p className="text-[11px] text-ink/70 font-mono">
-																		Waitlist queue active
-																	</p>
-																)}
-															</div>
-
-															<div className="text-right shrink-0">
-																<span className="font-display font-bold text-base">
-																	{t.price === 0 ? "FREE" : `₹${t.price}`}
-																</span>
-															</div>
-														</button>
-													);
-												})}
-											</div>
 										</div>
-
-										{/* Attendee Input Fields */}
-										<div className="space-y-3 pt-2">
-											<div>
-												<label
-													htmlFor="public-booking-name-input"
-													className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
-												>
-													Full Name *
-												</label>
-												<input
-													id="public-booking-name-input"
-													type="text"
-													required
-													value={attendeeName}
-													onChange={(e) => setAttendeeName(e.target.value)}
-													placeholder="e.g. Alex Morgan"
-													className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp"
-												/>
-											</div>
-
-											<div>
-												<label
-													htmlFor="public-booking-email-input"
-													className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
-												>
-													Email Address *
-												</label>
-												<input
-													id="public-booking-email-input"
-													type="email"
-													required
-													value={attendeeEmail}
-													onChange={(e) => setAttendeeEmail(e.target.value)}
-													placeholder="e.g. alex@example.com"
-													className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp"
-												/>
-											</div>
-
-											<div>
-												<label
-													htmlFor="public-booking-phone-input"
-													className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-80"
-												>
-													Phone Number (Optional)
-												</label>
-												<input
-													id="public-booking-phone-input"
-													type="tel"
-													value={attendeePhone}
-													onChange={(e) => setAttendeePhone(e.target.value)}
-													placeholder="+91 98765 43210"
-													className="w-full px-3 py-2 border border-perforation rounded-md bg-paper text-ink text-sm focus:outline-none focus:ring-1 focus:ring-stamp font-mono"
-												/>
-											</div>
-										</div>
-
-										{/* Attendee Pricing Summary for Paid Pass */}
-										{selectedTier &&
-											selectedTier.price > 0 &&
-											!selectedTier.isSoldOut && (
-												<div className="p-3.5 rounded-xl border border-perforation bg-paper/80 space-y-1.5 font-mono text-xs">
-													<div className="flex items-center justify-between text-ink/70">
-														<span>Pass Price:</span>
-														<span>₹{selectedTier.price.toFixed(2)}</span>
-													</div>
-													<div className="flex items-center justify-between text-ink/70">
-														<span>Taxes & Gateway Fees:</span>
-														<span className="text-stamp font-semibold">
-															Included
-														</span>
-													</div>
-													<div className="border-t border-perforation pt-1.5 flex items-center justify-between font-bold text-sm text-ink">
-														<span className="font-sans">Total Payable:</span>
-														<span className="text-stamp">
-															₹{selectedTier.price.toFixed(2)}
-														</span>
-													</div>
-												</div>
-											)}
-
-										{/* Submit Action */}
-										<button
-											type="submit"
-											disabled={isBooking}
-											className="w-full py-3.5 bg-stamp text-paper rounded-xl font-medium text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg cursor-pointer"
-										>
-											{isBooking ? (
-												<>
-													<RefreshCw className="w-4 h-4 animate-spin" />
-													Processing Registration...
-												</>
-											) : selectedTier?.isSoldOut ? (
-												<>
-													<Clock className="w-4 h-4" />
-													Join Waitlist Queue
-												</>
-											) : selectedTier && selectedTier.price > 0 ? (
-												<>
-													<CreditCard className="w-4 h-4" />
-													Proceed to Pay ₹{selectedTier.price.toFixed(2)} & Get
-													Pass
-												</>
-											) : (
-												<>
-													<Check className="w-4 h-4" />
-													Confirm Free Pass
-												</>
-											)}
-										</button>
-
-										<p className="text-[11px] opacity-60 text-center font-mono">
-											Instant QR code pass issued upon registration.
-										</p>
-									</form>
-								)}
-							</>
+									)}
+								</div>
+							</div>
 						)}
 					</div>
 				</div>
-			</main>
+
+				{/* Main Content Layout */}
+				<main className="grid grid-cols-1 sm:grid-cols-12 gap-6 sm:gap-8">
+					{/* Left Column: About Event, Schedule, Sponsors */}
+					<div className="sm:col-span-7 space-y-6 sm:space-y-8">
+						{/* About Card */}
+						<div className="border border-perforation rounded-2xl p-6 md:p-8 bg-paper space-y-4 shadow-xs">
+							<h2 className="font-display font-semibold text-xl border-b border-perforation pb-3 flex items-center gap-2">
+								<Info className="w-5 h-5 text-stamp" /> About Event
+							</h2>
+							{event.description ? (
+								<div className="prose prose-sm max-w-none text-ink/90 leading-relaxed font-sans whitespace-pre-wrap">
+									{event.description}
+								</div>
+							) : (
+								<p className="opacity-60 text-sm">
+									No detailed description provided by the host yet.
+								</p>
+							)}
+						</div>
+
+						{/* Schedule Items */}
+						{scheduleData?.items && scheduleData.items.length > 0 && (
+							<div className="space-y-4">
+								<div className="flex items-center gap-2 border-b border-perforation pb-3">
+									<Clock className="w-5 h-5 text-stamp" />
+									<h2 className="font-display font-semibold text-xl">
+										Schedule & Sessions
+									</h2>
+								</div>
+
+								<div className="space-y-3">
+									{scheduleData.items.map((item) => (
+										<div
+											key={item.id}
+											className="p-4 border border-perforation rounded-xl bg-paper/60 space-y-1 hover:border-ink/20 transition-colors"
+										>
+											<div className="flex items-center justify-between gap-2 text-xs font-mono text-stamp">
+												<span>
+													{item.startTime} - {item.endTime}
+												</span>
+												{item.stage && (
+													<span className="px-2 py-0.5 rounded bg-perforation/40 text-ink text-[10px]">
+														{item.stage}
+													</span>
+												)}
+											</div>
+											<h3 className="font-display font-semibold text-base">
+												{item.title}
+											</h3>
+											{item.speakerName && (
+												<p className="text-xs text-stamp font-medium">
+													By {item.speakerName}
+												</p>
+											)}
+											{item.description && (
+												<p className="text-xs opacity-75 pt-1">
+													{item.description}
+												</p>
+											)}
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+
+						{/* Sponsors & Partners */}
+						{partnerData?.sponsors && partnerData.sponsors.length > 0 && (
+							<div className="space-y-4">
+								<div className="flex items-center gap-2 border-b border-perforation pb-3">
+									<Sparkles className="w-5 h-5 text-stamp" />
+									<h2 className="font-display font-semibold text-xl">
+										Event Partners & Sponsors
+									</h2>
+								</div>
+
+								<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+									{partnerData.sponsors.map((sponsor) => (
+										<div
+											key={sponsor.id}
+											className="p-4 border border-perforation rounded-lg bg-paper text-center space-y-2 flex flex-col items-center justify-center"
+										>
+											{sponsor.logoUrl ? (
+												/* biome-ignore lint/performance/noImgElement: Dynamic sponsor logo */
+												<img
+													src={sponsor.logoUrl}
+													alt={sponsor.name}
+													className="h-10 object-contain max-w-full"
+												/>
+											) : (
+												<span className="font-display font-semibold text-sm">
+													{sponsor.name}
+												</span>
+											)}
+											<span className="text-[10px] font-mono opacity-60 uppercase">
+												{sponsor.tier || "Partner"}
+											</span>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+					</div>
+
+					{/* Right Column: Volunteers & Contact Info Cards (FOSS United Style) */}
+					<div className="sm:col-span-5 space-y-6">
+						{/* Volunteers Card (FOSS United Style) */}
+						{event.volunteers && event.volunteers.length > 0 && (
+							<div className="border border-perforation rounded-2xl p-6 bg-paper space-y-4 shadow-xs">
+								<h2 className="font-display font-semibold text-lg border-b border-perforation pb-3 flex items-center gap-2">
+									<Users className="w-5 h-5 text-stamp" /> Volunteers
+								</h2>
+								<div className="space-y-3">
+									{event.volunteers.map((vol) => {
+										const volInitial = vol.name.charAt(0).toUpperCase();
+										return (
+											<div
+												key={vol.id}
+												className="flex items-center gap-3 p-2 rounded-lg hover:bg-perforation/20 transition-colors"
+											>
+												{vol.user?.image ? (
+													/* biome-ignore lint/performance/noImgElement: User avatar */
+													<img
+														src={vol.user.image}
+														alt={vol.name}
+														className="w-9 h-9 rounded-full object-cover border border-perforation"
+													/>
+												) : (
+													<div className="w-9 h-9 rounded-full bg-stamp/15 text-stamp flex items-center justify-center font-display font-semibold text-sm shrink-0 border border-stamp/20">
+														{volInitial}
+													</div>
+												)}
+												<div className="min-w-0">
+													<div className="font-display font-semibold text-sm text-ink truncate">
+														{vol.name}
+													</div>
+													{vol.role && (
+														<div className="text-[11px] font-mono opacity-60 truncate">
+															{vol.role}
+														</div>
+													)}
+												</div>
+											</div>
+										);
+									})}
+								</div>
+							</div>
+						)}
+
+						{/* Contact Card (FOSS United Style) */}
+						<div className="border border-perforation rounded-2xl p-6 bg-paper space-y-4 shadow-xs">
+							<h2 className="font-display font-semibold text-lg border-b border-perforation pb-3 flex items-center gap-2">
+								<Mail className="w-5 h-5 text-stamp" /> Contact Information
+							</h2>
+							<div className="space-y-2 text-xs font-mono">
+								<p className="text-ink/70">
+									Have questions about this event? Contact the organizing team:
+								</p>
+								<div className="pt-1 font-semibold text-stamp">
+									{event.organizer.name}
+								</div>
+							</div>
+						</div>
+					</div>
+				</main>
+			</div>
 			<SiteFooter />
 		</div>
 	);

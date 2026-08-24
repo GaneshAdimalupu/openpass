@@ -1280,6 +1280,10 @@ export default function OrganizationOverviewPage(): JSX.Element {
 									placeholder="https://example.com/logo.png"
 									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
 								/>
+								<p className="text-[11px] text-ink/50 font-mono pt-1">
+									Recommended: 16:9 Widescreen (1200 × 675 px) or 1:1 Square
+									(400 × 400 px) · PNG, JPG, WebP
+								</p>
 							</div>
 
 							{/* Organization Name (Slug) - Readonly */}

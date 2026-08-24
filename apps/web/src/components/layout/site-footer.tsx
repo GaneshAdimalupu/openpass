@@ -13,7 +13,7 @@ export function SiteFooter(): JSX.Element {
 							className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2"
 						>
 							<span className="w-4 h-4 rounded-sm bg-stamp inline-block" />
-							<span>openevents</span>
+							<span>makemyevent</span>
 						</Link>
 						<p className="text-xs text-ink opacity-70 leading-relaxed font-sans">
 							Open-source event ticketing and community management platform.

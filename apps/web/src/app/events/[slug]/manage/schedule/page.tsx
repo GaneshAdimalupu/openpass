@@ -466,9 +466,9 @@ export default function ManageSchedulePage() {
 				</div>
 
 				{/* Schedule Layout: 2 Columns */}
-				<div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+				<div className="grid grid-cols-1 sm:grid-cols-12 gap-6 sm:gap-8 items-start">
 					{/* Left: Schedule Slots Timeline */}
-					<div className="lg:col-span-6 space-y-4">
+					<div className="sm:col-span-6 space-y-4">
 						<div className="flex items-center justify-between">
 							<h3 className="font-display font-semibold text-lg text-ink">
 								Sessions for{" "}
@@ -570,7 +570,7 @@ export default function ManageSchedulePage() {
 					</div>
 
 					{/* Right: Session Detail Editor */}
-					<div className="lg:col-span-6 border border-perforation rounded-xl bg-paper p-6 shadow-sm">
+					<div className="sm:col-span-6 border border-perforation rounded-xl bg-paper p-6 shadow-sm">
 						{editingItem ? (
 							<div className="space-y-6">
 								<div className="flex items-center justify-between border-b border-perforation pb-3">
