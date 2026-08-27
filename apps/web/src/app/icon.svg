@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320">
+  <defs>
+    <mask id="ticketHoleMask">
+      <rect x="25" y="45" width="270" height="230" rx="20" fill="white" />
+      <circle cx="25" cy="160" r="14" fill="black" />
+      <circle cx="295" cy="160" r="14" fill="black" />
+      <circle cx="74" cy="208" r="12" fill="black" />
+    </mask>
+    <mask id="mountainGapMask">
+      <polygon points="40,152 102,96 142,118 200,72 270,152" fill="white" />
+    </mask>
+  </defs>
+
+  <g mask="url(#ticketHoleMask)">
+    <rect x="25" y="45" width="270" height="230" rx="20" fill="#1E5338" />
+    <rect x="25" y="45" width="270" height="120" fill="#123824" opacity="0.18" />
+    <rect x="35" y="55" width="250" height="210" rx="12" fill="none" stroke="#E6B86A" stroke-width="1.5" stroke-opacity="0.6" />
+  </g>
+
+  <circle cx="74" cy="208" r="15" fill="none" stroke="#E6B86A" stroke-width="3" />
+
+  <g mask="url(#mountainGapMask)">
+    <rect x="42" y="60" width="3" height="100" fill="#FAF9F6" />
+    <rect x="49" y="60" width="5" height="100" fill="#FAF9F6" />
+    <rect x="58" y="60" width="2.5" height="100" fill="#E6B86A" />
+    <rect x="64" y="60" width="6" height="100" fill="#FAF9F6" />
+    <rect x="74" y="60" width="3.5" height="100" fill="#FAF9F6" />
+    <rect x="81" y="60" width="2" height="100" fill="#FAF9F6" />
+    <rect x="86" y="60" width="5" height="100" fill="#E6B86A" />
+    <rect x="94" y="60" width="2.5" height="100" fill="#FAF9F6" />
+    <rect x="100" y="60" width="6" height="100" fill="#FAF9F6" />
+    <rect x="109" y="60" width="3" height="100" fill="#E6B86A" />
+    <rect x="115" y="60" width="5" height="100" fill="#FAF9F6" />
+    <rect x="123" y="60" width="2.5" height="100" fill="#FAF9F6" />
+    <rect x="129" y="60" width="4" height="100" fill="#FAF9F6" />
+    <rect x="136" y="60" width="2" height="100" fill="#E6B86A" />
+    <rect x="141" y="60" width="6" height="100" fill="#FAF9F6" />
+    <rect x="150" y="60" width="3" height="100" fill="#FAF9F6" />
+    <rect x="156" y="60" width="5" height="100" fill="#E6B86A" />
+    <rect x="164" y="60" width="2.5" height="100" fill="#FAF9F6" />
+    <rect x="170" y="60" width="6" height="100" fill="#FAF9F6" />
+    <rect x="179" y="60" width="3" height="100" fill="#FAF9F6" />
+    <rect x="185" y="60" width="5" height="100" fill="#E6B86A" />
+    <rect x="193" y="60" width="2.5" height="100" fill="#FAF9F6" />
+    <rect x="199" y="60" width="6" height="100" fill="#FAF9F6" />
+    <rect x="208" y="60" width="2" height="100" fill="#FAF9F6" />
+    <rect x="213" y="60" width="4" height="100" fill="#E6B86A" />
+    <rect x="220" y="60" width="2.5" height="100" fill="#FAF9F6" />
+    <rect x="226" y="60" width="5" height="100" fill="#FAF9F6" />
+    <rect x="234" y="60" width="2.5" height="100" fill="#E6B86A" />
+    <rect x="240" y="60" width="6" height="100" fill="#FAF9F6" />
+    <rect x="250" y="60" width="3" height="100" fill="#FAF9F6" />
+    <rect x="256" y="60" width="5" height="100" fill="#FAF9F6" />
+    <rect x="264" y="60" width="3" height="100" fill="#E6B86A" />
+  </g>
+
+  <path d="M 40 152 L 102 96 L 142 118 L 200 72 L 270 152"
+        stroke="#FAF9F6"
+        stroke-width="5.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none" />
+
+  <g fill="#FAF9F6" font-family="system-ui, -apple-system, sans-serif">
+    <text x="94" y="217" font-size="28" font-weight="900" letter-spacing="4">
+      PEN PASS
+    </text>
+  </g>
+</svg>
