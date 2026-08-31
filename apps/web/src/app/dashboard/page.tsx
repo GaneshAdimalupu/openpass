@@ -461,73 +461,99 @@ function DashboardContent(): JSX.Element {
 									</div>
 								) : (
 									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-										{participatedTickets.map((t) => (
-											<div
-												key={t.id}
-												className="border border-perforation rounded-lg bg-paper overflow-hidden shadow-xs hover:shadow-sm transition-all flex flex-col justify-between"
-											>
-												{/* Banner */}
-												<div className="relative h-16 sm:h-20 w-full bg-perforation/20 overflow-hidden">
-													{t.event.bannerUrl ? (
-														<Image
-															src={t.event.bannerUrl}
-															alt={t.event.title}
-															fill
-															priority
-															sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-															className="object-cover"
-														/>
-													) : (
-														<div className="absolute inset-0 bg-gradient-to-br from-stamp/10 to-paper flex items-center justify-center">
-															<span className="font-display font-semibold text-xl text-ink/30">
-																{t.event.title.charAt(0)}
-															</span>
-														</div>
-													)}
-													<div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-paper/90 backdrop-blur-xs rounded font-mono text-[9px] font-bold text-stamp border border-perforation">
-														{t.ticket.name}
-													</div>
-												</div>
+										{participatedTickets.map((t) => {
+											const isPast = t.event.eventEnd
+												? new Date(t.event.eventEnd) < new Date()
+												: false;
 
-												{/* Content */}
-												<div className="p-3 flex-1 flex flex-col justify-between space-y-2">
-													<div>
-														<div className="text-[11px] font-mono text-stamp uppercase mb-1">
-															{t.event.organizer.name}
+											return (
+												<div
+													key={t.id}
+													className={`border border-perforation rounded-lg bg-paper overflow-hidden shadow-xs hover:shadow-sm transition-all flex flex-col justify-between ${
+														isPast ? "opacity-80" : ""
+													}`}
+												>
+													{/* Banner */}
+													<div className="relative h-16 sm:h-20 w-full bg-perforation/20 overflow-hidden">
+														{t.event.bannerUrl ? (
+															<Image
+																src={t.event.bannerUrl}
+																alt={t.event.title}
+																fill
+																priority
+																sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+																className={`object-cover ${
+																	isPast ? "grayscale-30" : ""
+																}`}
+															/>
+														) : (
+															<div className="absolute inset-0 bg-gradient-to-br from-stamp/10 to-paper flex items-center justify-center">
+																<span className="font-display font-semibold text-xl text-ink/30">
+																	{t.event.title.charAt(0)}
+																</span>
+															</div>
+														)}
+														{isPast && (
+															<div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-paper/90 backdrop-blur-xs rounded font-mono text-[9px] font-bold text-ink/60 border border-perforation uppercase">
+																EXPIRED
+															</div>
+														)}
+														<div
+															className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-paper/90 backdrop-blur-xs rounded font-mono text-[9px] font-bold border border-perforation ${
+																isPast ? "text-ink/60" : "text-stamp"
+															}`}
+														>
+															{t.ticket.name}
 														</div>
-														<h3 className="font-display font-medium text-base text-ink line-clamp-1">
-															{t.event.title}
-														</h3>
-														<p className="text-xs text-ink/60 font-mono mt-1">
-															{new Date(t.event.eventStart).toLocaleDateString(
-																"en-US",
-																{
+													</div>
+
+													{/* Content */}
+													<div className="p-3 flex-1 flex flex-col justify-between space-y-2">
+														<div>
+															<div
+																className={`text-[11px] font-mono uppercase mb-1 ${
+																	isPast ? "text-ink/60" : "text-stamp"
+																}`}
+															>
+																{t.event.organizer.name}
+															</div>
+															<h3 className="font-display font-medium text-base text-ink line-clamp-1">
+																{t.event.title}
+															</h3>
+															<p className="text-xs text-ink/60 font-mono mt-1">
+																{new Date(
+																	t.event.eventStart,
+																).toLocaleDateString("en-US", {
 																	weekday: "short",
 																	month: "short",
 																	day: "numeric",
-																},
-															)}{" "}
-															• {t.event.location || "Online"}
-														</p>
-													</div>
+																})}{" "}
+																• {t.event.location || "Online"}
+															</p>
+														</div>
 
-													<div className="pt-3 border-t border-perforation flex items-center justify-between gap-2">
-														<span className="font-mono text-xs text-ink/70 truncate">
-															Code:{" "}
-															<strong className="text-ink truncate">
-																{t.ticketCode}
-															</strong>
-														</span>
-														<Link
-															href={`/tickets/${t.ticketCode}`}
-															className="px-3 py-1.5 bg-stamp text-paper rounded text-xs font-mono font-medium hover:opacity-90 transition-opacity inline-flex items-center gap-1 shrink-0"
-														>
-															View Pass ↗
-														</Link>
+														<div className="pt-3 border-t border-perforation flex items-center justify-between gap-2">
+															<span className="font-mono text-xs text-ink/70 truncate">
+																Code:{" "}
+																<strong className="text-ink truncate">
+																	{t.ticketCode}
+																</strong>
+															</span>
+															<Link
+																href={`/tickets/${t.ticketCode}`}
+																className={`px-3 py-1.5 rounded text-xs font-mono font-medium transition-opacity inline-flex items-center gap-1 shrink-0 ${
+																	isPast
+																		? "bg-perforation/40 text-ink/80 hover:bg-perforation/60"
+																		: "bg-stamp text-paper hover:opacity-90"
+																}`}
+															>
+																View Pass ↗
+															</Link>
+														</div>
 													</div>
 												</div>
-											</div>
-										))}
+											);
+										})}
 									</div>
 								)}
 							</div>

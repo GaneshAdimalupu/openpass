@@ -3,6 +3,7 @@ import { OrbitalDiagram } from "@/components/landing/orbital-section";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { trpc } from "@/lib/trpc";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import type { JSX } from "react";
@@ -21,7 +22,14 @@ function CardSkeleton(): JSX.Element {
 }
 
 export default function Home(): JSX.Element {
+	const { data: session } = useSession();
 	const { data: events, isLoading, isError } = trpc.events.list.useQuery();
+	const { data: organizers } = trpc.organizers.myOrganizers.useQuery(
+		undefined,
+		{ enabled: !!session?.user },
+	);
+
+	const hasCreatedEvents = Boolean(organizers && organizers.length > 0);
 
 	return (
 		<div className="min-h-screen">
@@ -108,10 +116,14 @@ export default function Home(): JSX.Element {
 				{!isLoading && !isError && events?.length === 0 && (
 					<div className="py-24 text-center border border-perforation rounded-lg bg-paper">
 						<h3 className="font-display font-medium text-h3 mb-2">
-							Host your first event
+							{hasCreatedEvents
+								? "Host your next event"
+								: "Host your first event"}
 						</h3>
 						<p className="opacity-60 mb-6 text-body">
-							There are no events happening right now. Be the first to host one.
+							{hasCreatedEvents
+								? "There are no live public events happening right now. Be the first to publish one."
+								: "There are no events happening right now. Be the first to host one."}
 						</p>
 						<Link
 							href="/dashboard?action=create"
@@ -229,7 +241,11 @@ export default function Home(): JSX.Element {
 									href="/dashboard?action=create"
 									className="inline-flex items-center gap-2 bg-stamp text-paper font-medium px-6 py-3 rounded-full hover:opacity-95 transition-opacity text-sm shadow-xs"
 								>
-									<span>Host your first event</span>
+									<span>
+										{hasCreatedEvents
+											? "Host your next event"
+											: "Host your first event"}
+									</span>
 									<span>→</span>
 								</Link>
 							</div>

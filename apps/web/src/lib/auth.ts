@@ -148,27 +148,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 				const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
 				try {
-					// 1. Check if an active session already exists for this physical device/browser
+					// 1. Match session by unique sessionToken or explicit deviceId
 					let existingSession = null;
-					if (deviceId) {
+					if (sessionToken) {
+						existingSession = await prisma.session.findFirst({
+							where: {
+								userId: user.id as string,
+								sessionToken,
+							},
+						});
+					}
+
+					if (!existingSession && deviceId) {
 						existingSession = await prisma.session.findFirst({
 							where: {
 								userId: user.id as string,
 								deviceId,
 							},
-						});
-					}
-
-					// 2. Fallback: match by device signature if deviceId cookie was cleared
-					if (!existingSession && userAgent) {
-						existingSession = await prisma.session.findFirst({
-							where: {
-								userId: user.id as string,
-								os,
-								browser,
-								deviceType,
-							},
-							orderBy: { lastActive: "desc" },
 						});
 					}
 
