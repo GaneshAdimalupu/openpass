@@ -6,12 +6,14 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 const handler = async (req: Request) => {
 	const session = await auth();
 	const userId = session?.user?.id ?? null;
+	const sessionToken =
+		(session as unknown as { sessionToken?: string })?.sessionToken ?? null;
 
 	return fetchRequestHandler({
 		endpoint: "/api/trpc",
 		req,
 		router: appRouter,
-		createContext: () => createContext(userId),
+		createContext: () => createContext(userId, sessionToken),
 	});
 };
 

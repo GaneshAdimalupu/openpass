@@ -232,6 +232,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 					}
 				}
 			} else if (token.id) {
+				// ──────────────── Token Refresh & Remote Revocation Check ────────────────
+				const sessionToken = token.sessionToken as string | undefined;
+
+				if (sessionToken) {
+					try {
+						const activeSession = await prisma.session.findFirst({
+							where: {
+								userId: token.id as string,
+								sessionToken,
+								expires: { gte: new Date() },
+							},
+							select: { id: true, lastActive: true },
+						});
+
+						// If session record was revoked/deleted remotely, invalidate this JWT session immediately
+						if (!activeSession) {
+							return null;
+						}
+
+						// Update lastActive if more than 5 minutes have elapsed since last DB update
+						const lastUpdated = (token.lastActiveUpdated as number) || 0;
+						const fiveMinutes = 5 * 60 * 1000;
+						if (Date.now() - lastUpdated > fiveMinutes) {
+							await prisma.session.update({
+								where: { id: activeSession.id },
+								data: { lastActive: new Date() },
+							});
+							token.lastActiveUpdated = Date.now();
+						}
+					} catch (err) {
+						// Gracefully handle transient DB errors without kicking out user
+						console.error("Session verification notice:", err);
+					}
+				}
+
 				// Refresh from DB if name or image is missing from token
 				if (!token.name || !token.picture) {
 					try {

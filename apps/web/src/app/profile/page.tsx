@@ -30,6 +30,10 @@ export default function ProfilePage(): JSX.Element {
 	const [isBasicInfoOpen, setIsBasicInfoOpen] = useState<boolean>(false);
 	const [isSocialsOpen, setIsSocialsOpen] = useState<boolean>(false);
 	const [isPasswordOpen, setIsPasswordOpen] = useState<boolean>(false);
+	const [deletingSession, setDeletingSession] = useState<{
+		id: string;
+		deviceName: string;
+	} | null>(null);
 
 	// Form States - Basic Info
 	const [nameInput, setNameInput] = useState<string>("");
@@ -94,11 +98,6 @@ export default function ProfilePage(): JSX.Element {
 		if (diffDays === 1) return "Active yesterday";
 		return `Active ${diffDays}d ago`;
 	};
-
-	const currentSession =
-		profile?.sessions?.find(
-			(s) => clientDeviceId && s.deviceId === clientDeviceId,
-		) || profile?.sessions?.[0];
 
 	if (status === "unauthenticated") {
 		return (
@@ -203,11 +202,19 @@ export default function ProfilePage(): JSX.Element {
 		}
 	};
 
-	const handleLogoutDevice = async (sessionId: string) => {
+	const handleConfirmLogoutDevice = async () => {
+		if (!deletingSession) return;
 		try {
-			await logoutDeviceMutation.mutateAsync({ sessionId });
+			const res = await logoutDeviceMutation.mutateAsync({
+				sessionId: deletingSession.id,
+			});
+			setDeletingSession(null);
 			await refetch();
-			showToast("Device session logged out");
+			showToast(
+				res.deletedCount
+					? "Device session revoked successfully"
+					: "Device session was already ended",
+			);
 		} catch (err: unknown) {
 			const msg =
 				err instanceof Error ? err.message : "Failed to logout device";
@@ -224,7 +231,7 @@ export default function ProfilePage(): JSX.Element {
 		) {
 			try {
 				await logoutAllDevicesMutation.mutateAsync({
-					exceptSessionId: currentSession?.id,
+					exceptCurrent: true,
 				});
 				await refetch();
 				showToast("Logged out all other device sessions");
@@ -246,6 +253,15 @@ export default function ProfilePage(): JSX.Element {
 		profile?.username ||
 		profile?.organizers?.[0]?.slug ||
 		profile?.email?.split("@")[0];
+
+	const formatFirstSeen = (dateStr?: Date | string | null): string => {
+		if (!dateStr) return "";
+		return new Date(dateStr).toLocaleDateString("en-US", {
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		});
+	};
 
 	return (
 		<div className="min-h-screen bg-paper flex flex-col">
@@ -505,13 +521,15 @@ export default function ProfilePage(): JSX.Element {
 								{profile?.sessions && profile.sessions.length > 0 ? (
 									profile.sessions.map((s, index) => {
 										const isCurrent =
+											Boolean(s.isCurrent) ||
 											Boolean(
 												clientDeviceId && s.deviceId === clientDeviceId,
 											) ||
 											(index === 0 &&
 												!profile.sessions.some(
 													(x) =>
-														clientDeviceId && x.deviceId === clientDeviceId,
+														x.isCurrent ||
+														(clientDeviceId && x.deviceId === clientDeviceId),
 												));
 
 										const isMobile = s.deviceType === "MOBILE";
@@ -617,6 +635,12 @@ export default function ProfilePage(): JSX.Element {
 															{isCurrent
 																? "This Device • Active now"
 																: formatLastActive(s.lastActive || s.createdAt)}
+															{s.createdAt && (
+																<span className="opacity-80">
+																	{" "}
+																	• First seen {formatFirstSeen(s.createdAt)}
+																</span>
+															)}
 															{s.ipAddress && ` • ${s.ipAddress}`}
 														</p>
 													</div>
@@ -630,7 +654,14 @@ export default function ProfilePage(): JSX.Element {
 													) : (
 														<button
 															type="button"
-															onClick={() => handleLogoutDevice(s.id)}
+															onClick={() =>
+																setDeletingSession({
+																	id: s.id,
+																	deviceName: `${s.browser || "Web Browser"} on ${
+																		s.os || "Unknown OS"
+																	}`,
+																})
+															}
 															className="label text-xs text-alert border border-alert/30 px-3 py-1 rounded hover:bg-alert/10 transition-colors cursor-pointer"
 														>
 															Log out
@@ -1153,6 +1184,60 @@ export default function ProfilePage(): JSX.Element {
 								</button>
 							</div>
 						</form>
+					</div>
+				</div>
+			)}
+
+			{/* ──────────────── MODAL 4: Revoke Single Device Confirmation ──────────────── */}
+			{deletingSession && (
+				<div
+					role="dialog"
+					aria-modal="true"
+					className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-xs flex items-center justify-center p-4"
+				>
+					<div className="w-full max-w-sm bg-paper border border-perforation rounded-lg p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+						<div className="flex items-center justify-between border-b border-perforation pb-3">
+							<h3 className="font-display font-semibold text-base text-ink">
+								Revoke Device Access
+							</h3>
+							<button
+								type="button"
+								onClick={() => setDeletingSession(null)}
+								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
+								aria-label="Close modal"
+							>
+								<X className="w-4 h-4" />
+							</button>
+						</div>
+
+						<p className="text-xs text-body opacity-80 leading-relaxed">
+							Are you sure you want to log out{" "}
+							<strong className="text-ink font-semibold">
+								{deletingSession.deviceName}
+							</strong>
+							? This device will be signed out of your account on its next
+							request.
+						</p>
+
+						<div className="flex items-center justify-end gap-3 pt-3 border-t border-perforation">
+							<button
+								type="button"
+								onClick={() => setDeletingSession(null)}
+								className="px-4 py-2 rounded text-xs label text-ink opacity-70 hover:opacity-100 cursor-pointer"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								disabled={logoutDeviceMutation.isPending}
+								onClick={handleConfirmLogoutDevice}
+								className="bg-alert text-paper label text-xs px-5 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+							>
+								{logoutDeviceMutation.isPending
+									? "Revoking..."
+									: "Revoke Access"}
+							</button>
+						</div>
 					</div>
 				</div>
 			)}
