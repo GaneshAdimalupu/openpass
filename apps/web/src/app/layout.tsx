@@ -78,15 +78,22 @@ export const metadata: Metadata = {
 	},
 	icons: {
 		icon: [
-			{ url: "/favicon.ico", sizes: "32x32" },
-			{ url: "/makemyevent-light.svg", media: "(prefers-color-scheme: light)" },
-			{ url: "/makemyevent-dark.svg", media: "(prefers-color-scheme: dark)" },
-			{ url: "/makemyevent.svg" },
+			{ url: "/makemyevent.svg", type: "image/svg+xml" },
+			{
+				url: "/makemyevent-light.svg",
+				media: "(prefers-color-scheme: light)",
+				type: "image/svg+xml",
+			},
+			{
+				url: "/makemyevent-dark.svg",
+				media: "(prefers-color-scheme: dark)",
+				type: "image/svg+xml",
+			},
+			{ url: "/favicon.ico", sizes: "any" },
 		],
 		shortcut: "/favicon.ico",
 		apple: [
 			{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-			{ url: "/makemyevent.svg" },
 		],
 	},
 	manifest: "/manifest.json",
@@ -106,6 +113,27 @@ export interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
 	return (
 		<html lang="en">
+			<head>
+				<link
+					rel="icon"
+					href="/makemyevent.svg"
+					type="image/svg+xml"
+					sizes="any"
+				/>
+				<link
+					rel="icon"
+					href="/makemyevent-light.svg"
+					type="image/svg+xml"
+					media="(prefers-color-scheme: light)"
+				/>
+				<link
+					rel="icon"
+					href="/makemyevent-dark.svg"
+					type="image/svg+xml"
+					media="(prefers-color-scheme: dark)"
+				/>
+				<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+			</head>
 			<body
 				className={`${archivo.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}
 			>
