@@ -1,3 +1,4 @@
+import { Logo } from "@/components/ui/logo";
 import Link from "next/link";
 import type { JSX } from "react";
 
@@ -10,9 +11,9 @@ export function SiteFooter(): JSX.Element {
 					<div className="space-y-2 max-w-md">
 						<Link
 							href="/"
-							className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2"
+							className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2.5"
 						>
-							<span className="w-4 h-4 rounded-sm bg-stamp inline-block" />
+							<Logo width={24} height={24} className="w-6 h-6 object-contain" />
 							<span>makemyevent</span>
 						</Link>
 						<p className="text-xs text-ink opacity-70 leading-relaxed font-sans">

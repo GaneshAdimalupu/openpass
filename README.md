@@ -1,5 +1,7 @@
 <div align="center">
-  <img src="apps/web/public/openpass.svg" alt="makemyevent Logo" width="280" />
+  <img src="apps/web/public/makemyevent-light.svg" alt="makemyevent Icon" width="100" />
+  <br />
+  <img src="apps/web/public/makemyevent-wordmark-light.svg" alt="makemyevent Logo" width="340" />
   <br />
   <br />
   <a href="https://turbo.build/">
@@ -147,9 +149,9 @@ The project uses **Prisma** for database operations and **Supabase** for Postgre
 
 | Command            | Script                                      |
 | ------------------ | ------------------------------------------- |
-| Generate Client    | `pnpm turbo run db:generate`                |
-| Push Schema        | `pnpm --filter @openpass/db prisma db push` |
-| Open Prisma Studio | `pnpm --filter @openpass/db prisma studio`  |
+| Generate Client    | `pnpm turbo run db:generate` |
+| Push Schema        | `pnpm --filter db prisma db push` |
+| Open Prisma Studio | `pnpm --filter db prisma studio`  |
 
 ---
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { Logo } from "@/components/ui/logo";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -86,9 +87,14 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 
 					<Link
 						href="/"
-						className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2"
+						className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2.5"
 					>
-						<span className="w-4 h-4 rounded-sm bg-stamp inline-block" />
+						<Logo
+							width={24}
+							height={24}
+							className="w-6 h-6 object-contain"
+							priority
+						/>
 						<span className="hidden sm:inline">makemyevent</span>
 						<span className="sm:hidden font-mono text-xs">mme</span>
 					</Link>
