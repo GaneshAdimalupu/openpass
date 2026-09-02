@@ -69,11 +69,12 @@ export const metadata: Metadata = {
 	},
 	icons: {
 		icon: [
+			{ url: "/favicon.ico", sizes: "32x32" },
 			{ url: "/makemyevent-light.svg", media: "(prefers-color-scheme: light)" },
 			{ url: "/makemyevent-dark.svg", media: "(prefers-color-scheme: dark)" },
 			{ url: "/makemyevent.svg" },
 		],
-		shortcut: "/makemyevent.svg",
+		shortcut: "/favicon.ico",
 		apple: "/makemyevent.svg",
 	},
 };
