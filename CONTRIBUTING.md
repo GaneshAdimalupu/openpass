@@ -1,4 +1,4 @@
-# Contributing to openevents
+# Contributing to makemyevent
 
 More detail coming soon. For now:
 1. Fork + clone

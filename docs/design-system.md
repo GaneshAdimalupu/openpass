@@ -1,6 +1,6 @@
 # Design System
 
-This is the source of truth for how openevents looks. If you're
+This is the source of truth for how makemyevent looks. If you're
 building a UI — human or agent — pull values from here rather than
 picking a color or size that "looks about right." The point isn't
 to be restrictive, it's that a ticketing platform should feel
@@ -188,7 +188,7 @@ Standard aspect ratios and export dimensions for designers and organizers:
 | Asset Type | Aspect Ratio | Recommended Size | Minimum Size | Formats |
 |---|---|---|---|---|
 | **Organization Banner / Poster** | `16:9` (or `2:1`) | `1200 × 675 px` (`1200 × 600 px`) | `600 × 338 px` | PNG, JPG, WebP (< 5MB) |
-| **Event Cover / Poster** | `16:9` | `1920 × 1080 px` (`1200 × 675 px`) | `800 × 450 px` | PNG, JPG, WebP (< 5MB) |
+| **Event Cover / Poster** | `1:1` (Square) or `16:9` | `1200 × 1200 px` (or `1920 × 1080 px`) | `400 × 400 px` | PNG, JPG, WebP (< 5MB) |
 | **User / Org Avatar** | `1:1` (Square) | `400 × 400 px` | `128 × 128 px` | PNG, JPG, WebP (< 2MB) |
 
 - Safe Zone: Keep essential text and logos centered within the inner 80% to avoid cropping across responsive views.
@@ -196,6 +196,9 @@ Standard aspect ratios and export dimensions for designers and organizers:
 ## What not to do
 
 - Don't introduce a new color without adding it here first.
+- Absolutely NO raw hex colors (e.g. `bg-[#22c55e]`) or arbitrary palette values in UI components. Use ONLY the 5 official tokens: `paper`, `ink`, `stamp`, `perforation`, `alert`.
 - Don't use `alert` (red) for anything that isn't genuinely urgent — it loses meaning if it's also used for regular warnings.
 - Don't reach for the tear-line or perforated styling as generic decoration — it's reserved for real section boundaries.
 - Don't mix in a fourth font "just for this one component."
+- Don't use emojis in UI components or documentation — use Lucide icons (`lucide-react`) for visual indicators.
+- Don't rely solely on `lg:` (1024px+) for 2-column or side-by-side card layouts — use `sm:` (640px+) or `md:` (768px+) so split-screen windows and tablets maintain full side-by-side structure.

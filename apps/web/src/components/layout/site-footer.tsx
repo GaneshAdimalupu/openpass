@@ -1,3 +1,4 @@
+import { Logo } from "@/components/ui/logo";
 import Link from "next/link";
 import type { JSX } from "react";
 
@@ -10,10 +11,10 @@ export function SiteFooter(): JSX.Element {
 					<div className="space-y-2 max-w-md">
 						<Link
 							href="/"
-							className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2"
+							className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2.5"
 						>
-							<span className="w-4 h-4 rounded-sm bg-stamp inline-block" />
-							<span>openevents</span>
+							<Logo width={24} height={24} className="w-6 h-6 object-contain" />
+							<span>makemyevent</span>
 						</Link>
 						<p className="text-xs text-ink opacity-70 leading-relaxed font-sans">
 							Open-source event ticketing and community management platform.
@@ -41,6 +42,12 @@ export function SiteFooter(): JSX.Element {
 						>
 							Dashboard
 						</Link>
+						<a
+							href="mailto:contact@makemyevent.org"
+							className="opacity-70 hover:opacity-100 transition-opacity"
+						>
+							Contact
+						</a>
 
 						{/* GitHub Link */}
 						<a
@@ -71,7 +78,7 @@ export function SiteFooter(): JSX.Element {
 
 				{/* Bottom copyright line */}
 				<div className="border-t border-perforation/60 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-mono opacity-60">
-					<p>© {new Date().getFullYear()} openevents. Open Source.</p>
+					<p>© {new Date().getFullYear()} makemyevent. Open Source.</p>
 					<a
 						href="https://github.com/GaneshAdimalupu/openpass"
 						target="_blank"

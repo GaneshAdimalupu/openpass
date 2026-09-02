@@ -5,6 +5,8 @@ import { authedProcedure, router } from "./trpc";
 
 export const usersRouter = router({
 	getProfile: authedProcedure.query(async ({ ctx }) => {
+		const now = new Date();
+
 		const [user, pwCheck] = await Promise.all([
 			ctx.prisma.user.findUnique({
 				where: { id: ctx.userId },
@@ -38,8 +40,12 @@ export const usersRouter = router({
 						},
 					},
 					sessions: {
+						where: {
+							expires: { gte: now },
+						},
 						select: {
 							id: true,
+							sessionToken: true,
 							deviceId: true,
 							browser: true,
 							os: true,
@@ -73,8 +79,23 @@ export const usersRouter = router({
 			0,
 		);
 
+		// Compute isCurrent server-side — never expose raw sessionToken to the client
+		const sessions = user.sessions.map((s) => ({
+			id: s.id,
+			deviceId: s.deviceId,
+			browser: s.browser,
+			os: s.os,
+			deviceType: s.deviceType,
+			ipAddress: s.ipAddress,
+			lastActive: s.lastActive,
+			expires: s.expires,
+			createdAt: s.createdAt,
+			isCurrent: ctx.sessionToken ? s.sessionToken === ctx.sessionToken : false,
+		}));
+
 		return {
 			...user,
+			sessions,
 			hasPassword: Boolean(pwCheck?.passwordHash),
 			totalHostedEvents,
 		};
@@ -235,25 +256,48 @@ export const usersRouter = router({
 		.input(z.object({ sessionId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
 			// Only allow deleting sessions owned by the current user
-			await ctx.prisma.session.deleteMany({
+			// Prevent revoking the session making this request
+			const targetSession = await ctx.prisma.session.findFirst({
+				where: { id: input.sessionId, userId: ctx.userId },
+				select: { sessionToken: true },
+			});
+
+			if (
+				targetSession &&
+				ctx.sessionToken &&
+				targetSession.sessionToken === ctx.sessionToken
+			) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						"Cannot revoke the session you are currently using. Use sign out instead.",
+				});
+			}
+
+			const result = await ctx.prisma.session.deleteMany({
 				where: { id: input.sessionId, userId: ctx.userId },
 			});
 
-			return { success: true };
+			return { success: true, deletedCount: result.count };
 		}),
 
 	logoutAllDevices: authedProcedure
-		.input(z.object({ exceptSessionId: z.string().optional() }).optional())
+		.input(z.object({ exceptCurrent: z.boolean().optional() }).optional())
 		.mutation(async ({ ctx, input }) => {
-			await ctx.prisma.session.deleteMany({
+			// Use server-side sessionToken to identify the current session to exclude
+			// instead of trusting a client-provided sessionId
+			const excludeCurrentToken =
+				input?.exceptCurrent && ctx.sessionToken ? ctx.sessionToken : null;
+
+			const result = await ctx.prisma.session.deleteMany({
 				where: {
 					userId: ctx.userId,
-					...(input?.exceptSessionId && {
-						id: { not: input.exceptSessionId },
+					...(excludeCurrentToken && {
+						sessionToken: { not: excludeCurrentToken },
 					}),
 				},
 			});
 
-			return { success: true };
+			return { success: true, deletedCount: result.count };
 		}),
 });

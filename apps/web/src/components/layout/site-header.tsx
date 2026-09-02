@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { Logo } from "@/components/ui/logo";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -86,11 +87,16 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 
 					<Link
 						href="/"
-						className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2"
+						className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2.5"
 					>
-						<span className="w-4 h-4 rounded-sm bg-stamp inline-block" />
-						<span className="hidden sm:inline">openevents</span>
-						<span className="sm:hidden">oe</span>
+						<Logo
+							width={24}
+							height={24}
+							className="w-6 h-6 object-contain"
+							priority
+						/>
+						<span className="hidden sm:inline">makemyevent</span>
+						<span className="sm:hidden font-mono text-xs">mme</span>
 					</Link>
 
 					<nav className="hidden md:flex items-center gap-6">
@@ -147,33 +153,6 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 							</svg>
 						</span>
 					</Link>
-
-					{/* GitHub Repository Link */}
-					<a
-						href="https://github.com/GaneshAdimalupu/openpass"
-						target="_blank"
-						rel="noopener noreferrer"
-						aria-label="GitHub Repository"
-						title="GitHub Repository"
-						className="p-2 rounded-full text-ink opacity-70 hover:opacity-100 hover:bg-perforation/20 transition-all cursor-pointer"
-					>
-						<svg
-							aria-hidden="true"
-							xmlns="http://www.w3.org/2000/svg"
-							width="18"
-							height="18"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						>
-							<path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-							<path d="M9 18c-4.51 2-5-2-7-2" />
-						</svg>
-						<span className="sr-only">GitHub Repository</span>
-					</a>
 
 					{/* Theme Switcher */}
 					<ThemeToggle />
@@ -239,6 +218,18 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 											{user.email}
 										</p>
 									</div>
+
+									<Link
+										href="/dashboard?tab=tickets"
+										role="menuitem"
+										onClick={() => setIsMenuOpen(false)}
+										className="px-4 py-2 text-ink hover:bg-perforation/20 transition-colors font-medium text-stamp flex items-center justify-between"
+									>
+										<span>My Tickets</span>
+										<span className="text-[10px] font-mono border border-stamp/30 px-1.5 py-0.5 rounded bg-stamp/10">
+											Passes
+										</span>
+									</Link>
 
 									<Link
 										href="/profile"

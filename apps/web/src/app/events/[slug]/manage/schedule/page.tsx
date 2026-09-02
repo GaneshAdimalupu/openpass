@@ -152,7 +152,11 @@ export default function ManageSchedulePage() {
 	}, [items, selectedDate]);
 
 	const handleCopy = () => {
-		navigator.clipboard.writeText(`https://openevents.local/${slug}/schedule`);
+		const origin =
+			typeof window !== "undefined"
+				? window.location.origin
+				: "https://makemyevent.org";
+		navigator.clipboard.writeText(`${origin}/events/${slug}/schedule`);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
@@ -372,7 +376,7 @@ export default function ManageSchedulePage() {
 						<span className="text-ink/70 font-medium">Public Schedule:</span>
 						<div className="flex items-center gap-2 flex-1 sm:max-w-md">
 							<code className="px-3 py-1.5 bg-perforation/20 rounded font-mono text-xs border border-perforation text-ink flex-1 truncate">
-								https://openevents.local/{slug}/schedule
+								https://makemyevent.org/events/{slug}/schedule
 							</code>
 							<button
 								type="button"
@@ -466,9 +470,9 @@ export default function ManageSchedulePage() {
 				</div>
 
 				{/* Schedule Layout: 2 Columns */}
-				<div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+				<div className="grid grid-cols-1 sm:grid-cols-12 gap-6 sm:gap-8 items-start">
 					{/* Left: Schedule Slots Timeline */}
-					<div className="lg:col-span-6 space-y-4">
+					<div className="sm:col-span-6 space-y-4">
 						<div className="flex items-center justify-between">
 							<h3 className="font-display font-semibold text-lg text-ink">
 								Sessions for{" "}
@@ -570,7 +574,7 @@ export default function ManageSchedulePage() {
 					</div>
 
 					{/* Right: Session Detail Editor */}
-					<div className="lg:col-span-6 border border-perforation rounded-xl bg-paper p-6 shadow-sm">
+					<div className="sm:col-span-6 border border-perforation rounded-xl bg-paper p-6 shadow-sm">
 						{editingItem ? (
 							<div className="space-y-6">
 								<div className="flex items-center justify-between border-b border-perforation pb-3">

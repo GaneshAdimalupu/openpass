@@ -20,38 +20,52 @@ const plexMono = IBM_Plex_Mono({
 	variable: "--font-mono",
 });
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://makemyevent.org";
+
 export const metadata: Metadata = {
+	metadataBase: new URL(baseUrl),
+	alternates: {
+		canonical: "./",
+	},
 	title: {
-		default: "openevents | Find and host events",
-		template: "%s | openevents",
+		default: "makemyevent | Find and host community events",
+		template: "%s | makemyevent",
 	},
 	description:
-		"Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
+		"makemyevent is an open-source event management and ticketing platform for tech communities, meetups, hackathons, and open-source clubs.",
 	keywords: [
+		"makemyevent",
 		"events",
 		"ticketing",
 		"conferences",
 		"meetups",
+		"hackathons",
 		"open source",
-		"management",
-		"openevents",
+		"foss united",
+		"community events",
+		"rsvp platform",
+		"event management",
 	],
 	openGraph: {
 		type: "website",
 		locale: "en_US",
-		url: "https://openevents.vercel.app",
-		title: "openevents | Find and host events",
+		url: baseUrl,
+		title: "makemyevent | Find and host community events",
 		description:
 			"Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
-		siteName: "openevents",
+		siteName: "makemyevent",
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "openevents | Find and host events",
+		title: "makemyevent | Find and host community events",
 		description: "Open-source event ticketing and management platform.",
 	},
 	verification: {
 		google: "EO9SG-z--GhL_8DQ1ywwXUUHJPIIGJiLKhQITqxbdOQ",
+	},
+	robots: {
+		index: true,
+		follow: true,
 	},
 };
 

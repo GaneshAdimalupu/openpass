@@ -11,7 +11,7 @@ export default function OnboardingPage(): JSX.Element {
 						href="/"
 						className="font-display font-semibold text-h3 text-ink"
 					>
-						openevents
+						makemyevent
 					</Link>
 				</div>
 			</header>

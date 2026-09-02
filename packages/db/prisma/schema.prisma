@@ -18,7 +18,7 @@ model User {
   emailVerified    DateTime?
   timeZone         String           @default("Asia/Kolkata")
   role             UserRole         @default(USER)
-  identityProvider IdentityProvider @default(OPENEVENTS)
+  identityProvider IdentityProvider @default(MAKEMYEVENT)
   whatsapp         String?
   instagram        String?
   twitter          String?
@@ -311,6 +311,7 @@ enum MemberRole {
 }
 
 enum IdentityProvider {
+  MAKEMYEVENT
   OPENEVENTS
   GOOGLE
   GITHUB

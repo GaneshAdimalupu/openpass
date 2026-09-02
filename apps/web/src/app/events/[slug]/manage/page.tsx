@@ -4,7 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Eye, EyeOff, Edit3, ExternalLink, Copy, Trash2 } from "lucide-react";
+import {
+	Eye,
+	EyeOff,
+	Edit3,
+	ExternalLink,
+	Copy,
+	Trash2,
+	ImagePlus,
+	X,
+} from "lucide-react";
+import Image from "next/image";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 export default function EventManagePage() {
@@ -49,10 +59,19 @@ export default function EventManagePage() {
 	const [registrationEndDate, setRegistrationEndDate] = useState("");
 	const [registrationEndTime, setRegistrationEndTime] = useState("");
 
-	const { data: event, isLoading } = trpc.events.manageGetBySlug.useQuery(
-		{ slug },
-		{ enabled: !!slug },
-	);
+	const {
+		data: event,
+		isLoading,
+		refetch: refetchEvent,
+	} = trpc.events.manageGetBySlug.useQuery({ slug }, { enabled: !!slug });
+
+	// Banner upload state
+	const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+	const [bannerUploading, setBannerUploading] = useState(false);
+	const [bannerError, setBannerError] = useState<string | null>(null);
+	const bannerUploadUrl = trpc.events.bannerUploadUrl.useMutation();
+	const bannerConfirm = trpc.events.bannerConfirm.useMutation();
+	const bannerDeleteMut = trpc.events.bannerDelete.useMutation();
 
 	const updateEvent = trpc.events.update.useMutation({
 		onSuccess: () => {
@@ -202,12 +221,140 @@ export default function EventManagePage() {
 			timezone,
 			registrationStart: regStart ? regStart.toISOString() : null,
 			registrationEnd: regEnd ? regEnd.toISOString() : null,
+			bannerUrl:
+				bannerPreview !== null ? bannerPreview : event.bannerUrl || null,
 			status: (customStatus || event.status) as
 				| "draft"
 				| "published"
 				| "cancelled"
 				| "completed",
 		});
+	};
+
+	/**
+	 * Resize an image file to max 1920px width using canvas,
+	 * then upload to Supabase via signed URL.
+	 */
+	const handleBannerUpload = async (file: File) => {
+		setBannerError(null);
+
+		// Client-side type check
+		const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
+		if (!allowedTypes.includes(file.type)) {
+			setBannerError("Only PNG, JPG, or WebP images are accepted.");
+			return;
+		}
+
+		// Client-side size check (pre-resize)
+		if (file.size > 10 * 1024 * 1024) {
+			setBannerError("File too large. Max 10MB before resize.");
+			return;
+		}
+
+		setBannerUploading(true);
+
+		try {
+			// 1. Resize on canvas
+			const resizedBlob = await new Promise<Blob>((resolve, reject) => {
+				const img = new window.Image();
+				img.onload = () => {
+					const MAX_W = 1920;
+					const MAX_H = 1080;
+					let w = img.width;
+					let h = img.height;
+
+					if (w > MAX_W) {
+						h = Math.round(h * (MAX_W / w));
+						w = MAX_W;
+					}
+					if (h > MAX_H) {
+						w = Math.round(w * (MAX_H / h));
+						h = MAX_H;
+					}
+
+					const canvas = document.createElement("canvas");
+					canvas.width = w;
+					canvas.height = h;
+					const ctx = canvas.getContext("2d");
+					if (!ctx) {
+						reject(new Error("Canvas not supported"));
+						return;
+					}
+					ctx.drawImage(img, 0, 0, w, h);
+					canvas.toBlob(
+						(blob) => {
+							if (blob) resolve(blob);
+							else reject(new Error("Canvas toBlob failed"));
+						},
+						"image/webp",
+						0.85,
+					);
+				};
+				img.onerror = () => reject(new Error("Failed to load image"));
+				img.src = URL.createObjectURL(file);
+			});
+
+			// Check resized size
+			if (resizedBlob.size > 5 * 1024 * 1024) {
+				setBannerError(
+					"Image still exceeds 5MB after resize. Try a smaller image.",
+				);
+				setBannerUploading(false);
+				return;
+			}
+
+			// 2. Get signed upload URL from API
+			const uploadData = await bannerUploadUrl.mutateAsync({
+				eventId: event.id,
+				fileType: "image/webp",
+				fileSize: resizedBlob.size,
+			});
+
+			// 3. Upload directly to Supabase
+			const uploadRes = await fetch(uploadData.signedUrl, {
+				method: "PUT",
+				headers: {
+					"Content-Type": "image/webp",
+				},
+				body: resizedBlob,
+			});
+
+			if (!uploadRes.ok) {
+				throw new Error(`Upload failed: ${uploadRes.statusText}`);
+			}
+
+			// 4. Confirm upload in DB
+			await bannerConfirm.mutateAsync({
+				eventId: event.id,
+				publicUrl: uploadData.publicUrl,
+			});
+
+			// 5. Optimistic UI update
+			setBannerPreview(uploadData.publicUrl);
+			refetchEvent();
+		} catch (err) {
+			setBannerError(
+				err instanceof Error ? err.message : "Upload failed. Try again.",
+			);
+		} finally {
+			setBannerUploading(false);
+		}
+	};
+
+	const handleBannerDelete = async () => {
+		setBannerError(null);
+		setBannerUploading(true);
+		try {
+			await bannerDeleteMut.mutateAsync({ eventId: event.id });
+			setBannerPreview(null);
+			refetchEvent();
+		} catch (err) {
+			setBannerError(
+				err instanceof Error ? err.message : "Failed to remove banner.",
+			);
+		} finally {
+			setBannerUploading(false);
+		}
 	};
 
 	return (
@@ -269,7 +416,7 @@ export default function EventManagePage() {
 							handleSave(nextStatus);
 						}}
 						disabled={updateEvent.isPending}
-						className={`w-fit px-4 py-2 text-sm rounded-md flex items-center gap-2 font-medium transition-colors border ${
+						className={`w-fit px-4 py-2 text-sm rounded-md flex items-center gap-2 font-medium transition-colors border cursor-pointer ${
 							event.status === "published"
 								? "bg-alert/10 text-alert border-alert hover:bg-alert/20"
 								: "bg-stamp/10 text-stamp border-stamp hover:bg-stamp/20"
@@ -282,15 +429,76 @@ export default function EventManagePage() {
 						)}
 						{event.status === "published" ? "Unpublish Event" : "Publish Event"}
 					</button>
-					<button
-						type="button"
-						onClick={() => handleSave()}
-						disabled={updateEvent.isPending}
-						className="w-fit px-4 py-2 text-sm bg-stamp text-paper hover:opacity-90 rounded-md flex items-center gap-2 font-medium transition-opacity disabled:opacity-50 shadow-xs"
-					>
-						<Edit3 size={16} />
-						Save Changes
-					</button>
+				</div>
+			</div>
+
+			{/* Banner Upload Section */}
+			<div className="flex flex-col my-6">
+				<div className="font-display font-semibold text-xl text-ink border-b-2 border-perforation pb-2">
+					Event Banner
+				</div>
+				<div className="mt-4 max-w-xl">
+					{bannerPreview || event.bannerUrl ? (
+						<div className="relative rounded-lg overflow-hidden border border-perforation w-full h-36 sm:h-40">
+							<Image
+								src={bannerPreview || event.bannerUrl || ""}
+								alt="Event banner preview"
+								fill
+								unoptimized
+								className="object-cover"
+							/>
+							<button
+								type="button"
+								onClick={handleBannerDelete}
+								disabled={bannerUploading}
+								className="absolute top-2 right-2 p-1.5 rounded-md bg-ink/70 text-paper hover:bg-alert transition-colors cursor-pointer disabled:opacity-50"
+								aria-label="Remove banner"
+							>
+								<X size={16} />
+							</button>
+							{bannerUploading && (
+								<div className="absolute inset-0 bg-ink/30 flex items-center justify-center">
+									<div className="w-8 h-8 border-2 border-paper border-t-transparent rounded-full animate-spin" />
+								</div>
+							)}
+						</div>
+					) : (
+						<label
+							htmlFor="banner-upload"
+							className={`relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-perforation hover:border-stamp/50 transition-colors cursor-pointer bg-perforation/10 w-full h-36 sm:h-40 ${
+								bannerUploading ? "pointer-events-none opacity-60" : ""
+							}`}
+						>
+							{bannerUploading ? (
+								<div className="w-8 h-8 border-2 border-stamp border-t-transparent rounded-full animate-spin" />
+							) : (
+								<>
+									<ImagePlus className="w-6 h-6 text-ink/30" />
+									<span className="text-sm text-ink/60 font-body">
+										Click to upload a banner image
+									</span>
+									<span className="text-xs text-ink/50 font-mono text-center px-2">
+										Recommended: 1:1 Square (1200 × 1200 px) or 16:9 Banner
+										(1920 × 1080 px) · PNG, JPG, WebP up to 5MB
+									</span>
+								</>
+							)}
+							<input
+								id="banner-upload"
+								type="file"
+								accept="image/png,image/jpeg,image/webp"
+								className="sr-only"
+								onChange={(e) => {
+									const file = e.target.files?.[0];
+									if (file) handleBannerUpload(file);
+									e.target.value = "";
+								}}
+							/>
+						</label>
+					)}
+					{bannerError && (
+						<p className="text-sm text-alert mt-2">{bannerError}</p>
+					)}
 				</div>
 			</div>
 
@@ -734,7 +942,7 @@ export default function EventManagePage() {
 					className="px-4 sm:px-6 py-2 text-xs sm:text-sm bg-stamp text-paper rounded-md hover:opacity-90 transition-opacity font-medium flex items-center gap-2 disabled:opacity-50 shadow-xs cursor-pointer"
 				>
 					<Edit3 size={16} />
-					{updateEvent.isPending ? "Saving..." : "Update Details"}
+					{updateEvent.isPending ? "Saving..." : "Save Changes"}
 				</button>
 			</div>
 		</div>

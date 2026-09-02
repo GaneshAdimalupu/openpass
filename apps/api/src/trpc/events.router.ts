@@ -1,7 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import type { EventStatus, PrismaClient } from "db";
 import { z } from "zod";
+import { supabaseAdmin } from "../lib/supabase";
+import { sendTicketEmail } from "../services/email.service";
 import { authedProcedure, publicProcedure, router } from "./trpc";
+
+const BANNER_BUCKET = "event-banners";
+const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+const MAX_BANNER_SIZE = 5 * 1024 * 1024; // 5 MB
 
 /**
  * Event Format and Topic constants — single source of truth.
@@ -110,6 +116,7 @@ export const eventsRouter = router({
 				slug: true,
 				description: true,
 				format: true,
+				bannerUrl: true,
 				topic: true,
 				tags: true,
 				eventStart: true,
@@ -188,6 +195,7 @@ export const eventsRouter = router({
 					topic: true,
 					tags: true,
 					status: true,
+					bannerUrl: true,
 					eventStart: true,
 					eventEnd: true,
 					location: true,
@@ -214,6 +222,7 @@ export const eventsRouter = router({
 					topic: true,
 					tags: true,
 					status: true,
+					bannerUrl: true,
 					eventStart: true,
 					eventEnd: true,
 					timezone: true,
@@ -258,6 +267,7 @@ export const eventsRouter = router({
 					topic: true,
 					tags: true,
 					status: true,
+					bannerUrl: true,
 					shortDescription: true,
 					showSpeakers: true,
 					eventStart: true,
@@ -467,6 +477,7 @@ export const eventsRouter = router({
 				eventEnd: z.string(),
 				registrationStart: z.string().nullable(),
 				registrationEnd: z.string().nullable(),
+				bannerUrl: z.string().nullable().optional(),
 				status: z
 					.enum(["draft", "published", "cancelled", "completed"])
 					.optional(),
@@ -528,6 +539,9 @@ export const eventsRouter = router({
 					registrationEnd: input.registrationEnd
 						? new Date(input.registrationEnd)
 						: null,
+					...(input.bannerUrl !== undefined
+						? { bannerUrl: input.bannerUrl }
+						: {}),
 					...(input.status ? { status: input.status } : {}),
 				},
 			});
@@ -1368,12 +1382,38 @@ export const eventsRouter = router({
 		.query(async ({ ctx, input }) => {
 			const event = await ctx.prisma.event.findUnique({
 				where: { slug: input.slug },
-				include: { organizer: true },
+				include: {
+					organizer: {
+						include: {
+							owner: {
+								select: {
+									id: true,
+									name: true,
+									email: true,
+									image: true,
+								},
+							},
+							members: {
+								include: {
+									user: {
+										select: {
+											id: true,
+											name: true,
+											username: true,
+											email: true,
+											image: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			});
 			if (!event)
 				throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
 
-			const volunteers = await ctx.prisma.eventVolunteer.findMany({
+			let volunteers = await ctx.prisma.eventVolunteer.findMany({
 				where: { eventId: event.id },
 				include: {
 					user: {
@@ -1388,6 +1428,68 @@ export const eventsRouter = router({
 				},
 				orderBy: { createdAt: "asc" },
 			});
+
+			// Auto-populate organization owner & members as event volunteers if none exist (FOSS United standard)
+			if (volunteers.length === 0) {
+				const defaultPeopleToSeed = [
+					...(event.organizer.owner
+						? [
+								{
+									name: event.organizer.owner.name || "Organizer Lead",
+									email: event.organizer.owner.email,
+									role: "Core Organizer",
+									userId: event.organizer.ownerId,
+								},
+							]
+						: []),
+					...event.organizer.members.map((m) => ({
+						name: m.name || m.email.split("@")[0],
+						email: m.email,
+						role: m.role || "Volunteer",
+						userId: m.userId,
+					})),
+				];
+
+				for (const person of defaultPeopleToSeed) {
+					try {
+						await ctx.prisma.eventVolunteer.upsert({
+							where: {
+								eventId_email: {
+									eventId: event.id,
+									email: person.email,
+								},
+							},
+							create: {
+								eventId: event.id,
+								name: person.name,
+								email: person.email,
+								role: person.role,
+								userId: person.userId,
+							},
+							update: {},
+						});
+					} catch (_err) {
+						// Ignore duplicate seeding errors if any
+					}
+				}
+
+				// Re-query newly seeded volunteers
+				volunteers = await ctx.prisma.eventVolunteer.findMany({
+					where: { eventId: event.id },
+					include: {
+						user: {
+							select: {
+								id: true,
+								name: true,
+								username: true,
+								email: true,
+								image: true,
+							},
+						},
+					},
+					orderBy: { createdAt: "asc" },
+				});
+			}
 
 			return {
 				event,
@@ -1581,17 +1683,45 @@ export const eventsRouter = router({
 					title: true,
 					slug: true,
 					description: true,
+					format: true,
+					bannerUrl: true,
 					status: true,
 					capacity: true,
 					eventStart: true,
 					eventEnd: true,
 					location: true,
+					isOnline: true,
 					organizerId: true,
 					organizer: {
 						select: {
 							id: true,
 							name: true,
 							ownerId: true,
+							owner: {
+								select: {
+									id: true,
+									name: true,
+									email: true,
+									image: true,
+								},
+							},
+							members: {
+								select: {
+									id: true,
+									name: true,
+									email: true,
+									role: true,
+									user: { select: { image: true } },
+								},
+							},
+						},
+					},
+					volunteers: {
+						select: {
+							id: true,
+							name: true,
+							role: true,
+							user: { select: { image: true } },
 						},
 					},
 					tickets: {
@@ -1668,8 +1798,36 @@ export const eventsRouter = router({
 			);
 			const totalDropped = tiers.reduce((sum, t) => sum + t.droppedCount, 0);
 
+			// Default volunteers to organization owner and team members if no explicit event volunteers are assigned (FOSS United standard)
+			const defaultVolunteers = [
+				...(event.organizer.owner?.name
+					? [
+							{
+								id: `owner-${event.organizer.owner.id}`,
+								name: event.organizer.owner.name,
+								role: "Core Organizer",
+								user: event.organizer.owner.image
+									? { image: event.organizer.owner.image }
+									: null,
+							},
+						]
+					: []),
+				...event.organizer.members.map((m) => ({
+					id: m.id,
+					name: m.name || m.email.split("@")[0],
+					role: m.role || "Volunteer",
+					user: m.user?.image ? { image: m.user.image } : null,
+				})),
+			];
+
+			const effectiveVolunteers =
+				event.volunteers.length > 0 ? event.volunteers : defaultVolunteers;
+
 			return {
-				event,
+				event: {
+					...event,
+					volunteers: effectiveVolunteers,
+				},
 				tiers,
 				stats: {
 					totalConfirmed,
@@ -1890,6 +2048,20 @@ export const eventsRouter = router({
 						},
 					});
 
+					// Dispatch ticket confirmation email with embedded QR code
+					sendTicketEmail({
+						toEmail: issued.attendeeEmail,
+						attendeeName: issued.attendeeName,
+						eventTitle: event.title,
+						eventStart: event.eventStart,
+						location: event.location,
+						ticketCode: issued.ticketCode,
+						qrToken: issued.qrToken,
+						tierName: tier.name,
+					}).catch((err) =>
+						console.error("Ticket email dispatch background error:", err),
+					);
+
 					return {
 						status: "CONFIRMED" as const,
 						ticketCode: issued.ticketCode,
@@ -1940,6 +2112,55 @@ export const eventsRouter = router({
 				};
 			});
 		}),
+
+	participatedList: authedProcedure.query(async ({ ctx }) => {
+		const user = await ctx.prisma.user.findUnique({
+			where: { id: ctx.userId },
+			select: { email: true },
+		});
+		const userEmail = user?.email;
+
+		const issuedTickets = await ctx.prisma.issuedTicket.findMany({
+			where: {
+				OR: [
+					{ userId: ctx.userId },
+					...(userEmail ? [{ attendeeEmail: userEmail }] : []),
+				],
+				status: { in: ["CONFIRMED", "CHECKED_IN"] },
+			},
+			include: {
+				ticket: {
+					select: {
+						id: true,
+						name: true,
+						price: true,
+					},
+				},
+				event: {
+					select: {
+						id: true,
+						title: true,
+						slug: true,
+						bannerUrl: true,
+						format: true,
+						eventStart: true,
+						eventEnd: true,
+						location: true,
+						organizer: {
+							select: {
+								id: true,
+								name: true,
+								slug: true,
+							},
+						},
+					},
+				},
+			},
+			orderBy: { createdAt: "desc" },
+		});
+
+		return issuedTickets;
+	}),
 
 	ticketGetByCode: publicProcedure
 		.input(z.object({ ticketCode: z.string() }))
@@ -2069,6 +2290,27 @@ export const eventsRouter = router({
 						},
 					});
 					promotedAttendeeEmail = nextWaitlisted.attendeeEmail;
+
+					// Fetch ticket & event context for email dispatch
+					const promotedTicket = await tx.issuedTicket.findUnique({
+						where: { id: nextWaitlisted.id },
+						include: { event: true, ticket: true },
+					});
+
+					if (promotedTicket) {
+						sendTicketEmail({
+							toEmail: promotedTicket.attendeeEmail,
+							attendeeName: promotedTicket.attendeeName,
+							eventTitle: promotedTicket.event.title,
+							eventStart: promotedTicket.event.eventStart,
+							location: promotedTicket.event.location,
+							ticketCode: promotedTicket.ticketCode,
+							qrToken: promotedTicket.qrToken,
+							tierName: promotedTicket.ticket.name,
+						}).catch((err) =>
+							console.error("Promoted waitlist ticket email error:", err),
+						);
+					}
 				}
 
 				return {
@@ -2309,6 +2551,27 @@ export const eventsRouter = router({
 				}),
 			]);
 
+			// Fetch updated ticket pass context for email receipt
+			const claimedPass = await ctx.prisma.issuedTicket.findUnique({
+				where: { id: transfer.issuedTicketId },
+				include: { event: true, ticket: true },
+			});
+
+			if (claimedPass) {
+				sendTicketEmail({
+					toEmail: claimedPass.attendeeEmail,
+					attendeeName: claimedPass.attendeeName,
+					eventTitle: claimedPass.event.title,
+					eventStart: claimedPass.event.eventStart,
+					location: claimedPass.event.location,
+					ticketCode: claimedPass.ticketCode,
+					qrToken: claimedPass.qrToken,
+					tierName: claimedPass.ticket.name,
+				}).catch((err) =>
+					console.error("Transferred ticket email dispatch error:", err),
+				);
+			}
+
 			return {
 				success: true,
 				ticketCode: newTicketCode,
@@ -2345,6 +2608,12 @@ export const eventsRouter = router({
 			if (!ticket) {
 				return {
 					valid: false,
+					alreadyCheckedIn: false,
+					attendeeName: null,
+					attendeeEmail: null,
+					ticketCode: null,
+					tierName: null,
+					checkedInAt: null,
 					message: "Ticket not found for this event.",
 				};
 			}
@@ -2354,6 +2623,9 @@ export const eventsRouter = router({
 					valid: false,
 					alreadyCheckedIn: true,
 					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					ticketCode: ticket.ticketCode,
+					tierName: ticket.ticket.name,
 					checkedInAt: ticket.checkedInAt,
 					message: `Already checked in at ${ticket.checkedInAt?.toLocaleTimeString()}`,
 				};
@@ -2362,6 +2634,12 @@ export const eventsRouter = router({
 			if (ticket.status === "DROPPED" || ticket.status === "CANCELLED") {
 				return {
 					valid: false,
+					alreadyCheckedIn: false,
+					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					ticketCode: ticket.ticketCode,
+					tierName: ticket.ticket.name,
+					checkedInAt: null,
 					message: `This ticket was ${ticket.status.toLowerCase()} and is invalid.`,
 				};
 			}
@@ -2369,26 +2647,56 @@ export const eventsRouter = router({
 			if (ticket.status === "WAITLISTED") {
 				return {
 					valid: false,
+					alreadyCheckedIn: false,
+					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					ticketCode: ticket.ticketCode,
+					tierName: ticket.ticket.name,
+					checkedInAt: null,
 					message:
 						"This attendee is on the waitlist and has not been confirmed.",
 				};
 			}
 
-			// Valid -> Check in
-			const updated = await ctx.prisma.issuedTicket.update({
-				where: { id: ticket.id },
+			// Atomic State Transition (Eliminates Multi-Scanner Race Conditions)
+			const now = new Date();
+			const updateResult = await ctx.prisma.issuedTicket.updateMany({
+				where: {
+					id: ticket.id,
+					status: "CONFIRMED", // Strictly matches only if still CONFIRMED
+				},
 				data: {
 					status: "CHECKED_IN",
-					checkedInAt: new Date(),
+					checkedInAt: now,
 				},
 			});
 
+			if (updateResult.count === 0) {
+				// Another scanner checked in this exact ticket milliseconds ago!
+				const reChecked = await ctx.prisma.issuedTicket.findUnique({
+					where: { id: ticket.id },
+				});
+
+				return {
+					valid: false,
+					alreadyCheckedIn: true,
+					attendeeName: ticket.attendeeName,
+					attendeeEmail: ticket.attendeeEmail,
+					ticketCode: ticket.ticketCode,
+					tierName: ticket.ticket.name,
+					checkedInAt: reChecked?.checkedInAt || now,
+					message: `Already checked in at ${(reChecked?.checkedInAt || now).toLocaleTimeString()}`,
+				};
+			}
+
 			return {
 				valid: true,
-				attendeeName: updated.attendeeName,
-				attendeeEmail: updated.attendeeEmail,
+				alreadyCheckedIn: false,
+				attendeeName: ticket.attendeeName,
+				attendeeEmail: ticket.attendeeEmail,
+				ticketCode: ticket.ticketCode,
 				tierName: ticket.ticket.name,
-				checkedInAt: updated.checkedInAt,
+				checkedInAt: now,
 				message: "Checked in successfully!",
 			};
 		}),
@@ -2510,5 +2818,179 @@ export const eventsRouter = router({
 				});
 			}
 			return { success: true };
+		}),
+
+	// ─────────── Banner Upload ───────────
+
+	bannerUploadUrl: authedProcedure
+		.input(
+			z.object({
+				eventId: z.string(),
+				fileType: z.enum([...ALLOWED_MIME_TYPES]),
+				fileSize: z.number().max(MAX_BANNER_SIZE),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			if (!supabaseAdmin) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Storage is not configured.",
+				});
+			}
+
+			// Verify event exists and user has permission
+			const event = await ctx.prisma.event.findUnique({
+				where: { id: input.eventId },
+				include: { organizer: { select: { ownerId: true } } },
+			});
+			if (!event) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+			}
+			if (event.organizer.ownerId !== ctx.userId) {
+				const membership = await ctx.prisma.organizerMember.findFirst({
+					where: {
+						organizerId: event.organizerId,
+						userId: ctx.userId,
+						role: { in: ["ADMIN", "EDITOR"] },
+					},
+				});
+				if (!membership) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message: "You do not have permission to edit this event.",
+					});
+				}
+			}
+
+			// Sanitized storage path — no user input in the filename
+			const ext =
+				input.fileType.split("/")[1] === "jpeg"
+					? "jpg"
+					: input.fileType.split("/")[1];
+			const storagePath = `${input.eventId}/${Date.now()}.${ext}`;
+
+			// Create signed upload URL (expires in 2 minutes)
+			const { data, error } = await supabaseAdmin.storage
+				.from(BANNER_BUCKET)
+				.createSignedUploadUrl(storagePath);
+
+			if (error || !data) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: `Storage error: ${error?.message || "Unknown error"}`,
+				});
+			}
+
+			// Build the public URL for after upload completes
+			const { data: publicUrlData } = supabaseAdmin.storage
+				.from(BANNER_BUCKET)
+				.getPublicUrl(storagePath);
+
+			return {
+				signedUrl: data.signedUrl,
+				token: data.token,
+				storagePath,
+				publicUrl: publicUrlData.publicUrl,
+			};
+		}),
+
+	bannerConfirm: authedProcedure
+		.input(
+			z.object({
+				eventId: z.string(),
+				publicUrl: z.string().url(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			// Verify event exists and user has permission
+			const event = await ctx.prisma.event.findUnique({
+				where: { id: input.eventId },
+				include: { organizer: { select: { ownerId: true } } },
+			});
+			if (!event) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+			}
+			if (event.organizer.ownerId !== ctx.userId) {
+				const membership = await ctx.prisma.organizerMember.findFirst({
+					where: {
+						organizerId: event.organizerId,
+						userId: ctx.userId,
+						role: { in: ["ADMIN", "EDITOR"] },
+					},
+				});
+				if (!membership) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message: "You do not have permission to edit this event.",
+					});
+				}
+			}
+
+			return ctx.prisma.event.update({
+				where: { id: input.eventId },
+				data: { bannerUrl: input.publicUrl },
+				select: { id: true, bannerUrl: true },
+			});
+		}),
+
+	bannerDelete: authedProcedure
+		.input(z.object({ eventId: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			if (!supabaseAdmin) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Storage is not configured.",
+				});
+			}
+
+			// Verify event exists and user has permission
+			const event = await ctx.prisma.event.findUnique({
+				where: { id: input.eventId },
+				include: { organizer: { select: { ownerId: true } } },
+			});
+			if (!event) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+			}
+			if (event.organizer.ownerId !== ctx.userId) {
+				const membership = await ctx.prisma.organizerMember.findFirst({
+					where: {
+						organizerId: event.organizerId,
+						userId: ctx.userId,
+						role: { in: ["ADMIN", "EDITOR"] },
+					},
+				});
+				if (!membership) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message: "You do not have permission to edit this event.",
+					});
+				}
+			}
+
+			// Delete file from storage if bannerUrl exists
+			if (event.bannerUrl) {
+				try {
+					// Extract path from URL: .../event-banners/<eventId>/<file>
+					const url = new URL(event.bannerUrl);
+					const pathParts = url.pathname.split(`/${BANNER_BUCKET}/`);
+					if (pathParts[1]) {
+						await supabaseAdmin.storage
+							.from(BANNER_BUCKET)
+							.remove([pathParts[1]]);
+					}
+				} catch {
+					// Non-fatal: DB update still proceeds
+					console.warn(
+						"[banner] Failed to delete storage file:",
+						event.bannerUrl,
+					);
+				}
+			}
+
+			return ctx.prisma.event.update({
+				where: { id: input.eventId },
+				data: { bannerUrl: null },
+				select: { id: true, bannerUrl: true },
+			});
 		}),
 });

@@ -35,9 +35,8 @@ just the enforcement rule:
 
 - Spacing values come from the 8px scale (`4 8 16 24 32 48 64 96`)
   only. No arbitrary Tailwind values like `p-[13px]`.
-- Colors come from the Tailwind tokens (`bg-paper`, `text-ink`,
-  `bg-stamp`, `border-perforation`, `text-alert`) — never a raw hex
-  value in a component.
+- Colors come strictly from the 5 design system Tailwind tokens (`bg-paper`, `text-ink`, `bg-stamp`, `border-perforation`, `text-alert`). Absolutely NO raw hex values (e.g. `bg-[#22c55e]`), HSL/RGB values, or non-token Tailwind colors are permitted in components under any circumstances.
+- Responsive Grid Layouts: Always use `sm:` (640px+) or `md:` (768px+) for multi-column grids and side-by-side card layouts so that split-screen windows, iPads, and tablets render side-by-side gracefully without forcing single-column mobile drop.
 - Fonts are the three defined in the design system. Don't add a
   fourth "just for this component."
 - If a layout needs a value the design system doesn't have (a new
@@ -103,6 +102,7 @@ just the enforcement rule:
   guess too.
 - Don't refactor unrelated code while doing something else. Separate
   PR.
-- Don't silently change the design system, the schema, or the API
+- Do not silently change the design system, the schema, or the API
   contract as a side effect of an unrelated fix.
 - Do not use the `browser_subagent` for purely capturing screenshots of complex React state or multi-step modal workflows (it is prone to infinite loops and timeouts). Verify UI changes manually or ask the user to verify.
+- Do not use emojis in UI components, documentation, or code. Use clean SVG icons or Lucide icons (`lucide-react`) per `docs/design-system.md`.

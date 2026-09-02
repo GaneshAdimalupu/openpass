@@ -163,6 +163,10 @@ export default function AttendeeTicketPage(): JSX.Element {
 
 	const event = ticket.event;
 	const tier = ticket.ticket;
+	const isExpired = event.eventEnd
+		? new Date(event.eventEnd) < new Date()
+		: false;
+
 	const formattedStart = event.eventStart
 		? new Date(event.eventStart).toLocaleDateString("en-US", {
 				weekday: "short",
@@ -192,7 +196,14 @@ export default function AttendeeTicketPage(): JSX.Element {
 					</div>
 				)}
 
-				{ticket.status === "WAITLISTED" && (
+				{isExpired && ticket.status !== "DROPPED" && (
+					<div className="mb-6 bg-perforation/40 border border-perforation text-ink/80 p-4 rounded-lg flex items-center gap-3 text-sm font-medium">
+						<Clock className="w-5 h-5 shrink-0 opacity-60 text-ink" />
+						This event has ended. This ticket pass is now expired.
+					</div>
+				)}
+
+				{ticket.status === "WAITLISTED" && !isExpired && (
 					<div className="mb-6 bg-perforation/40 border border-perforation text-ink p-4 rounded-lg space-y-1">
 						<div className="flex items-center gap-2 font-semibold text-sm">
 							<Clock className="w-4 h-4 text-stamp" />
@@ -207,7 +218,7 @@ export default function AttendeeTicketPage(): JSX.Element {
 				)}
 
 				{ticket.status === "CHECKED_IN" && (
-					<div className="mb-6 bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-300 p-4 rounded-lg flex items-center gap-3 text-sm font-medium">
+					<div className="mb-6 bg-stamp/10 border border-stamp/30 text-stamp p-4 rounded-lg flex items-center gap-3 text-sm font-medium">
 						<UserCheck className="w-5 h-5 shrink-0" />
 						Checked in at venue desk on{" "}
 						{ticket.checkedInAt
@@ -224,7 +235,11 @@ export default function AttendeeTicketPage(): JSX.Element {
 				)}
 
 				{/* ──────────────── Boarding Pass Card ──────────────── */}
-				<div className="border border-perforation rounded-2xl overflow-hidden shadow-xl bg-paper transition-all">
+				<div
+					className={`border border-perforation rounded-2xl overflow-hidden shadow-xl bg-paper transition-all ${
+						isExpired ? "opacity-90" : ""
+					}`}
+				>
 					{/* Top Event Banner */}
 					<div className="p-6 md:p-8 bg-paper border-b border-perforation space-y-4">
 						<div className="flex items-center justify-between gap-4">
@@ -235,14 +250,16 @@ export default function AttendeeTicketPage(): JSX.Element {
 							<div className="text-right">
 								<span
 									className={`text-xs font-mono font-bold px-2.5 py-1 rounded ${
-										ticket.status === "CONFIRMED"
-											? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
-											: ticket.status === "WAITLISTED"
-												? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-												: "bg-perforation/40 text-ink/60"
+										isExpired
+											? "bg-perforation/40 text-ink/60 border border-perforation"
+											: ticket.status === "CONFIRMED"
+												? "bg-stamp/10 text-stamp border border-stamp/30"
+												: ticket.status === "WAITLISTED"
+													? "bg-perforation/40 text-ink border border-perforation"
+													: "bg-perforation/40 text-ink/60"
 									}`}
 								>
-									{ticket.status}
+									{isExpired ? "EXPIRED" : ticket.status}
 								</span>
 							</div>
 						</div>
@@ -302,21 +319,32 @@ export default function AttendeeTicketPage(): JSX.Element {
 
 						{/* QR Code Container */}
 						{ticket.status === "CONFIRMED" && qrDataUrl ? (
-							<div className="bg-white p-4 rounded-xl border border-perforation shadow-md space-y-2 flex flex-col items-center">
+							<div
+								className={`bg-white p-4 rounded-xl border border-perforation shadow-md space-y-2 flex flex-col items-center relative ${
+									isExpired ? "opacity-75" : ""
+								}`}
+							>
+								{isExpired && (
+									<div className="absolute top-2 right-2 px-2 py-0.5 bg-paper/95 border border-perforation rounded font-mono text-[9px] font-bold text-ink/60 uppercase z-10 shadow-xs">
+										Expired Pass
+									</div>
+								)}
 								{/* biome-ignore lint/performance/noImgElement: Client-side generated QR data URL */}
 								<img
 									src={qrDataUrl}
 									alt="Ticket Verification QR Code"
-									className="w-56 h-56 md:w-64 md:h-64 object-contain"
+									className={`w-56 h-56 md:w-64 md:h-64 object-contain ${
+										isExpired ? "grayscale-50" : ""
+									}`}
 								/>
 								<span className="text-[10px] font-mono font-bold tracking-widest text-black/60 uppercase">
 									{ticket.ticketCode}
 								</span>
 							</div>
 						) : ticket.status === "WAITLISTED" ? (
-							<div className="p-8 border border-dashed border-amber-500/40 rounded-xl bg-amber-500/5 max-w-xs space-y-2">
-								<Clock className="w-12 h-12 text-amber-500 mx-auto" />
-								<h3 className="font-display font-semibold text-sm text-amber-700 dark:text-amber-300">
+							<div className="p-8 border border-dashed border-perforation rounded-xl bg-paper/40 max-w-xs space-y-2">
+								<Clock className="w-12 h-12 text-ink/60 mx-auto" />
+								<h3 className="font-display font-semibold text-sm text-ink">
 									Waitlist Queue Active
 								</h3>
 								<p className="text-[11px] opacity-75">
@@ -333,13 +361,21 @@ export default function AttendeeTicketPage(): JSX.Element {
 
 						{/* Instructions */}
 						<p className="text-xs opacity-60 max-w-xs">
-							Show this QR code at the event check-in desk for entry.
+							{isExpired
+								? "This event has ended. Pass is no longer active for venue entry."
+								: "Show this QR code at the event check-in desk for entry."}
 						</p>
 					</div>
 
 					{/* Bottom Action Footer */}
 					{ticket.status === "CONFIRMED" && (
-						<div className="p-4 bg-paper border-t border-perforation grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-medium">
+						<div
+							className={`p-4 bg-paper border-t border-perforation grid gap-2 text-xs font-medium ${
+								!isExpired && (tier.allowTransfer || tier.allowDrop)
+									? "grid-cols-1 sm:grid-cols-3"
+									: "grid-cols-1"
+							}`}
+						>
 							<button
 								type="button"
 								onClick={() => window.print()}
@@ -349,7 +385,7 @@ export default function AttendeeTicketPage(): JSX.Element {
 								Print Pass
 							</button>
 
-							{tier.allowTransfer && (
+							{!isExpired && tier.allowTransfer && (
 								<button
 									type="button"
 									onClick={() => {
@@ -363,7 +399,7 @@ export default function AttendeeTicketPage(): JSX.Element {
 								</button>
 							)}
 
-							{tier.allowDrop && (
+							{!isExpired && tier.allowDrop && (
 								<button
 									type="button"
 									onClick={() => setIsDropOpen(true)}

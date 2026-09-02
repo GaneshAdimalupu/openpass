@@ -2,14 +2,15 @@
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { trpc } from "@/lib/trpc";
-import { Sparkles, Trash2, X } from "lucide-react";
+import { Sparkles, Ticket, Trash2, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 
-type DashboardMode = "organized" | "participated";
+type DashboardMode = "hosted" | "my_tickets";
 
 export default function DashboardPage(): JSX.Element {
 	return (
@@ -34,8 +35,21 @@ function DashboardContent(): JSX.Element {
 	const { data: session, status } = useSession();
 	const searchParams = useSearchParams();
 	const actionParam = searchParams.get("action");
+	const tabParam = searchParams.get("tab");
 
-	const [mode, setMode] = useState<DashboardMode>("organized");
+	const [mode, setMode] = useState<DashboardMode>(
+		tabParam === "tickets" || tabParam === "my_tickets"
+			? "my_tickets"
+			: "hosted",
+	);
+
+	useEffect(() => {
+		if (tabParam === "tickets" || tabParam === "my_tickets") {
+			setMode("my_tickets");
+		} else if (tabParam === "hosted" || tabParam === "organized") {
+			setMode("hosted");
+		}
+	}, [tabParam]);
 	const [searchQuery, setSearchQuery] = useState<string>("");
 	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 	const [isCompletedExpanded, setIsCompletedExpanded] =
@@ -144,6 +158,11 @@ function DashboardContent(): JSX.Element {
 			{ enabled: !!currentOrgId },
 		);
 
+	const { data: participatedTickets, isLoading: participatedLoading } =
+		trpc.events.participatedList.useQuery(undefined, {
+			enabled: status === "authenticated",
+		});
+
 	// Filter events by search query
 	const allOrganizerEvents = useMemo(() => {
 		if (!rawEvents) return [];
@@ -224,10 +243,11 @@ function DashboardContent(): JSX.Element {
 				{orgsLoading ? (
 					<div className="space-y-6 animate-pulse">
 						<div className="h-16 bg-perforation/30 rounded-lg" />
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-							<div className="h-32 bg-perforation/30 rounded-lg" />
-							<div className="h-32 bg-perforation/30 rounded-lg" />
-							<div className="h-32 bg-perforation/30 rounded-lg" />
+						<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+							<div className="h-36 bg-perforation/30 rounded-lg" />
+							<div className="h-36 bg-perforation/30 rounded-lg" />
+							<div className="h-36 bg-perforation/30 rounded-lg" />
+							<div className="h-36 bg-perforation/30 rounded-lg" />
 						</div>
 					</div>
 				) : !organizers || organizers.length === 0 ? (
@@ -282,29 +302,30 @@ function DashboardContent(): JSX.Element {
 									/>
 								</div>
 
-								{/* Segmented Pill: Participated / Organized */}
+								{/* Segmented Pill: My Tickets / Hosted Events */}
 								<div className="inline-flex justify-center rounded-md border border-perforation p-0.5 bg-paper/50 shrink-0">
 									<button
 										type="button"
-										onClick={() => setMode("participated")}
-										className={`flex-1 sm:flex-initial px-3 py-1.5 rounded text-xs label transition-all ${
-											mode === "participated"
+										onClick={() => setMode("my_tickets")}
+										className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded text-xs label transition-all inline-flex items-center gap-1.5 ${
+											mode === "my_tickets"
 												? "bg-ink text-paper font-semibold shadow-xs"
 												: "text-ink opacity-60 hover:opacity-100"
 										}`}
 									>
-										Participated
+										<Ticket className="w-3.5 h-3.5 text-stamp" />
+										<span>My Tickets</span>
 									</button>
 									<button
 										type="button"
-										onClick={() => setMode("organized")}
-										className={`flex-1 sm:flex-initial px-3 py-1.5 rounded text-xs label transition-all ${
-											mode === "organized"
+										onClick={() => setMode("hosted")}
+										className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded text-xs label transition-all ${
+											mode === "hosted"
 												? "bg-ink text-paper font-semibold shadow-xs"
 												: "text-ink opacity-60 hover:opacity-100"
 										}`}
 									>
-										Organized
+										Hosted Events
 									</button>
 								</div>
 							</div>
@@ -409,49 +430,137 @@ function DashboardContent(): JSX.Element {
 							</div>
 						</div>
 
-						{/* ──────────────── MODE: PARTICIPATED ──────────────── */}
-						{mode === "participated" && (
+						{/* ──────────────── MODE: MY TICKETS ──────────────── */}
+						{mode === "my_tickets" && (
 							<div className="space-y-6">
-								<div className="border border-perforation rounded-lg p-12 text-center bg-paper/40">
-									<div className="w-14 h-14 rounded-full bg-perforation/30 text-ink flex items-center justify-center mx-auto mb-4">
-										<svg
-											aria-hidden="true"
-											xmlns="http://www.w3.org/2000/svg"
-											width="24"
-											height="24"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											strokeWidth="2"
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											className="opacity-70"
-										>
-											<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
-											<path d="M13 5v2" />
-											<path d="M13 17v2" />
-											<path d="M13 11v2" />
-										</svg>
+								{participatedLoading ? (
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 animate-pulse">
+										<div className="h-36 bg-perforation/30 rounded-lg" />
+										<div className="h-36 bg-perforation/30 rounded-lg" />
+										<div className="h-36 bg-perforation/30 rounded-lg" />
+										<div className="h-36 bg-perforation/30 rounded-lg" />
 									</div>
-									<h2 className="font-display font-semibold text-xl mb-2 text-ink">
-										No Registered Events Yet
-									</h2>
-									<p className="text-body opacity-70 max-w-md mx-auto mb-6 text-sm">
-										When you register for workshops, fests, or meetups, your
-										tickets and entry passes will appear here.
-									</p>
-									<Link
-										href="/events"
-										className="bg-stamp text-paper label px-6 py-2.5 rounded-md hover:opacity-90 inline-block transition-opacity text-xs"
-									>
-										Explore Events Directory →
-									</Link>
-								</div>
+								) : !participatedTickets || participatedTickets.length === 0 ? (
+									<div className="border border-perforation rounded-lg p-12 text-center bg-paper/40">
+										<div className="w-14 h-14 rounded-full bg-perforation/30 text-ink flex items-center justify-center mx-auto mb-4">
+											<Ticket className="w-6 h-6 opacity-70 text-stamp" />
+										</div>
+										<h2 className="font-display font-semibold text-xl mb-2 text-ink">
+											No Registered Events Yet
+										</h2>
+										<p className="text-body opacity-70 max-w-md mx-auto mb-6 text-sm">
+											When you register for workshops, fests, or meetups, your
+											tickets and entry passes will appear here.
+										</p>
+										<Link
+											href="/events"
+											className="bg-stamp text-paper label px-6 py-2.5 rounded-md hover:opacity-90 inline-block transition-opacity text-xs font-medium"
+										>
+											Explore Events Directory →
+										</Link>
+									</div>
+								) : (
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+										{participatedTickets.map((t) => {
+											const isPast = t.event.eventEnd
+												? new Date(t.event.eventEnd) < new Date()
+												: false;
+
+											return (
+												<div
+													key={t.id}
+													className={`border border-perforation rounded-lg bg-paper overflow-hidden shadow-xs hover:shadow-sm transition-all flex flex-col justify-between ${
+														isPast ? "opacity-80" : ""
+													}`}
+												>
+													{/* Banner */}
+													<div className="relative h-16 sm:h-20 w-full bg-perforation/20 overflow-hidden">
+														{t.event.bannerUrl ? (
+															<Image
+																src={t.event.bannerUrl}
+																alt={t.event.title}
+																fill
+																priority
+																sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+																className={`object-cover ${
+																	isPast ? "grayscale-30" : ""
+																}`}
+															/>
+														) : (
+															<div className="absolute inset-0 bg-gradient-to-br from-stamp/10 to-paper flex items-center justify-center">
+																<span className="font-display font-semibold text-xl text-ink/30">
+																	{t.event.title.charAt(0)}
+																</span>
+															</div>
+														)}
+														{isPast && (
+															<div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-paper/90 backdrop-blur-xs rounded font-mono text-[9px] font-bold text-ink/60 border border-perforation uppercase">
+																EXPIRED
+															</div>
+														)}
+														<div
+															className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-paper/90 backdrop-blur-xs rounded font-mono text-[9px] font-bold border border-perforation ${
+																isPast ? "text-ink/60" : "text-stamp"
+															}`}
+														>
+															{t.ticket.name}
+														</div>
+													</div>
+
+													{/* Content */}
+													<div className="p-3 flex-1 flex flex-col justify-between space-y-2">
+														<div>
+															<div
+																className={`text-[11px] font-mono uppercase mb-1 ${
+																	isPast ? "text-ink/60" : "text-stamp"
+																}`}
+															>
+																{t.event.organizer.name}
+															</div>
+															<h3 className="font-display font-medium text-base text-ink line-clamp-1">
+																{t.event.title}
+															</h3>
+															<p className="text-xs text-ink/60 font-mono mt-1">
+																{new Date(
+																	t.event.eventStart,
+																).toLocaleDateString("en-US", {
+																	weekday: "short",
+																	month: "short",
+																	day: "numeric",
+																})}{" "}
+																• {t.event.location || "Online"}
+															</p>
+														</div>
+
+														<div className="pt-3 border-t border-perforation flex items-center justify-between gap-2">
+															<span className="font-mono text-xs text-ink/70 truncate">
+																Code:{" "}
+																<strong className="text-ink truncate">
+																	{t.ticketCode}
+																</strong>
+															</span>
+															<Link
+																href={`/tickets/${t.ticketCode}`}
+																className={`px-3 py-1.5 rounded text-xs font-mono font-medium transition-opacity inline-flex items-center gap-1 shrink-0 ${
+																	isPast
+																		? "bg-perforation/40 text-ink/80 hover:bg-perforation/60"
+																		: "bg-stamp text-paper hover:opacity-90"
+																}`}
+															>
+																View Pass ↗
+															</Link>
+														</div>
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								)}
 							</div>
 						)}
 
-						{/* ──────────────── MODE: ORGANIZED ──────────────── */}
-						{mode === "organized" && (
+						{/* ──────────────── MODE: HOSTED EVENTS ──────────────── */}
+						{mode === "hosted" && (
 							<div className="space-y-10">
 								{/* Active Profile Info Strip */}
 								<div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg bg-perforation/15 border border-perforation text-xs font-mono">
@@ -765,6 +874,7 @@ interface EventCardProps {
 		format: string;
 		topic: string;
 		status: string;
+		bannerUrl?: string | null;
 		eventStart: string | Date;
 		eventEnd: string | Date;
 		isOnline: boolean;
@@ -782,6 +892,22 @@ interface EventCardProps {
 	onDelete?: () => void;
 }
 
+/**
+ * Topic-based gradient backgrounds for events without a banner image.
+ * Uses design system tokens mixed with opacity for subtle variety.
+ */
+const TOPIC_GRADIENTS: Record<string, string> = {
+	technology: "from-stamp/20 to-ink/10",
+	business: "from-ink/15 to-perforation/40",
+	opensource: "from-stamp/25 to-stamp/5",
+	design: "from-perforation/30 to-stamp/10",
+	science: "from-ink/10 to-stamp/15",
+	arts: "from-perforation/40 to-ink/8",
+	social: "from-stamp/10 to-perforation/30",
+	campus: "from-ink/8 to-stamp/20",
+	other: "from-perforation/30 to-ink/10",
+};
+
 function EventCard({
 	event,
 	onCopyLink,
@@ -796,7 +922,7 @@ function EventCard({
 		year: "numeric",
 	});
 
-	// Initial letter for square thumbnail
+	// Initial letter for fallback thumbnail
 	const initial = event.title.charAt(0).toUpperCase();
 
 	// Calculate total guest count across tiers
@@ -804,16 +930,41 @@ function EventCard({
 		event.capacity ||
 		event.tickets.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
-	return (
-		<div className="border border-perforation rounded-lg p-3.5 bg-paper hover:border-ink/30 transition-all flex flex-col justify-between space-y-3 shadow-xs hover:shadow-sm">
-			<div className="flex items-start gap-3">
-				{/* Square Thumbnail with Initial */}
-				<div className="w-9 h-9 rounded-md bg-perforation/20 text-ink flex items-center justify-center font-display font-semibold text-sm shrink-0 border border-perforation/40">
-					{initial}
-				</div>
+	const gradientClass = TOPIC_GRADIENTS[event.topic] || TOPIC_GRADIENTS.other;
 
+	return (
+		<div className="border border-perforation rounded-lg bg-paper hover:border-ink/30 transition-all flex flex-col justify-between shadow-xs hover:shadow-sm overflow-hidden">
+			{/* Banner Area — compact wide header strip */}
+			<div className="relative w-full h-16 sm:h-20 overflow-hidden">
+				{event.bannerUrl ? (
+					<Image
+						src={event.bannerUrl}
+						alt={`Banner for ${event.title}`}
+						fill
+						sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+						className="object-cover"
+					/>
+				) : (
+					<div
+						className={`absolute inset-0 bg-gradient-to-br ${gradientClass} flex items-center justify-center`}
+					>
+						<span className="font-display font-semibold text-2xl text-ink/40 select-none">
+							{initial}
+						</span>
+					</div>
+				)}
+				{/* Status badge overlay */}
+				{event.status === "draft" && (
+					<span className="absolute top-2 right-2 label text-[10px] px-2 py-1 rounded bg-ink/70 text-paper font-medium">
+						Draft
+					</span>
+				)}
+			</div>
+
+			{/* Card Body */}
+			<div className="p-3 flex flex-col gap-2 flex-1">
 				{/* Title and Date */}
-				<div className="flex-1 min-w-0">
+				<div className="min-w-0">
 					<p className="font-mono text-[11px] opacity-60 mb-0.5 truncate leading-tight">
 						{formattedDate}
 					</p>
@@ -837,7 +988,7 @@ function EventCard({
 			</div>
 
 			{/* Footer: Manage Button, Guests Count, Context Actions */}
-			<div className="border-t border-perforation pt-2.5 flex items-center justify-between">
+			<div className="border-t border-perforation mx-3 pt-2 pb-3 flex items-center justify-between">
 				<Link
 					href={`/events/${event.slug}/manage`}
 					className="label inline-flex items-center gap-1 text-[11px] text-ink hover:text-stamp transition-colors font-medium"

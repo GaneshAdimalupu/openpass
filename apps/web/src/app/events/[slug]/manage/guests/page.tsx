@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckinScannerDialog } from "@/components/events/checkin-scanner-dialog";
 import { trpc } from "@/lib/trpc";
 import {
 	Check,
@@ -9,6 +10,7 @@ import {
 	Clock,
 	Copy,
 	Download,
+	QrCode,
 	RefreshCw,
 	Search,
 	UserCheck,
@@ -54,6 +56,7 @@ export function GuestsPage(): JSX.Element {
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 	const [expandedGuestId, setExpandedGuestId] = useState<string | null>(null);
 	const [copiedCode, setCopiedCode] = useState<string | null>(null);
+	const [isScannerOpen, setIsScannerOpen] = useState(false);
 
 	const utils = trpc.useUtils();
 
@@ -292,6 +295,15 @@ export function GuestsPage(): JSX.Element {
 				</div>
 
 				<div className="flex items-center gap-2.5">
+					<button
+						type="button"
+						onClick={() => setIsScannerOpen(true)}
+						className="px-3.5 py-2 text-xs font-semibold bg-stamp text-paper rounded-lg hover:opacity-90 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+					>
+						<QrCode className="w-4 h-4" />
+						<span>Scan Ticket QR</span>
+					</button>
+
 					<button
 						type="button"
 						onClick={() => refetch()}
@@ -657,6 +669,13 @@ export function GuestsPage(): JSX.Element {
 					</table>
 				</div>
 			</div>
+
+			<CheckinScannerDialog
+				isOpen={isScannerOpen}
+				onClose={() => setIsScannerOpen(false)}
+				eventSlug={slug}
+				onSuccessCheckIn={() => refetch()}
+			/>
 		</div>
 	);
 }

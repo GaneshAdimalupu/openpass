@@ -21,7 +21,7 @@ export interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "openevents-theme";
+const STORAGE_KEY = "makemyevent-theme";
 
 export interface ThemeProviderProps {
 	children: ReactNode;

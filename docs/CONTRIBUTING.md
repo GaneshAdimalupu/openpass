@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking a look at openevents. Nothing here is set in stone
+Thanks for taking a look at makemyevent. Nothing here is set in stone
 yet — the project is early, so if something in this doc is wrong or
 missing, that's worth a PR too.
 

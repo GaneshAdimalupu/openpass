@@ -1,5 +1,11 @@
+import * as path from "node:path";
 import { NestFactory } from "@nestjs/core";
 import * as trpcExpress from "@trpc/server/adapters/express";
+import { config } from "dotenv";
+
+// Load root workspace .env file
+config({ path: path.resolve(__dirname, "../../../.env") });
+
 import { AppModule } from "./app.module";
 import { appRouter } from "./trpc/app.router";
 import { createContext } from "./trpc/trpc";

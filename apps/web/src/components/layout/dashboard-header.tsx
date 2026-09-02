@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { Logo } from "@/components/ui/logo";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -44,12 +45,17 @@ export function DashboardHeader({ title }: DashboardHeaderProps): JSX.Element {
 					{/* Logo linking to Home */}
 					<Link
 						href="/"
-						className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2 hover:opacity-85 transition-opacity"
-						title="OpenEvents Home"
+						className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2.5 hover:opacity-85 transition-opacity"
+						title="MakeMyEvent Home"
 					>
-						<span className="w-4 h-4 rounded-sm bg-stamp inline-block" />
-						<span className="hidden sm:inline">openevents</span>
-						<span className="sm:hidden">oe</span>
+						<Logo
+							width={24}
+							height={24}
+							className="w-6 h-6 object-contain"
+							priority
+						/>
+						<span className="hidden sm:inline">makemyevent</span>
+						<span className="sm:hidden">mme</span>
 					</Link>
 
 					<span className="text-perforation">/</span>
@@ -170,6 +176,18 @@ export function DashboardHeader({ title }: DashboardHeaderProps): JSX.Element {
 										className="block px-4 py-2 text-ink hover:bg-perforation/20 transition-colors"
 									>
 										Explore Events
+									</Link>
+
+									<Link
+										href="/dashboard?tab=tickets"
+										role="menuitem"
+										onClick={() => setIsMenuOpen(false)}
+										className="px-4 py-2 text-ink hover:bg-perforation/20 transition-colors font-medium text-stamp flex items-center justify-between"
+									>
+										<span>My Tickets</span>
+										<span className="text-[10px] font-mono border border-stamp/30 px-1.5 py-0.5 rounded bg-stamp/10">
+											Passes
+										</span>
 									</Link>
 
 									<Link

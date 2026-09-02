@@ -100,7 +100,7 @@ export function LoginForm(): JSX.Element {
 				</h1>
 				<p className="text-body opacity-80">
 					{isLogin
-						? "Sign in to your openevents account"
+						? "Sign in to your makemyevent account"
 						: "Sign up to start organizing and attending"}
 				</p>
 			</div>

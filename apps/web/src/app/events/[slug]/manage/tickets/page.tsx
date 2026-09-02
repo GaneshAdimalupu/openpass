@@ -504,7 +504,7 @@ export default function ManageTicketsPage(): JSX.Element {
 								No ticket types configured
 							</h3>
 							<p className="text-xs opacity-60 max-w-sm mb-6">
-								OpenEvents provides a default Free General Pass (limit 300) so
+								MakeMyEvent provides a default Free General Pass (limit 300) so
 								your event is always ready to receive registrations.
 							</p>
 							<button
@@ -795,9 +795,9 @@ export default function ManageTicketsPage(): JSX.Element {
 									onSubmit={handleModalSubmit}
 									className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6"
 								>
-									<div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-										{/* ── Left Column: Single-Piece QR Ticket Pass (lg:col-span-5) ── */}
-										<div className="lg:col-span-5 space-y-4 lg:sticky lg:top-0">
+									<div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
+										{/* ── Left Column: Single-Piece QR Ticket Pass (md:col-span-5) ── */}
+										<div className="md:col-span-5 space-y-4 md:sticky md:top-0">
 											<div className="flex items-center justify-between">
 												<span className="text-xs font-semibold uppercase tracking-wider opacity-80 flex items-center gap-1.5">
 													<Ticket className="w-3.5 h-3.5 text-stamp" />
@@ -852,7 +852,7 @@ export default function ManageTicketsPage(): JSX.Element {
 														<p className="text-xs opacity-60 font-mono mt-0.5">
 															Hosted by{" "}
 															{data?.event?.organizer?.name ||
-																"OpenEvents Community"}
+																"MakeMyEvent Community"}
 														</p>
 													</div>
 
@@ -1000,8 +1000,8 @@ export default function ManageTicketsPage(): JSX.Element {
 											)}
 										</div>
 
-										{/* ── Right Column: Ticket Configuration Controls (lg:col-span-7) ── */}
-										<div className="lg:col-span-7 space-y-4">
+										{/* ── Right Column: Ticket Configuration Controls (md:col-span-7) ── */}
+										<div className="md:col-span-7 space-y-4">
 											{/* Ticket Title */}
 											<div>
 												<label
@@ -1561,7 +1561,9 @@ export default function ManageTicketsPage(): JSX.Element {
 							: tierName
 					}
 					eventTitle={data?.event?.title || "Sudo Reboot"}
-					organizerName={data?.event?.organizer?.name || "OpenEvents Community"}
+					organizerName={
+						data?.event?.organizer?.name || "MakeMyEvent Community"
+					}
 					eventStart={
 						data?.event?.eventStart
 							? new Date(data.event.eventStart).toISOString()
