@@ -67,6 +67,15 @@ export const metadata: Metadata = {
 		index: true,
 		follow: true,
 	},
+	icons: {
+		icon: [
+			{ url: "/makemyevent-light.svg", media: "(prefers-color-scheme: light)" },
+			{ url: "/makemyevent-dark.svg", media: "(prefers-color-scheme: dark)" },
+			{ url: "/makemyevent.svg" },
+		],
+		shortcut: "/makemyevent.svg",
+		apple: "/makemyevent.svg",
+	},
 };
 
 export const viewport: Viewport = {
