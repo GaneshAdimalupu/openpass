@@ -54,11 +54,20 @@ export const metadata: Metadata = {
 		description:
 			"Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
 		siteName: "makemyevent",
+		images: [
+			{
+				url: "/og-image.png",
+				width: 1200,
+				height: 630,
+				alt: "makemyevent preview",
+			},
+		],
 	},
 	twitter: {
 		card: "summary_large_image",
 		title: "makemyevent | Find and host community events",
 		description: "Open-source event ticketing and management platform.",
+		images: ["/og-image.png"],
 	},
 	verification: {
 		google: "EO9SG-z--GhL_8DQ1ywwXUUHJPIIGJiLKhQITqxbdOQ",
@@ -75,8 +84,12 @@ export const metadata: Metadata = {
 			{ url: "/makemyevent.svg" },
 		],
 		shortcut: "/favicon.ico",
-		apple: "/makemyevent.svg",
+		apple: [
+			{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+			{ url: "/makemyevent.svg" },
+		],
 	},
+	manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
