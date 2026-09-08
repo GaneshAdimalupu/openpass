@@ -148,33 +148,47 @@ export const organizersRouter = router({
 			});
 		}),
 
-	myOrganizers: authedProcedure.query(({ ctx }) => {
-		return ctx.prisma.organizer.findMany({
-			where: {
-				OR: [
-					{ ownerId: ctx.userId },
-					{
-						members: {
-							some: { userId: ctx.userId },
-						},
+	myOrganizers: authedProcedure.query(async ({ ctx }) => {
+		const select = {
+			id: true,
+			name: true,
+			title: true,
+			slug: true,
+			type: true,
+			category: true,
+			logoUrl: true,
+			createdAt: true,
+			_count: {
+				select: { events: true, members: true },
+			},
+		};
+
+		const [owned, memberOf] = await Promise.all([
+			ctx.prisma.organizer.findMany({
+				where: { ownerId: ctx.userId },
+				select,
+			}),
+			ctx.prisma.organizer.findMany({
+				where: {
+					members: {
+						some: { userId: ctx.userId },
 					},
-				],
-			},
-			orderBy: { createdAt: "desc" },
-			select: {
-				id: true,
-				name: true,
-				title: true,
-				slug: true,
-				type: true,
-				category: true,
-				logoUrl: true,
-				createdAt: true,
-				_count: {
-					select: { events: true, members: true },
 				},
-			},
-		});
+				select,
+			}),
+		]);
+
+		const seen = new Set<string>();
+		const result: typeof owned = [];
+
+		for (const org of [...owned, ...memberOf]) {
+			if (!seen.has(org.id)) {
+				seen.add(org.id);
+				result.push(org);
+			}
+		}
+
+		return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 	}),
 
 	getOverview: publicProcedure

@@ -267,6 +267,7 @@ model IssuedTicket {
 
   @@index([eventId])
   @@index([ticketId])
+  @@index([userId])
   @@index([attendeeEmail])
   @@index([status])
   @@index([ticketCode])

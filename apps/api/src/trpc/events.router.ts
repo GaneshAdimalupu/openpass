@@ -2174,46 +2174,65 @@ export const eventsRouter = router({
 		});
 		const userEmail = user?.email;
 
-		const issuedTickets = await ctx.prisma.issuedTicket.findMany({
-			where: {
-				OR: [
-					{ userId: ctx.userId },
-					...(userEmail ? [{ attendeeEmail: userEmail }] : []),
-				],
-				status: { in: ["CONFIRMED", "CHECKED_IN"] },
-			},
-			include: {
-				ticket: {
-					select: {
-						id: true,
-						name: true,
-						price: true,
-					},
+		const include = {
+			ticket: {
+				select: {
+					id: true,
+					name: true,
+					price: true,
 				},
-				event: {
-					select: {
-						id: true,
-						title: true,
-						slug: true,
-						bannerUrl: true,
-						format: true,
-						eventStart: true,
-						eventEnd: true,
-						location: true,
-						organizer: {
-							select: {
-								id: true,
-								name: true,
-								slug: true,
-							},
+			},
+			event: {
+				select: {
+					id: true,
+					title: true,
+					slug: true,
+					bannerUrl: true,
+					format: true,
+					eventStart: true,
+					eventEnd: true,
+					location: true,
+					organizer: {
+						select: {
+							id: true,
+							name: true,
+							slug: true,
 						},
 					},
 				},
 			},
-			orderBy: { createdAt: "desc" },
-		});
+		};
 
-		return issuedTickets;
+		const [byUser, byEmail] = await Promise.all([
+			ctx.prisma.issuedTicket.findMany({
+				where: {
+					userId: ctx.userId,
+					status: { in: ["CONFIRMED", "CHECKED_IN"] },
+				},
+				include,
+			}),
+			userEmail
+				? ctx.prisma.issuedTicket.findMany({
+						where: {
+							attendeeEmail: userEmail,
+							status: { in: ["CONFIRMED", "CHECKED_IN"] },
+						},
+						include,
+					})
+				: Promise.resolve([]),
+		]);
+
+		const seen = new Set<string>();
+		const result: typeof byUser = [];
+
+		for (const ticket of [...byUser, ...byEmail]) {
+			if (!seen.has(ticket.id)) {
+				seen.add(ticket.id);
+				result.push(ticket);
+			}
+		}
+
+		return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 	}),
 
 	ticketGetByCode: publicProcedure
