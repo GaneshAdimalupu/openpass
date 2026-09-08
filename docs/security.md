@@ -34,6 +34,46 @@ rather than assuming it's fine because it works.
 - Session/JWT expiry is finite. No infinite sessions "for
   convenience."
 
+## Session revocation & self-healing
+
+The `Session` table in PostgreSQL is used for device tracking and
+remote session revocation (see `logoutDevice` / `logoutAllDevices`
+in `apps/api/src/trpc/users.router.ts`). The JWT is the actual
+auth mechanism; the `Session` row is a supplementary record.
+
+- **Revocation works by deleting the `Session` row.** On the next
+  request, the `jwt` callback sees the record is missing and
+  invalidates the JWT by returning `null`.
+- **Never recreate a deleted session unconditionally.** If a session
+  record is missing, it could be because: (a) the initial write
+  failed (transient DB error during OAuth callback), or (b) the
+  user explicitly revoked it. Unconditional recreation defeats
+  revocation -- this was a real vulnerability caught in review.
+- **The `sessionRecordedAt` JWT flag** distinguishes the two cases.
+  It is set only after a successful DB write. If the flag exists
+  and the session is missing, the session was revoked -- honour it.
+  If the flag is absent, the session was never created -- safe to
+  heal. Read the inline comments in `apps/web/src/lib/auth.ts`
+  before modifying this logic.
+- **`return null` in NextAuth's `jwt` callback** destroys the
+  user's session cookie. Never use it as a fallback for "I don't
+  know what happened" -- it causes login loops if the trigger
+  condition recurs on every request.
+
+## OAuth provider safety
+
+- `allowDangerousEmailAccountLinking` is enabled for Google and
+  GitHub because both providers cryptographically verify email
+  ownership before returning it. This allows users who first
+  registered with credentials to link their OAuth accounts.
+- Before adding a new OAuth provider with this flag, verify that
+  the provider guarantees `email_verified: true`. Document the
+  justification in a comment next to the flag in `auth.ts`.
+- If a provider does NOT verify emails, do NOT enable
+  `allowDangerousEmailAccountLinking` -- an attacker could create
+  an account on that provider with someone else's email and
+  hijack their account.
+
 ## Authorization — check on every request, not just at the UI layer
 
 - The UI hiding a button is not access control. Every mutation
