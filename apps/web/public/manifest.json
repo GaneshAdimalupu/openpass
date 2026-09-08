@@ -1,0 +1,21 @@
+{
+	"name": "makemyevent",
+	"short_name": "makemyevent",
+	"description": "Open-source event management and ticketing platform for tech communities, meetups, hackathons, and open-source clubs.",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#F7F6F2",
+	"theme_color": "#1F7A4D",
+	"icons": [
+		{
+			"src": "/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		},
+		{
+			"src": "/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}

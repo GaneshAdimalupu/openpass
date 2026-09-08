@@ -54,11 +54,20 @@ export const metadata: Metadata = {
 		description:
 			"Open-source event ticketing and management platform for running conferences, workshops, fests, and meetups.",
 		siteName: "makemyevent",
+		images: [
+			{
+				url: "/og-image.png",
+				width: 1200,
+				height: 630,
+				alt: "makemyevent preview",
+			},
+		],
 	},
 	twitter: {
 		card: "summary_large_image",
 		title: "makemyevent | Find and host community events",
 		description: "Open-source event ticketing and management platform.",
+		images: ["/og-image.png"],
 	},
 	verification: {
 		google: "EO9SG-z--GhL_8DQ1ywwXUUHJPIIGJiLKhQITqxbdOQ",
@@ -67,6 +76,27 @@ export const metadata: Metadata = {
 		index: true,
 		follow: true,
 	},
+	icons: {
+		icon: [
+			{ url: "/makemyevent.svg", type: "image/svg+xml" },
+			{
+				url: "/makemyevent-light.svg",
+				media: "(prefers-color-scheme: light)",
+				type: "image/svg+xml",
+			},
+			{
+				url: "/makemyevent-dark.svg",
+				media: "(prefers-color-scheme: dark)",
+				type: "image/svg+xml",
+			},
+			{ url: "/favicon.ico", sizes: "any" },
+		],
+		shortcut: "/favicon.ico",
+		apple: [
+			{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+		],
+	},
+	manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
@@ -83,6 +113,27 @@ export interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
 	return (
 		<html lang="en">
+			<head>
+				<link
+					rel="icon"
+					href="/makemyevent.svg"
+					type="image/svg+xml"
+					sizes="any"
+				/>
+				<link
+					rel="icon"
+					href="/makemyevent-light.svg"
+					type="image/svg+xml"
+					media="(prefers-color-scheme: light)"
+				/>
+				<link
+					rel="icon"
+					href="/makemyevent-dark.svg"
+					type="image/svg+xml"
+					media="(prefers-color-scheme: dark)"
+				/>
+				<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+			</head>
 			<body
 				className={`${archivo.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}
 			>

@@ -13,7 +13,7 @@ export function SiteFooter(): JSX.Element {
 							href="/"
 							className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2.5"
 						>
-							<Logo width={24} height={24} className="w-6 h-6 object-contain" />
+							<Logo width={32} height={32} className="w-8 h-8 object-contain" />
 							<span>makemyevent</span>
 						</Link>
 						<p className="text-xs text-ink opacity-70 leading-relaxed font-sans">

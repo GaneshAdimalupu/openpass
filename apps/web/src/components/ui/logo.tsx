@@ -11,9 +11,9 @@ export interface LogoProps {
 
 export function Logo({
 	variant = "icon",
-	width = 24,
-	height = 24,
-	className = "w-6 h-6 object-contain",
+	width = 32,
+	height = 32,
+	className = "w-8 h-8 object-contain",
 	priority = false,
 }: LogoProps): JSX.Element {
 	if (variant === "wordmark") {

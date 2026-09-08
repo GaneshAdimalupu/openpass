@@ -90,9 +90,9 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 						className="font-display font-semibold text-h3 tracking-tight flex items-center gap-2.5"
 					>
 						<Logo
-							width={24}
-							height={24}
-							className="w-6 h-6 object-contain"
+							width={36}
+							height={36}
+							className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
 							priority
 						/>
 						<span className="hidden sm:inline">makemyevent</span>
