@@ -1,8 +1,24 @@
 "use client";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
+import { TicketPassModal } from "@/components/tickets/ticket-pass-modal";
 import { trpc } from "@/lib/trpc";
-import { Sparkles, Ticket, Trash2, X } from "lucide-react";
+import {
+	CopyPlus,
+	Moon,
+	Sparkles,
+	Sun,
+	Ticket,
+	Trash2,
+	X,
+	MapPin,
+	Users,
+	ChevronRight,
+	Link2,
+	Search,
+	Settings,
+	ChevronDown,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -62,6 +78,7 @@ function DashboardContent(): JSX.Element {
 
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 	const [newEventTitle, setNewEventTitle] = useState<string>("");
+	const [selectedCommunityId, setSelectedCommunityId] = useState<string>("");
 	const [createEventError, setCreateEventError] = useState<string | null>(null);
 	const router = useRouter();
 	const utils = trpc.useUtils();
@@ -83,12 +100,83 @@ function DashboardContent(): JSX.Element {
 		},
 	});
 
-	// Auto-open create modal if navigated with ?action=create
+	const [selectedTicketCode, setSelectedTicketCode] = useState<string | null>(
+		null,
+	);
+	const [duplicatingEventId, setDuplicatingEventId] = useState<string | null>(
+		null,
+	);
+
+	const handleDuplicateEvent = async (
+		evt: (typeof publishedEvents)[number],
+	) => {
+		setDuplicatingEventId(evt.id);
+		try {
+			const detectedTimezone =
+				typeof Intl !== "undefined"
+					? Intl.DateTimeFormat().resolvedOptions().timeZone
+					: "UTC";
+			const autoSlug = `${evt.slug}-copy-${Math.random().toString(36).substring(2, 6)}`;
+			await createEvent.mutateAsync({
+				title: `${evt.title} (Copy)`,
+				organizerId: currentOrgId as string,
+				communityId: selectedCommunityId || undefined,
+				slug: autoSlug,
+				format:
+					(evt.format as
+						| "meetup"
+						| "conference"
+						| "workshop"
+						| "hackathon"
+						| "fest"
+						| "webinar"
+						| "networking"
+						| "other") || "meetup",
+				topic:
+					(evt.topic as
+						| "technology"
+						| "business"
+						| "opensource"
+						| "design"
+						| "science"
+						| "arts"
+						| "social"
+						| "campus"
+						| "other") || "technology",
+				eventStart:
+					typeof evt.eventStart === "string"
+						? evt.eventStart
+						: new Date(evt.eventStart).toISOString(),
+				eventEnd:
+					typeof evt.eventEnd === "string"
+						? evt.eventEnd
+						: new Date(evt.eventEnd).toISOString(),
+				timezone: detectedTimezone || "UTC",
+				location: evt.location || undefined,
+				isOnline: evt.isOnline ?? false,
+				capacity: evt.capacity || 300,
+				tickets: evt.tickets?.length
+					? evt.tickets.map((t) => ({
+							name: t.name,
+							price: t.price,
+							quantity: t.quantity ?? 300,
+						}))
+					: [{ name: "General Pass", price: 0, quantity: 300 }],
+			});
+		} catch (err: unknown) {
+			alert(err instanceof Error ? err.message : "Failed to duplicate event");
+		} finally {
+			setDuplicatingEventId(null);
+		}
+	};
+
+	// Auto-open create modal if navigated with ?action=create and clean URL param
 	useEffect(() => {
 		if (actionParam === "create") {
 			setIsCreateModalOpen(true);
+			router.replace("/dashboard", { scroll: false });
 		}
-	}, [actionParam]);
+	}, [actionParam, router]);
 
 	const handleCreateEventSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -121,6 +209,7 @@ function DashboardContent(): JSX.Element {
 			const result = await createEvent.mutateAsync({
 				title: newEventTitle.trim(),
 				organizerId: currentOrgId as string,
+				communityId: selectedCommunityId || undefined,
 				slug: autoSlug || `event-${Math.random().toString(36).substring(2, 6)}`,
 				eventStart: now.toISOString(),
 				eventEnd: later.toISOString(),
@@ -151,6 +240,12 @@ function DashboardContent(): JSX.Element {
 	// Automatically select the first organizer if not chosen
 	const currentOrgId = selectedOrgId || organizers?.[0]?.id;
 	const activeOrg = organizers?.find((o) => o.id === currentOrgId);
+
+	const { data: currentOrgCommunities } =
+		trpc.communities.listByOrganizer.useQuery(
+			{ organizerId: currentOrgId as string },
+			{ enabled: !!currentOrgId },
+		);
 
 	const { data: rawEvents, isLoading: eventsLoading } =
 		trpc.events.byOrganizer.useQuery(
@@ -212,6 +307,30 @@ function DashboardContent(): JSX.Element {
 		setTimeout(() => setCopiedEventId(null), 2000);
 	};
 
+	const getGreeting = () => {
+		const hour = new Date().getHours();
+		const name = session?.user?.name
+			? session.user.name.split(" ")[0]
+			: "there";
+
+		if (hour < 12) {
+			return {
+				text: `Good morning, ${name}`,
+				icon: <Sun className="w-6 h-6 text-stamp" />,
+			};
+		} else if (hour < 17) {
+			return {
+				text: `Good afternoon, ${name}`,
+				icon: <Sun className="w-6 h-6 text-stamp opacity-80" />,
+			};
+		} else {
+			return {
+				text: `Good evening, ${name}`,
+				icon: <Moon className="w-6 h-6 text-ink/70" />,
+			};
+		}
+	};
+
 	if (status === "unauthenticated") {
 		return (
 			<div className="min-h-screen bg-paper flex flex-col">
@@ -239,7 +358,7 @@ function DashboardContent(): JSX.Element {
 		<div className="min-h-screen bg-paper flex flex-col">
 			<DashboardHeader />
 
-			<main className="flex-1 w-full px-4 lg:px-6 py-8">
+			<main className="flex-1 w-full max-w-7xl mx-auto px-4 lg:px-6 py-8">
 				{orgsLoading ? (
 					<div className="space-y-6 animate-pulse">
 						<div className="h-16 bg-perforation/30 rounded-lg" />
@@ -271,162 +390,156 @@ function DashboardContent(): JSX.Element {
 					</div>
 				) : (
 					<div className="space-y-8">
-						{/* Top Control Bar: Search + Participated/Organized Pill + Switcher + Create Event */}
-						<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-perforation pb-6">
-							{/* Left: Search Bar & Segmented Toggle */}
-							<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-								{/* Search Input */}
-								<div className="relative flex-1 sm:min-w-56">
-									<svg
-										aria-hidden="true"
-										className="absolute left-3 top-1/2 -translate-y-1/2 text-ink opacity-40"
-										xmlns="http://www.w3.org/2000/svg"
-										width="15"
-										height="15"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										strokeWidth="2"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-									>
-										<circle cx="11" cy="11" r="8" />
-										<path d="m21 21-4.3-4.3" />
-									</svg>
-									<input
-										type="text"
-										value={searchQuery}
-										onChange={(e) => setSearchQuery(e.target.value)}
-										placeholder="Search events..."
-										className="w-full bg-paper border border-perforation rounded-md pl-9 pr-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
-									/>
+						{/* ──────────────── COMMAND CENTER ──────────────── */}
+						<div className="flex flex-col gap-6 border-b border-perforation pb-6">
+							{/* Top Row: Greeting & Stats */}
+							<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+								<div className="flex items-center gap-4">
+									{getGreeting().icon}
+									<h1 className="font-display font-semibold text-xl text-ink">
+										{getGreeting().text}
+									</h1>
 								</div>
 
-								{/* Segmented Pill: My Tickets / Hosted Events */}
-								<div className="inline-flex justify-center rounded-md border border-perforation p-0.5 bg-paper/50 shrink-0">
-									<button
-										type="button"
-										onClick={() => setMode("my_tickets")}
-										className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded text-xs label transition-all inline-flex items-center gap-1.5 ${
-											mode === "my_tickets"
-												? "bg-ink text-paper font-semibold shadow-xs"
-												: "text-ink opacity-60 hover:opacity-100"
-										}`}
-									>
-										<Ticket className="w-3.5 h-3.5 text-stamp" />
-										<span>My Tickets</span>
-									</button>
-									<button
-										type="button"
-										onClick={() => setMode("hosted")}
-										className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded text-xs label transition-all ${
-											mode === "hosted"
-												? "bg-ink text-paper font-semibold shadow-xs"
-												: "text-ink opacity-60 hover:opacity-100"
-										}`}
-									>
-										Hosted Events
-									</button>
-								</div>
+								{/* Stats Pill Badges */}
+								{mode === "hosted" ? (
+									<div className="flex flex-wrap items-center gap-2">
+										<div className="px-4 py-2 rounded-full bg-stamp/10 text-stamp text-xs font-medium border border-stamp/20 flex items-center gap-2">
+											<span className="w-1.5 h-1.5 rounded-full bg-stamp" />
+											{publishedEvents.length} Published
+										</div>
+										<div className="px-4 py-2 rounded-full bg-ink/5 text-ink/70 text-xs font-medium border border-ink/10 flex items-center gap-2">
+											<span className="w-1.5 h-1.5 rounded-full bg-ink/40" />
+											{draftEvents.length} Drafts
+										</div>
+										<div className="px-4 py-2 rounded-full bg-perforation/30 text-ink/60 text-xs font-medium border border-perforation flex items-center gap-2">
+											<span className="w-1.5 h-1.5 rounded-full bg-ink/20" />
+											{completedEvents.length} Completed
+										</div>
+									</div>
+								) : (
+									<div className="flex items-center gap-2">
+										<div className="px-4 py-2 rounded-full bg-stamp/10 text-stamp text-xs font-medium border border-stamp/20 flex items-center gap-2">
+											<Ticket className="w-4 h-4" />
+											{participatedTickets?.length || 0} Tickets
+										</div>
+									</div>
+								)}
 							</div>
 
-							{/* Right: Organizer Switcher & Create Event */}
-							<div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-3 w-full lg:w-auto">
-								{/* Active Organizer Selector */}
-								<div className="relative flex-1 sm:flex-initial flex items-center">
-									<select
-										value={currentOrgId}
-										onChange={(e) => {
-											if (e.target.value === "__new__") {
-												router.push("/onboarding");
-											} else {
-												setSelectedOrgId(e.target.value);
-											}
-										}}
-										className="w-full sm:w-auto bg-paper border border-perforation text-xs rounded-md pl-7 pr-8 py-2 text-ink font-medium focus:outline-none focus:border-stamp appearance-none cursor-pointer"
-										aria-label="Select active organizer profile"
-									>
-										{organizers.map((org) => (
-											<option key={org.id} value={org.id}>
-												{org.name}
-											</option>
-										))}
-										<option value="__new__">+ New Organizer Profile...</option>
-									</select>
-									<span
-										className="w-2 h-2 rounded-full bg-stamp absolute left-3 pointer-events-none"
-										aria-hidden="true"
-									/>
-									<svg
-										aria-hidden="true"
-										className="w-3.5 h-3.5 absolute right-2.5 text-ink opacity-50 pointer-events-none"
-										xmlns="http://www.w3.org/2000/svg"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										strokeWidth="2"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-									>
-										<path d="m6 9 6 6 6-6" />
-									</svg>
+							{/* Bottom Row: Controls */}
+							<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+								{/* Left: Search Bar & Segmented Toggle */}
+								<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
+									{/* Search Input */}
+									<div className="relative w-full sm:w-64">
+										<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/40 pointer-events-none" />
+										<input
+											type="text"
+											value={searchQuery}
+											onChange={(e) => setSearchQuery(e.target.value)}
+											placeholder="Search events..."
+											className="w-full bg-paper border border-perforation rounded-md pl-8 pr-4 py-2 text-xs text-body focus:outline-none focus:border-stamp"
+										/>
+									</div>
+
+									{/* Mode Switcher */}
+									<div className="flex items-center p-1 bg-perforation/20 rounded-md border border-perforation/50">
+										<button
+											type="button"
+											onClick={() => setMode("my_tickets")}
+											className={`flex-1 sm:flex-initial px-4 py-2 rounded text-xs label transition-all inline-flex items-center gap-2 ${
+												mode === "my_tickets"
+													? "bg-paper text-stamp shadow-sm border border-perforation/50"
+													: "text-ink/60 hover:text-ink hover:bg-perforation/30 border border-transparent"
+											}`}
+										>
+											<Ticket className="w-4 h-4 text-stamp" />
+											MY TICKETS
+										</button>
+										<button
+											type="button"
+											onClick={() => setMode("hosted")}
+											className={`flex-1 sm:flex-initial px-4 py-2 rounded text-xs label transition-all ${
+												mode === "hosted"
+													? "bg-paper text-ink shadow-sm border border-perforation/50"
+													: "text-ink/60 hover:text-ink hover:bg-perforation/30 border border-transparent"
+											}`}
+										>
+											HOSTED EVENTS
+										</button>
+									</div>
 								</div>
 
-								{/* Create Event Pill Button */}
-								<button
-									type="button"
-									onClick={() => {
-										setNewEventTitle("");
-										setCreateEventError(null);
-										setIsCreateModalOpen(true);
-									}}
-									className="group inline-flex items-center gap-2 pl-4 pr-1.5 py-1.5 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs shrink-0"
-								>
-									<span>Create Event</span>
-									<span className="w-5 h-5 rounded-full bg-ink flex items-center justify-center text-paper transition-transform duration-200 group-hover:translate-x-0.5">
-										<svg
-											aria-hidden="true"
-											xmlns="http://www.w3.org/2000/svg"
-											width="10"
-											height="10"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											strokeWidth="2.5"
-											strokeLinecap="round"
-											strokeLinejoin="round"
-										>
-											<path d="M5 12h14" />
-											<path d="m12 5 7 7-7 7" />
-										</svg>
-									</span>
-								</button>
+								{/* Right: Organizer Switcher & Create Event */}
+								<div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-4 w-full lg:w-auto">
+									{/* Active Organizer Selector */}
+									{mode === "hosted" && (
+										<>
+											<div className="relative flex-1 sm:flex-initial min-w-0 sm:min-w-[200px]">
+												{organizers.length > 1 ? (
+													<>
+														<select
+															value={currentOrgId}
+															onChange={(e) => setSelectedOrgId(e.target.value)}
+															className="w-full sm:w-auto bg-paper border border-perforation text-xs rounded-md pl-8 pr-8 py-2 text-ink font-medium focus:outline-none focus:border-stamp appearance-none cursor-pointer"
+														>
+															{organizers.map((org) => (
+																<option key={org.id} value={org.id}>
+																	{org.name}
+																</option>
+															))}
+														</select>
+														<div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+															<div className="w-4 h-4 rounded-full bg-stamp/20 text-stamp flex items-center justify-center text-[8px] font-bold">
+																{organizers
+																	.find((o) => o.id === currentOrgId)
+																	?.name.charAt(0)
+																	.toUpperCase()}
+															</div>
+														</div>
+														<ChevronDown className="w-4 h-4 absolute right-2 text-ink opacity-50 pointer-events-none top-1/2 -translate-y-1/2" />
+													</>
+												) : (
+													<div className="px-3 py-2 bg-paper border border-perforation rounded-md text-xs text-ink font-medium flex items-center gap-2">
+														<div className="w-4 h-4 rounded-full bg-stamp/20 text-stamp flex items-center justify-center text-[8px] font-bold">
+															{organizers[0].name.charAt(0).toUpperCase()}
+														</div>
+														{organizers[0].name}
+													</div>
+												)}
+											</div>
 
-								{/* Organization Settings Gear Icon Button at the end */}
-								{activeOrg && (
-									<Link
-										href={`/organization/${activeOrg.slug}`}
-										className="p-2 border border-perforation rounded-md bg-paper hover:border-ink/50 text-ink opacity-80 hover:opacity-100 transition-all flex items-center justify-center cursor-pointer shadow-xs"
-										aria-label="Organization settings"
-										title="Organization settings"
+											{/* Organization Settings Gear Icon Button */}
+											{activeOrg && (
+												<Link
+													href={`/organization/${activeOrg.slug}/settings`}
+													className="w-8 h-8 rounded-md border border-perforation flex items-center justify-center text-ink/60 hover:text-ink hover:bg-perforation/20 transition-all shrink-0 group relative overflow-hidden"
+													title="Organization Settings"
+												>
+													<Settings className="w-4 h-4 relative z-10 transition-transform duration-300 group-hover:rotate-45" />
+													<span className="absolute inset-0 bg-perforation/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+												</Link>
+											)}
+										</>
+									)}
+
+									{/* Create Event Button */}
+									<button
+										type="button"
+										onClick={() => {
+											setNewEventTitle("");
+											setCreateEventError(null);
+											setIsCreateModalOpen(true);
+										}}
+										className="bg-stamp text-paper px-4 py-2 rounded-full text-xs font-semibold hover:opacity-90 transition-all shadow-sm shrink-0 flex items-center gap-2 group"
 									>
-										<svg
-											aria-hidden="true"
-											xmlns="http://www.w3.org/2000/svg"
-											width="15"
-											height="15"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											strokeWidth="2"
-											strokeLinecap="round"
-											strokeLinejoin="round"
-										>
-											<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-											<circle cx="12" cy="12" r="3" />
-										</svg>
-									</Link>
-								)}
+										Create Event
+										<span className="w-4 h-4 rounded-full bg-ink flex items-center justify-center text-paper transition-transform duration-200 group-hover:translate-x-1">
+											<ChevronRight className="w-3 h-3" />
+										</span>
+									</button>
+								</div>
 							</div>
 						</div>
 
@@ -434,7 +547,7 @@ function DashboardContent(): JSX.Element {
 						{mode === "my_tickets" && (
 							<div className="space-y-6">
 								{participatedLoading ? (
-									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 animate-pulse">
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 animate-pulse">
 										<div className="h-36 bg-perforation/30 rounded-lg" />
 										<div className="h-36 bg-perforation/30 rounded-lg" />
 										<div className="h-36 bg-perforation/30 rounded-lg" />
@@ -460,7 +573,7 @@ function DashboardContent(): JSX.Element {
 										</Link>
 									</div>
 								) : (
-									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+									<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-4">
 										{participatedTickets.map((t) => {
 											const isPast = t.event.eventEnd
 												? new Date(t.event.eventEnd) < new Date()
@@ -539,16 +652,20 @@ function DashboardContent(): JSX.Element {
 																	{t.ticketCode}
 																</strong>
 															</span>
-															<Link
-																href={`/tickets/${t.ticketCode}`}
-																className={`px-3 py-1.5 rounded text-xs font-mono font-medium transition-opacity inline-flex items-center gap-1 shrink-0 ${
+															<button
+																type="button"
+																onClick={() =>
+																	setSelectedTicketCode(t.ticketCode)
+																}
+																className={`px-3 py-1.5 rounded text-xs font-mono font-medium transition-opacity inline-flex items-center gap-1 shrink-0 cursor-pointer ${
 																	isPast
 																		? "bg-perforation/40 text-ink/80 hover:bg-perforation/60"
 																		: "bg-stamp text-paper hover:opacity-90"
 																}`}
 															>
-																View Pass ↗
-															</Link>
+																<Ticket className="w-3.5 h-3.5" />
+																View Pass
+															</button>
 														</div>
 													</div>
 												</div>
@@ -599,7 +716,7 @@ function DashboardContent(): JSX.Element {
 									</div>
 
 									{eventsLoading ? (
-										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse">
 											<div className="h-32 bg-perforation/30 rounded-lg" />
 											<div className="h-32 bg-perforation/30 rounded-lg" />
 										</div>
@@ -623,13 +740,15 @@ function DashboardContent(): JSX.Element {
 											</button>
 										</div>
 									) : (
-										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
 											{publishedEvents.map((evt) => (
 												<EventCard
 													key={evt.id}
 													event={evt}
 													onCopyLink={() => handleCopyLink(evt.slug, evt.id)}
 													isCopied={copiedEventId === evt.id}
+													onDuplicate={() => handleDuplicateEvent(evt)}
+													isDuplicating={duplicatingEventId === evt.id}
 													onDelete={() =>
 														setDeletingEvent({ id: evt.id, title: evt.title })
 													}
@@ -655,13 +774,15 @@ function DashboardContent(): JSX.Element {
 											No draft events in progress.
 										</div>
 									) : (
-										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
 											{draftEvents.map((evt) => (
 												<EventCard
 													key={evt.id}
 													event={evt}
 													onCopyLink={() => handleCopyLink(evt.slug, evt.id)}
 													isCopied={copiedEventId === evt.id}
+													onDuplicate={() => handleDuplicateEvent(evt)}
+													isDuplicating={duplicatingEventId === evt.id}
 													onDelete={() =>
 														setDeletingEvent({ id: evt.id, title: evt.title })
 													}
@@ -696,7 +817,7 @@ function DashboardContent(): JSX.Element {
 													No past completed events yet.
 												</div>
 											) : (
-												<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+												<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
 													{completedEvents.map((evt) => (
 														<EventCard
 															key={evt.id}
@@ -705,6 +826,8 @@ function DashboardContent(): JSX.Element {
 																handleCopyLink(evt.slug, evt.id)
 															}
 															isCopied={copiedEventId === evt.id}
+															onDuplicate={() => handleDuplicateEvent(evt)}
+															isDuplicating={duplicatingEventId === evt.id}
 															onDelete={() =>
 																setDeletingEvent({
 																	id: evt.id,
@@ -802,6 +925,49 @@ function DashboardContent(): JSX.Element {
 								</svg>
 							</div>
 
+							{currentOrgCommunities && currentOrgCommunities.length > 0 && (
+								<div className="space-y-2 relative">
+									<label
+										htmlFor="modalCommunity"
+										className="block text-xs label text-ink/70 mb-1"
+									>
+										Sub-Community / Chapter (Optional)
+										<span className="block font-normal text-[10px] opacity-60">
+											Assign this event to a specific sub-community under{" "}
+											{activeOrg?.name}
+										</span>
+									</label>
+									<select
+										id="modalCommunity"
+										value={selectedCommunityId}
+										onChange={(e) => setSelectedCommunityId(e.target.value)}
+										className="w-full bg-perforation/10 border border-perforation rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-stamp transition-colors appearance-none"
+									>
+										<option value="">
+											-- Main Organization Event (Org Wide) --
+										</option>
+										{currentOrgCommunities.map((comm) => (
+											<option key={comm.id} value={comm.id}>
+												{comm.name} ({comm.category || "Chapter"})
+											</option>
+										))}
+									</select>
+									<svg
+										aria-hidden="true"
+										className="w-4 h-4 absolute right-3 bottom-3 text-ink opacity-50 pointer-events-none"
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									>
+										<path d="m6 9 6 6 6-6" />
+									</svg>
+								</div>
+							)}
+
 							<button
 								type="submit"
 								disabled={createEvent.isPending}
@@ -862,6 +1028,12 @@ function DashboardContent(): JSX.Element {
 					</div>
 				</div>
 			)}
+
+			{/* Ticket Pass Modal */}
+			<TicketPassModal
+				ticketCode={selectedTicketCode}
+				onClose={() => setSelectedTicketCode(null)}
+			/>
 		</div>
 	);
 }
@@ -886,10 +1058,15 @@ interface EventCardProps {
 			price: number;
 			quantity: number | null;
 		}>;
+		_count?: {
+			issuedTickets: number;
+		};
 	};
 	onCopyLink: () => void;
 	isCopied: boolean;
 	onDelete?: () => void;
+	onDuplicate?: () => void;
+	isDuplicating?: boolean;
 }
 
 /**
@@ -913,153 +1090,159 @@ function EventCard({
 	onCopyLink,
 	isCopied,
 	onDelete,
+	onDuplicate,
+	isDuplicating,
 }: EventCardProps): JSX.Element {
 	const startDate = new Date(event.eventStart);
-	const formattedDate = startDate.toLocaleDateString("en-US", {
-		weekday: "short",
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	});
+	const formattedDate =
+		startDate.toLocaleDateString("en-US", {
+			weekday: "short",
+			month: "short",
+			day: "numeric",
+		}) +
+		" · " +
+		startDate.toLocaleTimeString("en-US", {
+			hour: "numeric",
+			minute: "2-digit",
+		});
 
 	// Initial letter for fallback thumbnail
 	const initial = event.title.charAt(0).toUpperCase();
 
-	// Calculate total guest count across tiers
-	const totalCapacity =
-		event.capacity ||
-		event.tickets.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+	// Calculate total registrations based on issued tickets
+	const totalRegistrations = event._count?.issuedTickets || 0;
 
 	const gradientClass = TOPIC_GRADIENTS[event.topic] || TOPIC_GRADIENTS.other;
 
 	return (
-		<div className="border border-perforation rounded-lg bg-paper hover:border-ink/30 transition-all flex flex-col justify-between shadow-xs hover:shadow-sm overflow-hidden">
-			{/* Banner Area — compact wide header strip */}
-			<div className="relative w-full h-16 sm:h-20 overflow-hidden">
-				{event.bannerUrl ? (
-					<Image
-						src={event.bannerUrl}
-						alt={`Banner for ${event.title}`}
-						fill
-						sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-						className="object-cover"
-					/>
-				) : (
-					<div
-						className={`absolute inset-0 bg-gradient-to-br ${gradientClass} flex items-center justify-center`}
-					>
-						<span className="font-display font-semibold text-2xl text-ink/40 select-none">
-							{initial}
-						</span>
-					</div>
-				)}
-				{/* Status badge overlay */}
-				{event.status === "draft" && (
-					<span className="absolute top-2 right-2 label text-[10px] px-2 py-1 rounded bg-ink/70 text-paper font-medium">
-						Draft
-					</span>
-				)}
-			</div>
+		<div className="group relative border border-perforation rounded-xl bg-paper hover:border-ink/30 transition-all shadow-xs hover:shadow-md p-4">
+			{/* Clickable Overlay */}
+			<Link
+				href={`/events/${event.slug}/manage`}
+				className="absolute inset-0 z-0"
+				aria-label={`Manage ${event.title}`}
+			/>
 
-			{/* Card Body */}
-			<div className="p-3 flex flex-col gap-2 flex-1">
-				{/* Title and Date */}
-				<div className="min-w-0">
-					<p className="font-mono text-[11px] opacity-60 mb-0.5 truncate leading-tight">
-						{formattedDate}
-					</p>
-					<h3
-						className="font-display font-semibold text-xs sm:text-sm text-ink truncate leading-snug"
-						title={event.title}
-					>
-						{event.title}
-					</h3>
-					<div className="flex items-center gap-1.5 mt-1 flex-wrap">
-						<span className="label text-[10px] px-1.5 py-0.5 rounded bg-stamp/10 text-stamp uppercase font-medium">
-							{event.format}
-						</span>
-						{event.isOnline && (
-							<span className="label text-[10px] px-1.5 py-0.5 rounded bg-perforation/40 text-ink opacity-70">
-								Online
-							</span>
-						)}
-					</div>
-				</div>
-			</div>
-
-			{/* Footer: Manage Button, Guests Count, Context Actions */}
-			<div className="border-t border-perforation mx-3 pt-2 pb-3 flex items-center justify-between">
-				<Link
-					href={`/events/${event.slug}/manage`}
-					className="label inline-flex items-center gap-1 text-[11px] text-ink hover:text-stamp transition-colors font-medium"
-				>
-					<span>Manage</span>
-					<span aria-hidden="true">→</span>
-				</Link>
-
-				<div className="flex items-center gap-1.5">
-					<span className="text-[10px] font-mono opacity-60 flex items-center gap-1 mr-1">
-						<svg
-							aria-hidden="true"
-							className="w-3 h-3"
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						>
-							<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-							<circle cx="9" cy="7" r="4" />
-							<path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-							<path d="M16 3.13a4 4 0 0 1 0 7.75" />
-						</svg>
-						{totalCapacity > 0 ? `${totalCapacity} cap` : "Open"}
-					</span>
-
-					{/* Copy Link Button */}
-					<button
-						type="button"
-						onClick={onCopyLink}
-						title="Copy Event URL"
-						className="p-1 rounded text-ink opacity-60 hover:opacity-100 hover:bg-perforation/30 transition-colors cursor-pointer"
-						aria-label="Copy event link"
-					>
-						{isCopied ? (
-							<span className="text-[10px] font-mono text-stamp font-semibold">
-								Copied!
-							</span>
+			<div className="flex flex-row gap-4 pointer-events-none h-full">
+				{/* Left side: Thumbnail */}
+				<div className="relative w-24 shrink-0 rounded-lg border border-perforation/30 bg-ink/5 flex flex-col justify-center overflow-hidden">
+					<div className="relative w-full aspect-[4/5]">
+						{event.bannerUrl ? (
+							<Image
+								src={event.bannerUrl}
+								alt={`Banner for ${event.title}`}
+								fill
+								sizes="96px"
+								className="object-cover group-hover:scale-105 transition-transform duration-500"
+							/>
 						) : (
-							<svg
-								aria-hidden="true"
-								className="w-3 h-3"
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="2"
-								strokeLinecap="round"
-								strokeLinejoin="round"
+							<div
+								className={`absolute inset-0 bg-gradient-to-br ${gradientClass} flex items-center justify-center`}
 							>
-								<rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-								<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-							</svg>
+								<span className="font-display font-semibold text-3xl text-ink/60 select-none">
+									{initial}
+								</span>
+							</div>
 						)}
-					</button>
-
-					{/* Delete Event Button */}
-					{onDelete && (
-						<button
-							type="button"
-							onClick={onDelete}
-							title="Delete Event"
-							className="p-1 rounded text-alert hover:text-alert hover:bg-alert/15 transition-colors cursor-pointer"
-							aria-label="Delete event"
-						>
-							<Trash2 className="w-3 h-3 text-alert" />
-						</button>
+					</div>
+					{/* Status badge overlay */}
+					{event.status === "draft" && (
+						<span className="absolute bottom-1 right-1 label text-[10px] px-1.5 py-0.5 rounded bg-ink/70 text-paper font-medium backdrop-blur-sm z-10">
+							Draft
+						</span>
 					)}
+				</div>
+
+				{/* Right side: Content */}
+				<div className="flex-1 flex flex-col justify-between min-w-0">
+					{/* Top: Date & Title */}
+					<div>
+						<div className="flex items-start justify-between gap-2">
+							<p className="font-mono text-xs text-ink/60 leading-tight mb-1 group-hover:text-stamp transition-colors">
+								{formattedDate}
+							</p>
+							{onDuplicate && (
+								<button
+									type="button"
+									onClick={onDuplicate}
+									disabled={isDuplicating}
+									title="Duplicate Event"
+									className="relative z-10 p-1 -mt-1 -mr-1 rounded text-ink/40 hover:text-ink hover:bg-perforation/30 transition-colors cursor-pointer disabled:opacity-40 shrink-0 pointer-events-auto"
+									aria-label="Duplicate event"
+								>
+									<CopyPlus
+										className={`w-4 h-4 ${
+											isDuplicating ? "animate-pulse text-stamp" : ""
+										}`}
+									/>
+								</button>
+							)}
+						</div>
+						<h3
+							className="font-display font-semibold text-base text-ink truncate leading-snug group-hover:text-stamp transition-colors"
+							title={event.title}
+						>
+							{event.title}
+						</h3>
+					</div>
+
+					{/* Bottom: Location, Users & Actions */}
+					<div className="flex items-end justify-between gap-2">
+						<div className="flex flex-col gap-1.5">
+							<div className="flex items-center gap-2 text-xs text-ink/60">
+								<MapPin className="w-4 h-4 shrink-0" />
+								<span className="truncate max-w-[160px]">
+									{event.location || "TBA"}
+								</span>
+							</div>
+							<div className="flex items-center gap-2 text-xs text-ink/60">
+								<Users className="w-4 h-4 shrink-0" />
+								<span>{totalRegistrations}</span>
+							</div>
+						</div>
+
+						{/* Actions */}
+						<div className="relative z-10 flex items-center gap-1 shrink-0 pointer-events-auto">
+							{/* Attendees */}
+							<Link
+								href={`/events/${event.slug}/manage?tab=attendees`}
+								className="w-8 h-8 rounded-full bg-transparent hover:bg-perforation/20 flex items-center justify-center text-ink/60 hover:text-ink transition-colors"
+								title="Attendees"
+							>
+								<Users className="w-4 h-4" />
+							</Link>
+
+							{/* Copy Link */}
+							<button
+								type="button"
+								onClick={onCopyLink}
+								title="Copy Event URL"
+								className="w-8 h-8 rounded-full bg-transparent hover:bg-perforation/20 flex items-center justify-center text-ink/60 hover:text-ink transition-colors"
+								aria-label="Copy event link"
+							>
+								{isCopied ? (
+									<span className="text-[10px] font-mono text-stamp font-semibold">
+										Copied
+									</span>
+								) : (
+									<Link2 className="w-4 h-4" />
+								)}
+							</button>
+
+							{/* Delete */}
+							{onDelete && (
+								<button
+									type="button"
+									onClick={onDelete}
+									title="Delete Event"
+									className="w-8 h-8 rounded-full bg-transparent hover:bg-alert/10 flex items-center justify-center text-ink/60 hover:text-alert transition-colors"
+									aria-label="Delete event"
+								>
+									<Trash2 className="w-4 h-4" />
+								</button>
+							)}
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import type { EventStatus, PrismaClient } from "db";
 import { z } from "zod";
 import { supabaseAdmin } from "../lib/supabase";
-import { sendTicketEmail } from "../services/email.service";
+import { sendInviteEmail, sendTicketEmail } from "../services/email.service";
 import { authedProcedure, publicProcedure, router } from "./trpc";
 
 const BANNER_BUCKET = "event-banners";
@@ -90,7 +90,21 @@ export async function assertEventAccess(
 		return event;
 	}
 
-	// 3. Event-specific Volunteer (authorized for check-in / volunteer tasks)
+	// 3. Sub-Community Lead / Admin (if event belongs to a sub-community)
+	if (event.communityId) {
+		const commMembership = await client.communityMember.findFirst({
+			where: {
+				communityId: event.communityId,
+				userId,
+				role: { in: allowedRoles },
+			},
+		});
+		if (commMembership) {
+			return event;
+		}
+	}
+
+	// 4. Event-specific Volunteer (authorized for check-in / volunteer tasks)
 	if (allowedRoles.includes("VOLUNTEER") && event.volunteers.length > 0) {
 		return event;
 	}
@@ -203,6 +217,9 @@ export const eventsRouter = router({
 					capacity: true,
 					tickets: {
 						select: { id: true, name: true, price: true, quantity: true },
+					},
+					_count: {
+						select: { issuedTickets: true },
 					},
 				},
 			});
@@ -336,6 +353,7 @@ export const eventsRouter = router({
 		.input(
 			z.object({
 				organizerId: z.string(),
+				communityId: z.string().optional().nullable(),
 				title: z.string().min(3).max(120),
 				slug: z.string().min(3).max(120),
 				description: z.string().optional(),
@@ -363,7 +381,7 @@ export const eventsRouter = router({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			// Verify the organizer belongs to the current user
+			// Verify the organizer belongs to the current user OR user is a Community Lead
 			const organizer = await ctx.prisma.organizer.findUnique({
 				where: { id: input.organizerId },
 				select: { ownerId: true },
@@ -376,7 +394,9 @@ export const eventsRouter = router({
 				});
 			}
 
-			if (organizer.ownerId !== ctx.userId) {
+			let isAuthorized = organizer.ownerId === ctx.userId;
+
+			if (!isAuthorized) {
 				const membership = await ctx.prisma.organizerMember.findFirst({
 					where: {
 						organizerId: input.organizerId,
@@ -384,13 +404,30 @@ export const eventsRouter = router({
 						role: { in: ["ADMIN", "EDITOR", "COORDINATOR"] },
 					},
 				});
-				if (!membership) {
-					throw new TRPCError({
-						code: "FORBIDDEN",
-						message:
-							"You do not have permission to create events for this organizer.",
-					});
+				if (membership) {
+					isAuthorized = true;
 				}
+			}
+
+			if (!isAuthorized && input.communityId) {
+				const commMembership = await ctx.prisma.communityMember.findFirst({
+					where: {
+						communityId: input.communityId,
+						userId: ctx.userId,
+						role: { in: ["OWNER", "ADMIN", "COORDINATOR"] },
+					},
+				});
+				if (commMembership) {
+					isAuthorized = true;
+				}
+			}
+
+			if (!isAuthorized) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message:
+						"You do not have permission to create events for this organizer or community.",
+				});
 			}
 
 			const cleanSlug = input.slug
@@ -430,6 +467,7 @@ export const eventsRouter = router({
 					onlineLink: input.isOnline ? input.onlineLink?.trim() || null : null,
 					capacity: input.capacity || 300,
 					organizerId: input.organizerId,
+					communityId: input.communityId || null,
 					tickets: {
 						create: input.tickets.map((t) => ({
 							name: t.name.trim(),
@@ -1572,6 +1610,22 @@ export const eventsRouter = router({
 					},
 				},
 			});
+
+			// Dispatch transactional invitation email via Resend
+			const appUrl =
+				process.env.NEXT_PUBLIC_APP_URL ||
+				process.env.APP_URL ||
+				"http://localhost:3000";
+			sendInviteEmail({
+				toEmail: input.email.toLowerCase(),
+				recipientName: input.name,
+				role: input.customRole || input.role || "Volunteer",
+				targetName: event.title,
+				type: "event",
+				actionUrl: `${appUrl}/events/${event.slug}/manage/volunteers`,
+			}).catch((err) =>
+				console.error("Failed to send volunteer invite email:", err),
+			);
 
 			return volunteer;
 		}),

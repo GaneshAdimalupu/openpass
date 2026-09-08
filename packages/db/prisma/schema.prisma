@@ -35,6 +35,7 @@ model User {
   cfpReviews       CfpReview[]
   volunteeredEvents EventVolunteer[]
   issuedTickets    IssuedTicket[]
+  communityMembers CommunityMember[]
 }
 
 model Account {
@@ -100,6 +101,7 @@ model Organizer {
   createdAt   DateTime          @default(now())
   events      Event[]
   members     OrganizerMember[]
+  communities Community[]
   owner       User              @relation(fields: [ownerId], references: [id])
 
   @@index([ownerId])
@@ -121,6 +123,45 @@ model OrganizerMember {
 
   @@unique([organizerId, email])
   @@index([organizerId])
+  @@index([userId])
+  @@index([email])
+}
+
+model Community {
+  id          String            @id @default(cuid())
+  organizerId String
+  name        String
+  slug        String            @unique
+  description String?
+  logoUrl     String?
+  bannerUrl   String?
+  category    String?           @default("tech")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  organizer   Organizer         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  events      Event[]
+  members     CommunityMember[]
+
+  @@index([organizerId])
+  @@index([slug])
+}
+
+model CommunityMember {
+  id          String     @id @default(cuid())
+  communityId String
+  userId      String?
+  email       String
+  name        String?
+  role        MemberRole @default(ADMIN)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  community   Community  @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([communityId, email])
+  @@index([communityId])
   @@index([userId])
   @@index([email])
 }
@@ -155,9 +196,11 @@ model Event {
   capacity          Int?
   seriesId          String?
   organizerId       String
+  communityId       String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
   organizer         Organizer   @relation(fields: [organizerId], references: [id])
+  community         Community?  @relation(fields: [communityId], references: [id], onDelete: SetNull)
   tickets           Ticket[]
   issuedTickets     IssuedTicket[]
   rsvpSubmissions   RsvpSubmission[]
@@ -169,6 +212,7 @@ model Event {
   volunteers        EventVolunteer[]
 
   @@index([organizerId])
+  @@index([communityId])
   @@index([status])
   @@index([format])
   @@index([topic])

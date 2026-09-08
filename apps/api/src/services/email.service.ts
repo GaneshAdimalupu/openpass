@@ -139,3 +139,79 @@ export async function sendTicketEmail(params: TicketEmailParams) {
 		return null;
 	}
 }
+
+export interface InviteEmailParams {
+	toEmail: string;
+	recipientName?: string | null;
+	role: string;
+	targetName: string;
+	type: "organization" | "community" | "event";
+	actionUrl: string;
+}
+
+export async function sendInviteEmail(params: InviteEmailParams) {
+	if (!process.env.RESEND_API_KEY) {
+		config({ path: path.resolve(process.cwd(), ".env") });
+		config({ path: path.resolve(process.cwd(), "../../.env") });
+	}
+	const apiKey = process.env.RESEND_API_KEY;
+
+	if (!apiKey) {
+		console.warn("⚠️ RESEND_API_KEY is not set. Skipping invitation email.");
+		return null;
+	}
+
+	try {
+		const resend = new Resend(apiKey);
+		const fromEmail =
+			process.env.EMAIL_FROM || "makemyevent <onboarding@resend.dev>";
+
+		const subject = `You've been added as ${params.role} for ${params.targetName} on makemyevent`;
+
+		const response = await resend.emails.send({
+			from: fromEmail,
+			to: [params.toEmail],
+			subject,
+			html: `
+				<!DOCTYPE html>
+				<html>
+				<head><meta charset="utf-8"><title>${subject}</title></head>
+				<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f7f6f2; margin: 0; padding: 20px; color: #1b1a18;">
+					<div style="max-width: 560px; margin: 0 auto; background: #ffffff; border: 1px solid #dad6cc; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+						<div style="background-color: #1f7a4d; padding: 24px; text-align: center; color: #ffffff;">
+							<h1 style="margin: 0; font-size: 22px; font-weight: 700;">makemyevent</h1>
+							<p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;">Team & Volunteer Invitation</p>
+						</div>
+						<div style="padding: 24px;">
+							<p style="font-size: 15px; margin-top: 0;">Hi <strong>${params.recipientName || params.toEmail}</strong>,</p>
+							<p style="font-size: 14px; color: #444; line-height: 1.5;">You have been assigned as <strong>${params.role}</strong> for <strong>${params.targetName}</strong>.</p>
+							<p style="font-size: 13px; color: #666; line-height: 1.5;">Sign in to your makemyevent account using <code>${params.toEmail}</code> to access your management tools, check-in scanner, and team privileges.</p>
+							<div style="text-align: center; margin: 28px 0 10px 0;">
+								<a href="${params.actionUrl}" style="background-color: #1f7a4d; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: 600; display: inline-block;">Open Dashboard & Access →</a>
+							</div>
+						</div>
+						<div style="border-top: 1px solid #f0eee8; padding: 16px 24px; background-color: #faf9f6; text-align: center; font-size: 12px; color: #888;">
+							<p style="margin: 0;">makemyevent • Event Operations & Community Hosting</p>
+						</div>
+					</div>
+				</body>
+				</html>
+			`,
+		});
+
+		if (response.error) {
+			console.error(
+				"❌ Resend Invite Error:",
+				response.error.message || response.error,
+			);
+		} else {
+			console.log(
+				`✅ Invite email sent to ${params.toEmail} for ${params.targetName}`,
+			);
+		}
+		return response;
+	} catch (error) {
+		console.error("❌ Failed to send invitation email via Resend:", error);
+		return null;
+	}
+}

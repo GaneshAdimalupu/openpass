@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { MemberRole, PrismaClient } from "db";
 import { z } from "zod";
+import { sendInviteEmail } from "../services/email.service";
 import { authedProcedure, publicProcedure, router } from "./trpc";
 
 /**
@@ -48,7 +49,7 @@ async function assertOrganizerAdmin(
 ) {
 	const organizer = await client.organizer.findUnique({
 		where: { id: organizerId },
-		select: { id: true, ownerId: true },
+		select: { id: true, ownerId: true, name: true, slug: true },
 	});
 	if (!organizer) {
 		throw new TRPCError({
@@ -362,7 +363,7 @@ export const organizersRouter = router({
 				select: { id: true, name: true },
 			});
 
-			return ctx.prisma.organizerMember.upsert({
+			const member = await ctx.prisma.organizerMember.upsert({
 				where: {
 					organizerId_email: {
 						organizerId: input.organizerId,
@@ -382,6 +383,22 @@ export const organizersRouter = router({
 					userId: existingUser?.id || null,
 				},
 			});
+
+			// Dispatch transactional invitation email via Resend
+			const appUrl =
+				process.env.NEXT_PUBLIC_APP_URL ||
+				process.env.APP_URL ||
+				"http://localhost:3000";
+			sendInviteEmail({
+				toEmail: normalizedEmail,
+				recipientName: input.name || existingUser?.name,
+				role: input.role,
+				targetName: org.name,
+				type: "organization",
+				actionUrl: `${appUrl}/organization/${org.slug}`,
+			}).catch((err) => console.error("Failed to send org invite email:", err));
+
+			return member;
 		}),
 
 	updateMemberRole: authedProcedure

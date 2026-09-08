@@ -1,6 +1,7 @@
 "use client";
 
 import { SiteHeader } from "@/components/layout/site-header";
+import { TicketPassModal } from "@/components/tickets/ticket-pass-modal";
 import { trpc } from "@/lib/trpc";
 import { AlertCircle, Check, Gift, RefreshCw, Ticket } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +25,7 @@ export default function TicketTransferClaimPage(): JSX.Element {
 	const [claimedTicketCode, setClaimedTicketCode] = useState<string | null>(
 		null,
 	);
+	const [isPassModalOpen, setIsPassModalOpen] = useState<boolean>(false);
 	const [claimError, setClaimError] = useState<string | null>(null);
 
 	const { mutate: claimTransfer, isPending: isClaiming } =
@@ -142,13 +144,14 @@ export default function TicketTransferClaimPage(): JSX.Element {
 							</strong>
 						</div>
 
-						<Link
-							href={`/tickets/${claimedTicketCode}`}
-							className="w-full py-3 bg-stamp text-paper rounded-md font-medium text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-md"
+						<button
+							type="button"
+							onClick={() => setIsPassModalOpen(true)}
+							className="w-full py-3 bg-stamp text-paper rounded-md font-medium text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-md cursor-pointer"
 						>
 							<Ticket className="w-4 h-4" />
 							View My Ticket & QR Pass
-						</Link>
+						</button>
 					</div>
 				) : (
 					/* Claim Form */
@@ -262,6 +265,11 @@ export default function TicketTransferClaimPage(): JSX.Element {
 					</div>
 				)}
 			</main>
+
+			<TicketPassModal
+				ticketCode={isPassModalOpen ? claimedTicketCode : null}
+				onClose={() => setIsPassModalOpen(false)}
+			/>
 		</div>
 	);
 }
