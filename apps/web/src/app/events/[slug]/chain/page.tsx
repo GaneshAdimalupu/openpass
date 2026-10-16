@@ -44,7 +44,7 @@ function ChainCheckin(): JSX.Element {
 	const utils = trpc.useUtils();
 	const { data: myQr, isLoading } = trpc.checkinChain.myQr.useQuery(
 		{ slug },
-		{ enabled: isSignedIn, refetchInterval: 8000 },
+		{ enabled: authStatus !== "loading", refetchInterval: 8000 },
 	);
 
 	const { mutate: claim, isPending: isClaiming } =
@@ -80,11 +80,16 @@ function ChainCheckin(): JSX.Element {
 
 	// Opened from a scanned QR link: claim once, then drop the token from the URL.
 	useEffect(() => {
-		if (!isSignedIn || !urlToken || handledToken.current === urlToken) return;
+		if (
+			authStatus === "loading" ||
+			!urlToken ||
+			handledToken.current === urlToken
+		)
+			return;
 		handledToken.current = urlToken;
 		submitCode(urlToken);
 		router.replace(`/events/${slug}/chain`);
-	}, [isSignedIn, urlToken, submitCode, router, slug]);
+	}, [authStatus, urlToken, submitCode, router, slug]);
 
 	// Draw my personal QR; the token is re-issued on every poll.
 	const myToken = myQr?.state === "ready" ? myQr.token : null;
@@ -124,21 +129,6 @@ function ChainCheckin(): JSX.Element {
 						<p className="text-sm text-ink/60 animate-pulse">Loading...</p>
 					)}
 
-					{authStatus === "unauthenticated" && (
-						<div className="space-y-3 border border-perforation rounded-xl p-6">
-							<p className="text-sm">
-								Sign in with the account you registered with, then scan the QR
-								again.
-							</p>
-							<Link
-								href={`/login?callbackUrl=${encodeURIComponent(`/events/${slug}/chain`)}`}
-								className="inline-block rounded-lg bg-stamp px-4 py-2 text-sm font-semibold text-paper hover:bg-stamp-dark transition-colors"
-							>
-								Sign in
-							</Link>
-						</div>
-					)}
-
 					{banner && (
 						<div
 							className={`rounded-lg p-4 border text-left flex items-start gap-3 ${bannerStyle}`}
@@ -156,18 +146,18 @@ function ChainCheckin(): JSX.Element {
 						</div>
 					)}
 
-					{isSignedIn && isLoading && (
+					{isLoading && (
 						<p className="text-sm text-ink/60 animate-pulse">Loading...</p>
 					)}
 
-					{isSignedIn && myQr?.state === "no_session" && (
+					{myQr?.state === "no_session" && (
 						<p className="text-sm text-ink/70">
 							No QR chain check-in is running for this event right now.
 						</p>
 					)}
 
-					{isSignedIn && myQr?.state === "not_joined" && (
-						<div className="space-y-3 border border-perforation rounded-xl p-6">
+					{myQr?.state === "not_joined" && (
+						<div className="space-y-4 border border-perforation rounded-xl p-6">
 							<p className="text-sm">
 								Scan the QR shown by the organizer or by the person checked in
 								just before you.
@@ -181,10 +171,24 @@ function ChainCheckin(): JSX.Element {
 								<QrCode className="w-4 h-4" />
 								{isClaiming ? "Checking in..." : "Scan a QR"}
 							</button>
+
+							{!isSignedIn && (
+								<p className="text-xs text-ink/60 pt-2 border-t border-perforation">
+									Checking in as a guest? Your RSVP in this browser will be
+									used.{" "}
+									<Link
+										href={`/login?callbackUrl=${encodeURIComponent(`/events/${slug}/chain`)}`}
+										className="font-medium text-stamp underline underline-offset-2 hover:opacity-80"
+									>
+										Sign in
+									</Link>{" "}
+									for cross-device access.
+								</p>
+							)}
 						</div>
 					)}
 
-					{isSignedIn && myQr?.state === "ready" && (
+					{myQr?.state === "ready" && (
 						<div className="space-y-3">
 							<p className="text-sm text-ink/70">
 								You are #{myQr.position} in the chain. Let the next person scan
@@ -206,7 +210,7 @@ function ChainCheckin(): JSX.Element {
 						</div>
 					)}
 
-					{isSignedIn && myQr?.state === "passed_on" && (
+					{myQr?.state === "passed_on" && (
 						<div className="rounded-lg p-4 border border-stamp/30 bg-stamp/10 text-sm">
 							Your QR was scanned. You&apos;re all set.
 						</div>

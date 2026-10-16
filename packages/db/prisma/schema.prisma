@@ -222,6 +222,7 @@ model IssuedTicket {
   user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   transfers     TicketTransfer[]
   chainNodes    CheckinChainNode[]
+  guestToken    GuestTicketToken?
 
   @@index([eventId])
   @@index([ticketId])
@@ -360,6 +361,21 @@ model RsvpCheckIn {
   submission       RsvpSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submissionId])
+}
+
+// Stores the SHA-256 hash of a guest's UUID v4 cookie, linked to an IssuedTicket.
+// The raw UUID lives only in the guest's HttpOnly browser cookie and is never stored in the DB.
+// Guests who booked a ticket without signing in can use this cookie to participate in
+// QR chain check-in in the same browser they used to book.
+model GuestTicketToken {
+  id             String       @id @default(cuid())
+  tokenHash      String       @unique // SHA-256(rawUuid) stored as hex
+  issuedTicketId String       @unique
+  createdAt      DateTime     @default(now())
+
+  issuedTicket   IssuedTicket @relation(fields: [issuedTicketId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
 }
 
 model CfpForm {

@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import { config } from "dotenv";
+// @ts-expect-error qrcode types
 import QRCode from "qrcode";
 import { Resend } from "resend";
 

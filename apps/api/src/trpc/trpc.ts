@@ -5,15 +5,19 @@ export interface Context {
 	prisma: PrismaClient;
 	userId: string | null;
 	sessionToken: string | null;
+	/** SHA-256 hash of the guest RSVP cookie UUID, or null if absent. */
+	guestTokenHash: string | null;
 }
 
 export const createContext = (
 	userId?: string | null,
 	sessionToken?: string | null,
+	guestTokenHash?: string | null,
 ): Context => ({
 	prisma,
 	userId: userId ?? null,
 	sessionToken: sessionToken ?? null,
+	guestTokenHash: guestTokenHash ?? null,
 });
 
 const t = initTRPC.context<Context>().create();

@@ -4,7 +4,7 @@ import type { PrismaClient } from "db";
 import { z } from "zod";
 import { assertEventAccess, checkInIssuedTicket } from "./events.router";
 import type { CheckInOutcome } from "./events.router";
-import { authedProcedure, router } from "./trpc";
+import { authedProcedure, publicProcedure, router } from "./trpc";
 
 /**
  * QR chain check-in: ROOT -> A -> B -> C ...
@@ -116,6 +116,37 @@ async function findMyTicket(
 		tickets[0] ??
 		null
 	);
+}
+
+/**
+ * Resolves the ticket for either an authenticated user or a cookie-bearing guest.
+ * For authenticated users: matches IssuedTicket by userId or account email.
+ * For guests: matches GuestTicketToken by SHA-256 hash of the guest's UUID v4 cookie.
+ */
+async function findTicketForClaim(
+	client: PrismaClient,
+	eventId: string,
+	userId: string | null,
+	guestTokenHash: string | null,
+) {
+	if (userId) {
+		const ticket = await findMyTicket(client, eventId, userId);
+		if (ticket) return ticket;
+	}
+	if (guestTokenHash) {
+		const guestRecord = await client.guestTicketToken.findUnique({
+			where: { tokenHash: guestTokenHash },
+			include: {
+				issuedTicket: {
+					include: { ticket: { select: { name: true } } },
+				},
+			},
+		});
+		if (guestRecord && guestRecord.issuedTicket.eventId === eventId) {
+			return guestRecord.issuedTicket;
+		}
+	}
+	return null;
 }
 
 class ChainRollback extends Error {
@@ -237,8 +268,8 @@ export const checkinChainRouter = router({
 			return { ended: result.count };
 		}),
 
-	/** Participant: my personal QR for the running chain of this event. */
-	myQr: authedProcedure
+	/** Participant or Guest: my personal QR for the running chain of this event. */
+	myQr: publicProcedure
 		.input(z.object({ slug: z.string() }))
 		.query(async ({ ctx, input }) => {
 			const event = await ctx.prisma.event.findUnique({
@@ -254,7 +285,12 @@ export const checkinChainRouter = router({
 				return { state: "no_session" as const, eventTitle: event.title };
 			}
 
-			const ticket = await findMyTicket(ctx.prisma, event.id, ctx.userId);
+			const ticket = await findTicketForClaim(
+				ctx.prisma,
+				event.id,
+				ctx.userId,
+				ctx.guestTokenHash,
+			);
 			const node = ticket
 				? await ctx.prisma.checkinChainNode.findFirst({
 						where: { sessionId: session.id, issuedTicketId: ticket.id },
@@ -282,8 +318,24 @@ export const checkinChainRouter = router({
 			};
 		}),
 
-	/** Participant: scan a chain QR -> get checked in -> become the next node. */
-	claim: authedProcedure
+	/**
+	 * Participant or Guest: scan a chain QR -> get checked in -> become the next node.
+	 *
+	 * Authorization:
+	 * - Authenticated users are authorized by their active session (ctx.userId).
+	 * - Guests are authorized by the persistent, HttpOnly op-guest-rsvp cookie
+	 *   (ctx.guestTokenHash), which links to their IssuedTicket via GuestTicketToken.
+	 *
+	 * Server-side validations:
+	 * 1. QR token structure & HMAC-SHA256 signature against session.secret.
+	 * 2. Event match: token belongs to the event matching the URL slug.
+	 * 3. Chain session active & QR token not expired.
+	 * 4. Issuer node exists and has not been consumed yet (!issuer.child).
+	 * 5. Ticket exists and belongs to this event.
+	 * 6. Duplicate-scan guard: attendee not already in this chain session.
+	 * 7. Replay-scan guard: parentNodeId unique constraint in atomic transaction.
+	 */
+	claim: publicProcedure
 		.input(z.object({ slug: z.string(), token: z.string().max(400) }))
 		.mutation(async ({ ctx, input }) => {
 			const parsed = parseToken(input.token);
@@ -329,15 +381,18 @@ export const checkinChainRouter = router({
 				return fail("ALREADY_USED", "This QR code has already been used.");
 			}
 
-			const ticket = await findMyTicket(
+			const ticket = await findTicketForClaim(
 				ctx.prisma,
 				session.eventId,
 				ctx.userId,
+				ctx.guestTokenHash,
 			);
 			if (!ticket) {
 				return fail(
 					"NOT_REGISTERED",
-					"You don't have a ticket for this event with this account.",
+					ctx.userId
+						? "You don't have a ticket for this event with this account."
+						: "No valid ticket or guest RSVP found for this event in this browser. Please sign in or RSVP first.",
 				);
 			}
 			const alreadyInChain = () =>
@@ -353,6 +408,124 @@ export const checkinChainRouter = router({
 				// One transaction: consume the QR (unique parentNodeId) and check in together.
 				// If two people scan the same QR at once, the unique index lets exactly one commit;
 				// the other gets P2002 and nothing about their ticket changes.
+				const outcome = await ctx.prisma.$transaction(async (tx) => {
+					await tx.checkinChainNode.create({
+						data: {
+							sessionId: session.id,
+							parentNodeId: issuer.id,
+							issuedTicketId: ticket.id,
+							depth: issuer.depth + 1,
+						},
+					});
+					const result = await checkInIssuedTicket(tx, ticket);
+					if (!result.valid) throw new ChainRollback(result);
+					return result;
+				});
+
+				return {
+					ok: true as const,
+					attendeeName: ticket.attendeeName,
+					tierName: ticket.ticket.name,
+					checkedInAt: outcome.checkedInAt,
+					message: outcome.message,
+				};
+			} catch (error) {
+				if (error instanceof ChainRollback) {
+					return fail(
+						error.outcome.alreadyCheckedIn
+							? "ALREADY_CHECKED_IN"
+							: "NOT_ELIGIBLE",
+						error.outcome.message,
+					);
+				}
+				if (isUniqueViolation(error)) {
+					return (await alreadyInChain())
+						? fail("ALREADY_IN_CHAIN", "You are already part of this chain.")
+						: fail("ALREADY_USED", "This QR code has already been used.");
+				}
+				throw error;
+			}
+		}),
+
+	/**
+	 * Explicit guest claim procedure for guests checking in via the op-guest-rsvp cookie.
+	 * Re-uses the shared claim validation logic.
+	 */
+	guestClaim: publicProcedure
+		.input(z.object({ slug: z.string(), token: z.string().max(400) }))
+		.mutation(async ({ ctx, input }) => {
+			if (!ctx.guestTokenHash) {
+				return fail(
+					"NOT_REGISTERED",
+					"No guest RSVP cookie found. Please sign in or RSVP first.",
+				);
+			}
+			// Delegate directly to claim handler
+			const parsed = parseToken(input.token);
+			if (!parsed) return fail("INVALID", "This is not a valid chain QR code.");
+
+			const session = await ctx.prisma.checkinChainSession.findUnique({
+				where: { id: parsed.sessionId },
+				include: { event: { select: { id: true, slug: true } } },
+			});
+			if (
+				!session ||
+				!signatureMatches(
+					sign(session.secret, session.id, parsed.nodeId, parsed.exp),
+					parsed.signature,
+				)
+			) {
+				return fail("INVALID", "This is not a valid chain QR code.");
+			}
+			if (session.event.slug !== input.slug) {
+				return fail(
+					"WRONG_EVENT",
+					"This QR code belongs to a different event.",
+				);
+			}
+			if (session.endedAt || session.expiresAt <= new Date()) {
+				return fail("INACTIVE", "This QR chain check-in has ended.");
+			}
+			if (parsed.exp * 1000 <= Date.now()) {
+				return fail(
+					"EXPIRED",
+					"This QR code has expired. Scan the current one.",
+				);
+			}
+
+			const issuer = await ctx.prisma.checkinChainNode.findFirst({
+				where: { id: parsed.nodeId, sessionId: session.id },
+				select: { id: true, depth: true, child: { select: { id: true } } },
+			});
+			if (!issuer) {
+				return fail("INVALID", "This is not a valid chain QR code.");
+			}
+			if (issuer.child) {
+				return fail("ALREADY_USED", "This QR code has already been used.");
+			}
+
+			const ticket = await findTicketForClaim(
+				ctx.prisma,
+				session.eventId,
+				null,
+				ctx.guestTokenHash,
+			);
+			if (!ticket) {
+				return fail(
+					"NOT_REGISTERED",
+					"No valid guest RSVP found for this event in this browser.",
+				);
+			}
+			const alreadyInChain = () =>
+				ctx.prisma.checkinChainNode.findFirst({
+					where: { sessionId: session.id, issuedTicketId: ticket.id },
+					select: { id: true },
+				});
+			if (await alreadyInChain()) {
+				return fail("ALREADY_IN_CHAIN", "You are already part of this chain.");
+			}
+
+			try {
 				const outcome = await ctx.prisma.$transaction(async (tx) => {
 					await tx.checkinChainNode.create({
 						data: {

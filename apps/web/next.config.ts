@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+	allowedDevOrigins: ["intro-continually-showed-impossible.trycloudflare.com"],
 	images: {
 		remotePatterns: [
 			{

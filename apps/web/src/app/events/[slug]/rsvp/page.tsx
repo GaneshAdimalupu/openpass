@@ -8,6 +8,7 @@ import {
 	Calendar,
 	Check,
 	CheckCircle2,
+	Info,
 	MapPin,
 	Ticket as TicketIcon,
 	ArrowLeft,
@@ -80,8 +81,21 @@ export default function EventRsvpPage(): JSX.Element {
 	// Mutation to book ticket
 	const { mutate: bookTicket, isPending: isBooking } =
 		trpc.events.ticketBook.useMutation({
-			onSuccess: (res) => {
+			onSuccess: async (res) => {
 				setCompletedTicketCode(res.ticketCode);
+				// Best-effort: set the guest RSVP cookie so this browser can
+				// participate in QR chain check-in without needing an account.
+				// Signed-in users benefit from their account instead; the cookie
+				// is a fallback and works only in this browser.
+				try {
+					await fetch("/api/guest-rsvp-init", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ ticketCode: res.ticketCode }),
+					});
+				} catch {
+					// Non-critical — guest check-in is optional.
+				}
 			},
 			onError: (err) => {
 				setBookingError(err.message);
@@ -260,6 +274,24 @@ export default function EventRsvpPage(): JSX.Element {
 						</div>
 
 						<hr className="border-perforation" />
+
+						{/* Guest disclaimer — sign-in recommended for cross-device access */}
+						{!session && (
+							<div className="flex items-start gap-3 rounded-xl border border-perforation bg-stamp/5 p-4 text-xs font-mono text-ink/70">
+								<Info className="mt-0.5 h-4 w-4 shrink-0 text-stamp" />
+								<p>
+									You are registering as a guest. Your QR chain check-in will
+									work in this browser only.{" "}
+									<Link
+										href={`/login?callbackUrl=${encodeURIComponent(`/events/${event.slug}/rsvp`)}`}
+										className="font-semibold text-stamp underline underline-offset-2 hover:opacity-80"
+									>
+										Sign in
+									</Link>{" "}
+									if you want to access your registration from any device.
+								</p>
+							</div>
+						)}
 
 						{event.status !== "published" ? (
 							<div className="border border-alert/30 bg-alert/5 p-6 rounded-xl text-center space-y-3">
