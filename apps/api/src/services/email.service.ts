@@ -1,6 +1,5 @@
 import * as path from "node:path";
 import { config } from "dotenv";
-// @ts-expect-error qrcode types
 import QRCode from "qrcode";
 import { Resend } from "resend";
 
@@ -80,7 +79,7 @@ export async function sendTicketEmail(params: TicketEmailParams) {
 				</head>
 				<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f7f6f2; margin: 0; padding: 20px; color: #1b1a18;">
 					<div style="max-width: 560px; margin: 0 auto; background: #ffffff; border: 1px solid #dad6cc; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-						
+
 						<!-- Header Banner -->
 						<div style="background-color: #1f7a4d; padding: 24px; text-align: center; color: #ffffff;">
 							<h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">makemyevent</h1>
@@ -91,20 +90,20 @@ export async function sendTicketEmail(params: TicketEmailParams) {
 						<div style="padding: 24px;">
 							<p style="font-size: 15px; margin-top: 0;">Hi <strong>${params.attendeeName}</strong>,</p>
 							<p style="font-size: 14px; color: #444; line-height: 1.5;">You're registered for <strong>${params.eventTitle}</strong>. Present your entry QR code at the check-in desk for admission.</p>
-							
+
 							<!-- Pass Stub -->
 							<div style="background-color: #f9f8f5; border: 1px dashed #dad6cc; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center;">
 								<span style="font-size: 11px; font-weight: bold; font-family: monospace; text-transform: uppercase; background-color: #e6f4ea; color: #1f7a4d; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 10px;">${params.tierName}</span>
-								
+
 								<h2 style="font-size: 18px; margin: 5px 0; color: #1b1a18;">${params.eventTitle}</h2>
 								<p style="font-size: 13px; color: #666; margin: 4px 0;">📅 ${formattedDate}</p>
 								<p style="font-size: 13px; color: #666; margin: 4px 0 16px 0;">📍 ${params.location || "Venue TBA"}</p>
-								
+
 								<!-- Embedded QR Code -->
 								<div style="background: #ffffff; padding: 12px; display: inline-block; border-radius: 8px; border: 1px solid #eee;">
 									<img src="cid:ticket_qr" alt="Entry QR Code" style="width: 180px; height: 180px; display: block;" />
 								</div>
-								
+
 								<p style="font-family: monospace; font-size: 15px; font-weight: bold; letter-spacing: 2px; color: #1b1a18; margin: 12px 0 0 0;">${params.ticketCode}</p>
 							</div>
 

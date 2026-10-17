@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-	allowedDevOrigins: ["intro-continually-showed-impossible.trycloudflare.com"],
+	allowedDevOrigins: ["attribute-frost-organized-think.trycloudflare.com"],
 	images: {
 		remotePatterns: [
 			{
