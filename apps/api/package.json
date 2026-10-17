@@ -15,6 +15,7 @@
 		"start:prod": "NODE_OPTIONS='--import tsx' node dist/main",
 		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
 		"test": "jest",
+		"test:int": "vitest run",
 		"test:watch": "jest --watch",
 		"test:cov": "jest --coverage",
 		"test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
@@ -61,7 +62,8 @@
 		"tsconfig-paths": "^4.2.0",
 		"tsx": "^4.23.10",
 		"typescript": "^5.7.3",
-		"typescript-eslint": "^8.20.0"
+		"typescript-eslint": "^8.20.0",
+		"vitest": "^5.0.5"
 	},
 	"jest": {
 		"moduleFileExtensions": [
