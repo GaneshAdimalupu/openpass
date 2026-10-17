@@ -1902,6 +1902,27 @@ export const eventsRouter = router({
 			const effectiveVolunteers =
 				event.volunteers.length > 0 ? event.volunteers : defaultVolunteers;
 
+			// Fetch the RSVP form so the public registration page can render
+			// organizer-defined custom questions (only when the form is published).
+			const rsvpForm = await ctx.prisma.rsvpForm.findUnique({
+				where: { eventId: event.id },
+				select: {
+					isPublished: true,
+					description: true,
+					customQuestions: {
+						orderBy: { order: "asc" },
+						select: {
+							id: true,
+							question: true,
+							type: true,
+							isMandatory: true,
+							options: true,
+							description: true,
+						},
+					},
+				},
+			});
+
 			return {
 				event: {
 					...event,
@@ -1915,6 +1936,7 @@ export const eventsRouter = router({
 					totalDropped,
 					eventCapacity: event.capacity,
 				},
+				rsvpForm: rsvpForm?.isPublished ? rsvpForm : null,
 			};
 		}),
 

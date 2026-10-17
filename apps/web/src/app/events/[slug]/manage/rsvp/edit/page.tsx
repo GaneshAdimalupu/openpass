@@ -90,6 +90,23 @@ export function ManageRSVPPage() {
 	}, [rsvpForm]);
 
 	// Derived during render: no state-in-effect needed.
+	// Deep-compare custom fields so edits to question text, type, mandatory
+	// flag, options, or description are all caught as unsaved changes.
+	const customFieldsChanged = (() => {
+		const saved = rsvpForm?.customQuestions ?? [];
+		if (customFields.length !== saved.length) return true;
+		return customFields.some((f, i) => {
+			const s = saved[i];
+			return (
+				f.question !== s.question ||
+				f.type !== s.type ||
+				f.is_mandatory !== s.isMandatory ||
+				(f.options || "") !== (s.options || "") ||
+				(f.description || "") !== (s.description || "")
+			);
+		});
+	})();
+
 	const hasChanges =
 		!!rsvpForm &&
 		(isPublished !== rsvpForm.isPublished ||
@@ -97,7 +114,7 @@ export function ManageRSVPPage() {
 			requiresApproval !== rsvpForm.requiresApproval ||
 			maxCount !== String(rsvpForm.maxRsvpCount) ||
 			description !== (rsvpForm.description || "") ||
-			customFields.length !== (rsvpForm.customQuestions?.length ?? 0));
+			customFieldsChanged);
 
 	// Mirror for the hydration effect so a refetch cannot overwrite unsaved edits.
 	useEffect(() => {
@@ -225,7 +242,7 @@ export function ManageRSVPPage() {
 	];
 
 	return (
-		<div className="p-4 md:p-8 flex flex-col gap-8 max-w-5xl relative pb-28">
+		<div className={`p-4 md:p-8 flex flex-col gap-8 max-w-5xl relative ${hasChanges ? "pb-32" : "pb-8"}`}>
 			{/* Page Header */}
 			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-perforation pb-6">
 				<div>
