@@ -1976,6 +1976,19 @@ export const eventsRouter = router({
 				include: { issuedTickets: true },
 			});
 
+			// Only tiers that belong to this event may be updated. Previously any id
+			// starting with "cm" was updated directly, which could edit another
+			// event's tier, and an unrecognised id was silently created as a
+			// duplicate.
+			const existingIds = new Set(existingTiers.map((tier) => tier.id));
+			if (input.tiers.some((t) => t.id && !existingIds.has(t.id))) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						"A ticket type in this request no longer exists for this event. Reload the page and try again.",
+				});
+			}
+
 			for (const existing of existingTiers) {
 				if (!incomingIds.includes(existing.id)) {
 					if (existing.issuedTickets.length === 0) {
@@ -2008,7 +2021,7 @@ export const eventsRouter = router({
 					order: i,
 				};
 
-				if (t.id?.startsWith("cm")) {
+				if (t.id) {
 					await ctx.prisma.ticket.update({
 						where: { id: t.id },
 						data: tierData,

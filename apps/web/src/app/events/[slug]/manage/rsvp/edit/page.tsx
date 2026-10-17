@@ -1,6 +1,7 @@
 "use client";
 
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { parseWholeNumber } from "@/lib/numeric-field";
 import { trpc } from "@/lib/trpc";
 import {
 	Check,
@@ -14,7 +15,7 @@ import {
 	X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CustomField {
 	id: string;
@@ -36,30 +37,41 @@ export function ManageRSVPPage() {
 	const { data: rsvpForm, isLoading: rsvpLoading } =
 		trpc.events.rsvpGetForm.useQuery({ slug }, { enabled: !!slug });
 
+	// Form State
+	const [isPublished, setIsPublished] = useState(false);
+	const [allowEdit, setAllowEdit] = useState(false);
+	// Held as a string while editing so clearing the field never forces a "0".
+	const [maxCount, setMaxCount] = useState("100");
+	const [maxCountError, setMaxCountError] = useState<string | null>(null);
+	const [saveError, setSaveError] = useState<string | null>(null);
+	const [requiresApproval, setRequiresApproval] = useState(false);
+	const [description, setDescription] = useState("");
+	const [customFields, setCustomFields] = useState<CustomField[]>([]);
+	// Mirrors `hasChanges` so a background refetch cannot overwrite unsaved edits.
+	const hasChangesRef = useRef(false);
+	const [copied, setCopied] = useState(false);
+
 	const utils = trpc.useUtils();
 	const { mutate: updateForm, isPending: isUpdating } =
 		trpc.events.rsvpUpdateForm.useMutation({
 			onSuccess: () => {
+				setSaveError(null);
+				// Clear the dirty flag first so the refetched server state can replace
+				// the local copy.
+				hasChangesRef.current = false;
 				utils.events.rsvpGetForm.invalidate({ slug });
-				setHasChanges(false);
+			},
+			onError: (err) => {
+				setSaveError(err.message);
 			},
 		});
 
-	// Form State
-	const [isPublished, setIsPublished] = useState(false);
-	const [allowEdit, setAllowEdit] = useState(false);
-	const [maxCount, setMaxCount] = useState(100);
-	const [requiresApproval, setRequiresApproval] = useState(false);
-	const [description, setDescription] = useState("");
-	const [customFields, setCustomFields] = useState<CustomField[]>([]);
-	const [hasChanges, setHasChanges] = useState(false);
-	const [copied, setCopied] = useState(false);
-
 	useEffect(() => {
+		if (hasChangesRef.current) return;
 		if (rsvpForm) {
 			setIsPublished(rsvpForm.isPublished);
 			setAllowEdit(rsvpForm.allowEdit);
-			setMaxCount(rsvpForm.maxRsvpCount);
+			setMaxCount(String(rsvpForm.maxRsvpCount));
 			setRequiresApproval(rsvpForm.requiresApproval);
 			setDescription(rsvpForm.description || "");
 			if (rsvpForm.customQuestions) {
@@ -77,26 +89,20 @@ export function ManageRSVPPage() {
 		}
 	}, [rsvpForm]);
 
+	// Derived during render: no state-in-effect needed.
+	const hasChanges =
+		!!rsvpForm &&
+		(isPublished !== rsvpForm.isPublished ||
+			allowEdit !== rsvpForm.allowEdit ||
+			requiresApproval !== rsvpForm.requiresApproval ||
+			maxCount !== String(rsvpForm.maxRsvpCount) ||
+			description !== (rsvpForm.description || "") ||
+			customFields.length !== (rsvpForm.customQuestions?.length ?? 0));
+
+	// Mirror for the hydration effect so a refetch cannot overwrite unsaved edits.
 	useEffect(() => {
-		if (rsvpForm) {
-			const isDifferent =
-				isPublished !== rsvpForm.isPublished ||
-				allowEdit !== rsvpForm.allowEdit ||
-				requiresApproval !== rsvpForm.requiresApproval ||
-				maxCount !== rsvpForm.maxRsvpCount ||
-				description !== (rsvpForm.description || "") ||
-				customFields.length !== (rsvpForm.customQuestions?.length ?? 0);
-			setHasChanges(isDifferent);
-		}
-	}, [
-		isPublished,
-		allowEdit,
-		requiresApproval,
-		maxCount,
-		description,
-		customFields,
-		rsvpForm,
-	]);
+		hasChangesRef.current = hasChanges;
+	}, [hasChanges]);
 
 	const [showDialog, setShowDialog] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
@@ -113,12 +119,25 @@ export function ManageRSVPPage() {
 		useState<CustomField>(defaultFieldState);
 
 	const handleSave = () => {
+		// Convert only now, and refuse an empty or invalid capacity instead of
+		// saving a substituted default.
+		const parsedMaxCount = parseWholeNumber(maxCount, {
+			label: "Max RSVP capacity",
+			min: 1,
+		});
+		if (!parsedMaxCount.ok) {
+			setMaxCountError(parsedMaxCount.error);
+			return;
+		}
+		setMaxCountError(null);
+		setSaveError(null);
+
 		updateForm({
 			slug,
 			isPublished,
 			allowEdit,
 			requiresApproval,
-			maxRsvpCount: maxCount,
+			maxRsvpCount: parsedMaxCount.value,
 			description: description || null,
 			customQuestions: customFields.map((f) => ({
 				question: f.question,
@@ -229,6 +248,15 @@ export function ManageRSVPPage() {
 					{isUpdating ? "Saving Changes..." : "Save Changes"}
 				</button>
 			</div>
+
+			{saveError && (
+				<div
+					role="alert"
+					className="border border-alert/30 bg-alert/10 text-alert text-sm rounded-md px-4 py-3"
+				>
+					{saveError}
+				</div>
+			)}
 
 			{/* Hero Feature Switch Card */}
 			<div className="border border-perforation rounded-xl bg-paper p-6 space-y-4 shadow-sm">
@@ -387,13 +415,30 @@ export function ManageRSVPPage() {
 								id="max-rsvp-count"
 								type="number"
 								min={1}
+								step={1}
 								value={maxCount}
-								onChange={(e) => setMaxCount(Number(e.target.value))}
+								placeholder="e.g. 100"
+								aria-invalid={maxCountError !== null}
+								aria-describedby="max-rsvp-count-help"
+								onChange={(e) => {
+									setMaxCount(e.target.value);
+									setMaxCountError(null);
+								}}
 								className="w-full px-3 py-2 bg-paper border border-perforation rounded-md text-sm text-ink focus:outline-none focus:ring-1 focus:ring-ink"
 							/>
-							<p className="text-xs text-ink/60">
-								Maximum registrations permitted before form closes.
-							</p>
+							{maxCountError ? (
+								<p
+									id="max-rsvp-count-help"
+									role="alert"
+									className="text-xs text-alert"
+								>
+									{maxCountError}
+								</p>
+							) : (
+								<p id="max-rsvp-count-help" className="text-xs text-ink/60">
+									Maximum registrations permitted before form closes.
+								</p>
+							)}
 						</div>
 					</div>
 

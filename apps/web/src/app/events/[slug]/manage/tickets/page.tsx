@@ -1,5 +1,10 @@
 "use client";
 
+import {
+	parseTicketPrice,
+	parseWholeNumber,
+	toPreviewAmount,
+} from "@/lib/numeric-field";
 import { trpc } from "@/lib/trpc";
 import {
 	AlertCircle,
@@ -24,7 +29,7 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import QRCode from "qrcode";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { JSX } from "react";
 import {
 	TicketDesignerModal,
@@ -64,12 +69,25 @@ export default function ManageTicketsPage(): JSX.Element {
 		{ enabled: !!slug },
 	);
 
+	// Local state
+	const [tiers, setTiers] = useState<LocalTier[]>([]);
+	const [hasChanges, setHasChanges] = useState(false);
+	// Mirrors `hasChanges` synchronously so the server-sync effect below can tell
+	// whether the organizer has unsaved edits that a refetch must not overwrite.
+	const hasChangesRef = useRef(false);
+	const markChanges = useCallback((value: boolean) => {
+		hasChangesRef.current = value;
+		setHasChanges(value);
+	}, []);
+
 	const utils = trpc.useUtils();
 	const { mutate: saveTiers, isPending: isSaving } =
 		trpc.events.ticketsManageTiers.useMutation({
 			onSuccess: () => {
+				// Clear the dirty flag first so the refetched server state is allowed
+				// to replace the local copy.
+				markChanges(false);
 				utils.events.ticketsGet.invalidate({ slug });
-				setHasChanges(false);
 				setToastMessage("Ticket configuration saved successfully!");
 				setTimeout(() => setToastMessage(null), 3000);
 			},
@@ -77,10 +95,6 @@ export default function ManageTicketsPage(): JSX.Element {
 				alert(err.message);
 			},
 		});
-
-	// Local state
-	const [tiers, setTiers] = useState<LocalTier[]>([]);
-	const [hasChanges, setHasChanges] = useState(false);
 	const [toastMessage, setToastMessage] = useState<string | null>(null);
 	const [copiedLinkTierId, setCopiedLinkTierId] = useState<string | null>(null);
 
@@ -93,14 +107,15 @@ export default function ManageTicketsPage(): JSX.Element {
 	const [tierName, setTierName] = useState("General Pass");
 	const [tierDescription, setTierDescription] = useState("");
 	const [isPaid, setIsPaid] = useState(false);
-	const [tierPrice, setTierPrice] = useState(0);
+	// Numeric inputs are held as strings while editing; see lib/numeric-field.ts.
+	const [tierPrice, setTierPrice] = useState("");
 	const [includeGst, setIncludeGst] = useState(true);
 	const [includePlatformFee, setIncludePlatformFee] = useState(true);
 	const [passFeesToAttendee, setPassFeesToAttendee] = useState(true);
 	const [isCapacityLimited, setIsCapacityLimited] = useState(true);
-	const [tierQuantity, setTierQuantity] = useState<number>(300);
+	const [tierQuantity, setTierQuantity] = useState("300");
 	const [isLimitPerUser, setIsLimitPerUser] = useState(true);
-	const [tierMaxPerOrder, setTierMaxPerOrder] = useState<number>(1);
+	const [tierMaxPerOrder, setTierMaxPerOrder] = useState("1");
 	const [tierAllowWaitlist, setTierAllowWaitlist] = useState(true);
 	const [tierAllowTransfer, setTierAllowTransfer] = useState(true);
 	const [tierAllowDrop, setTierAllowDrop] = useState(true);
@@ -144,8 +159,11 @@ export default function ManageTicketsPage(): JSX.Element {
 			.catch((err) => console.error("QR Code Error:", err));
 	}, [codePrefix]);
 
-	// Sync fetched tiers to local state (default to 300 General Pass if empty)
+	// Sync fetched tiers to local state (default to 300 General Pass if empty).
+	// A background refetch (window focus, invalidation) must never replace edits
+	// the organizer has not saved yet.
 	useEffect(() => {
+		if (hasChangesRef.current) return;
 		if (data?.tiers && data.tiers.length > 0) {
 			setTiers(
 				data.tiers.map((t) => ({
@@ -153,7 +171,8 @@ export default function ManageTicketsPage(): JSX.Element {
 					name: t.name,
 					description: t.description,
 					price: t.price,
-					quantity: t.quantity ?? 300,
+					// null means unlimited and must stay null.
+					quantity: t.quantity,
 					maxPerOrder: t.maxPerOrder ?? 1,
 					salesStart: t.salesStart
 						? new Date(t.salesStart).toISOString()
@@ -172,7 +191,7 @@ export default function ManageTicketsPage(): JSX.Element {
 					isSoldOut: t.isSoldOut,
 				})),
 			);
-			setHasChanges(false);
+			markChanges(false);
 		} else if (data && (!data.tiers || data.tiers.length === 0)) {
 			// Auto-populate default 300 capacity General Pass
 			setTiers([
@@ -194,23 +213,24 @@ export default function ManageTicketsPage(): JSX.Element {
 					transferredCount: 0,
 				},
 			]);
-			setHasChanges(true);
+			markChanges(true);
 		}
-	}, [data]);
+	}, [data, markChanges]);
 
 	const openAddModal = () => {
 		setEditingTierIndex(null);
 		setTierName("");
 		setTierDescription("");
 		setIsPaid(false);
-		setTierPrice(0);
+		setTierPrice("");
 		setIncludeGst(true);
 		setIncludePlatformFee(true);
 		setPassFeesToAttendee(true);
 		setIsCapacityLimited(true);
-		setTierQuantity(300);
+		// Suggested starting value for a new pass; the organizer can replace it.
+		setTierQuantity("300");
 		setIsLimitPerUser(true);
-		setTierMaxPerOrder(1);
+		setTierMaxPerOrder("1");
 		setTierAllowWaitlist(true);
 		setTierAllowTransfer(true);
 		setTierAllowDrop(true);
@@ -229,14 +249,16 @@ export default function ManageTicketsPage(): JSX.Element {
 		setTierName(t.name);
 		setTierDescription(t.description || "");
 		setIsPaid(t.price > 0);
-		setTierPrice(t.price);
+		setTierPrice(t.price > 0 ? String(t.price) : "");
 		setIncludeGst(true);
 		setIncludePlatformFee(true);
 		setPassFeesToAttendee(true);
-		setIsCapacityLimited(t.quantity !== null && t.quantity !== undefined);
-		setTierQuantity(t.quantity ?? 300);
+		const hasCapacityLimit = t.quantity !== null && t.quantity !== undefined;
+		setIsCapacityLimited(hasCapacityLimit);
+		// An unlimited pass (null) opens with an empty field, never a made-up 300.
+		setTierQuantity(hasCapacityLimit ? String(t.quantity) : "");
 		setIsLimitPerUser((t.maxPerOrder ?? 1) > 0);
-		setTierMaxPerOrder(t.maxPerOrder ?? 1);
+		setTierMaxPerOrder(String(t.maxPerOrder ?? 1));
 		setTierAllowWaitlist(t.allowWaitlist ?? true);
 		setTierAllowTransfer(t.allowTransfer ?? true);
 		setTierAllowDrop(t.allowDrop ?? true);
@@ -256,13 +278,49 @@ export default function ManageTicketsPage(): JSX.Element {
 			return;
 		}
 
-		const finalPrice = isPaid ? Math.max(0, Number(tierPrice) || 0) : 0;
-		const finalQuantity = isCapacityLimited
-			? Math.max(1, Number(tierQuantity) || 300)
-			: null;
-		const finalMaxPerOrder = isLimitPerUser
-			? Math.max(1, Number(tierMaxPerOrder) || 1)
-			: 10;
+		// Convert the editable strings to numbers only here, and report an invalid
+		// or empty field instead of silently substituting a default.
+		let finalPrice = 0;
+		if (isPaid) {
+			const price = parseTicketPrice(tierPrice, {
+				label: "Ticket price",
+				min: 1,
+			});
+			if (!price.ok) {
+				setModalError(price.error);
+				return;
+			}
+			finalPrice = price.value;
+		}
+
+		let finalQuantity: number | null = null;
+		if (isCapacityLimited) {
+			const quantity = parseWholeNumber(tierQuantity, {
+				label: "Capacity limit",
+				min: 1,
+			});
+			if (!quantity.ok) {
+				setModalError(quantity.error);
+				return;
+			}
+			finalQuantity = quantity.value;
+		}
+
+		let finalMaxPerOrder = 10;
+		if (isLimitPerUser) {
+			const maxPerOrder = parseWholeNumber(tierMaxPerOrder, {
+				label: "Max per order",
+				min: 1,
+				max: 10,
+			});
+			if (!maxPerOrder.ok) {
+				setModalError(maxPerOrder.error);
+				return;
+			}
+			finalMaxPerOrder = maxPerOrder.value;
+		}
+
+		setModalError(null);
 
 		const updatedTier: LocalTier = {
 			name: tierName.trim(),
@@ -295,7 +353,7 @@ export default function ManageTicketsPage(): JSX.Element {
 			setTiers([...tiers, updatedTier]);
 		}
 
-		setHasChanges(true);
+		markChanges(true);
 		setIsModalOpen(false);
 	};
 
@@ -312,7 +370,7 @@ export default function ManageTicketsPage(): JSX.Element {
 		) {
 			const updated = tiers.filter((_, i) => i !== index);
 			setTiers(updated);
-			setHasChanges(true);
+			markChanges(true);
 			setIsModalOpen(false);
 		}
 	};
@@ -325,7 +383,8 @@ export default function ManageTicketsPage(): JSX.Element {
 				name: t.name,
 				description: t.description,
 				price: t.price,
-				quantity: t.quantity,
+				// null = unlimited; send it explicitly rather than leaving it undefined.
+				quantity: t.quantity ?? null,
 				maxPerOrder: t.maxPerOrder,
 				salesStart: t.salesStart,
 				salesEnd: t.salesEnd,
@@ -360,7 +419,16 @@ export default function ManageTicketsPage(): JSX.Element {
 	}
 
 	const stats = data?.stats;
-	const totalCapacity = stats?.eventCapacity || 300;
+	// Ticket capacity is the sum of the open passes' quantities (what attendees can
+	// actually book); any unlimited open pass makes it unlimited (null). This is
+	// separate from the event's venue capacity (stats.eventCapacity).
+	const openTiers = tiers.filter((t) => t.isPublished);
+	const ticketCapacity: number | null = openTiers.some(
+		(t) => t.quantity === null || t.quantity === undefined,
+	)
+		? null
+		: openTiers.reduce((sum, t) => sum + (t.quantity ?? 0), 0);
+	const totalConfirmed = stats?.totalConfirmed ?? 0;
 
 	return (
 		<div className="flex-1 overflow-y-auto bg-paper text-ink pb-24">
@@ -435,15 +503,17 @@ export default function ManageTicketsPage(): JSX.Element {
 					<div className="border border-perforation rounded-lg p-5 bg-paper/50 shadow-xs">
 						<div className="flex items-center justify-between opacity-70 mb-2">
 							<span className="text-xs uppercase font-medium tracking-wider">
-								Total Capacity
+								Ticket Capacity
 							</span>
 							<Users className="w-4 h-4 text-stamp" />
 						</div>
 						<div className="font-display text-2xl font-bold">
-							{totalCapacity}
+							{ticketCapacity ?? "Unlimited"}
 						</div>
 						<p className="text-xs opacity-60 mt-1">
-							Default 300 venue capacity
+							{stats?.eventCapacity
+								? `Venue capacity: ${stats.eventCapacity}`
+								: "Venue capacity not set"}
 						</p>
 					</div>
 
@@ -455,10 +525,12 @@ export default function ManageTicketsPage(): JSX.Element {
 							<UserCheck className="w-4 h-4 text-stamp" />
 						</div>
 						<div className="font-display text-2xl font-bold text-stamp">
-							{stats?.totalConfirmed ?? 0} / {totalCapacity}
+							{totalConfirmed} / {ticketCapacity ?? "Unlimited"}
 						</div>
 						<p className="text-xs opacity-60 mt-1">
-							{totalCapacity - (stats?.totalConfirmed ?? 0)} spots remaining
+							{ticketCapacity === null
+								? "Open registration"
+								: `${Math.max(0, ticketCapacity - totalConfirmed)} spots remaining`}
 						</p>
 					</div>
 
@@ -520,13 +592,14 @@ export default function ManageTicketsPage(): JSX.Element {
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 							{tiers.map((tier, index) => {
 								const confirmed = tier.confirmedCount ?? 0;
-								const capacity = tier.quantity ?? 300;
-								const isUnlimited =
-									tier.quantity === null || tier.quantity === undefined;
-								const pct = isUnlimited
-									? 0
-									: Math.min(100, Math.round((confirmed / capacity) * 100));
-								const isSoldOut = !isUnlimited && confirmed >= capacity;
+								// null/undefined means unlimited; never default it to a number.
+								const capacity = tier.quantity ?? null;
+								const isUnlimited = capacity === null;
+								const pct =
+									capacity === null
+										? 0
+										: Math.min(100, Math.round((confirmed / capacity) * 100));
+								const isSoldOut = capacity !== null && confirmed >= capacity;
 
 								return (
 									<div
@@ -650,7 +723,7 @@ export default function ManageTicketsPage(): JSX.Element {
 															? "Open registration"
 															: isSoldOut
 																? "Sold Out"
-																: `${capacity - confirmed} left`}
+																: `${(capacity ?? 0) - confirmed} left`}
 													</span>
 												</div>
 
@@ -761,7 +834,9 @@ export default function ManageTicketsPage(): JSX.Element {
 
 						{/* Scrollable Form Body */}
 						{(() => {
-							const basePrice = Math.max(0, Number(tierPrice) || 0);
+							// Display-only: follows every keystroke, decimals included. The
+							// value that gets saved is validated in handleModalSubmit.
+							const basePrice = toPreviewAmount(tierPrice);
 							const gstAmount = includeGst
 								? Number((basePrice * 0.18).toFixed(2))
 								: 0;
@@ -792,6 +867,7 @@ export default function ManageTicketsPage(): JSX.Element {
 							return (
 								<form
 									id="ticket-modal-form"
+									noValidate
 									onSubmit={handleModalSubmit}
 									className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6"
 								>
@@ -1058,8 +1134,8 @@ export default function ManageTicketsPage(): JSX.Element {
 														onChange={(e) => {
 															const nextVal = e.target.checked;
 															setIsPaid(nextVal);
-															if (nextVal && tierPrice === 0) {
-																setTierPrice(1);
+															if (nextVal && toPreviewAmount(tierPrice) === 0) {
+																setTierPrice("1");
 															}
 														}}
 														className="w-4 h-4 accent-stamp cursor-pointer"
@@ -1083,9 +1159,8 @@ export default function ManageTicketsPage(): JSX.Element {
 																	min="1"
 																	step="any"
 																	value={tierPrice}
-																	onChange={(e) =>
-																		setTierPrice(Number(e.target.value))
-																	}
+																	placeholder="e.g. 499"
+																	onChange={(e) => setTierPrice(e.target.value)}
 																	className="w-28 px-3 py-1.5 border border-r-0 border-perforation rounded-l-md bg-paper text-ink text-sm font-mono text-right focus:outline-none focus:ring-1 focus:ring-stamp"
 																/>
 																<span className="px-3 py-1.5 bg-perforation/30 border border-perforation rounded-r-md text-xs font-mono font-bold text-ink/70">
@@ -1234,8 +1309,9 @@ export default function ManageTicketsPage(): JSX.Element {
 																	type="number"
 																	min="1"
 																	value={tierQuantity}
+																	placeholder="e.g. 300"
 																	onChange={(e) =>
-																		setTierQuantity(Number(e.target.value))
+																		setTierQuantity(e.target.value)
 																	}
 																	className="w-28 px-3 py-1.5 border border-perforation rounded-md bg-paper text-ink text-sm font-mono focus:outline-none focus:ring-1 focus:ring-stamp"
 																/>
@@ -1286,8 +1362,9 @@ export default function ManageTicketsPage(): JSX.Element {
 																	min="1"
 																	max="10"
 																	value={tierMaxPerOrder}
+																	placeholder="1-10"
 																	onChange={(e) =>
-																		setTierMaxPerOrder(Number(e.target.value))
+																		setTierMaxPerOrder(e.target.value)
 																	}
 																	className="w-24 px-3 py-1.5 border border-perforation rounded-md bg-paper text-ink text-sm font-mono focus:outline-none focus:ring-1 focus:ring-stamp"
 																/>
@@ -1545,7 +1622,7 @@ export default function ManageTicketsPage(): JSX.Element {
 								designLayout: layout,
 							};
 							setTiers(updated);
-							setHasChanges(true);
+							markChanges(true);
 						}
 						setToastMessage("Ticket pass design saved successfully!");
 						setTimeout(() => setToastMessage(null), 3000);
