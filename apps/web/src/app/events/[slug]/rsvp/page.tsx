@@ -432,7 +432,8 @@ export default function EventRsvpPage(): JSX.Element {
 										</div>
 
 										{/* Custom Questions from RSVP form */}
-										{(ticketData?.rsvpForm?.customQuestions ?? []).length > 0 && (
+										{(ticketData?.rsvpForm?.customQuestions ?? []).length >
+											0 && (
 											<div className="space-y-4">
 												<hr className="border-perforation" />
 												{ticketData!.rsvpForm!.customQuestions.map((q) => (
@@ -479,7 +480,8 @@ export default function EventRsvpPage(): JSX.Element {
 																		</option>
 																	))}
 															</select>
-														) : q.type === "Long Text" || q.type === "Text Editor" ? (
+														) : q.type === "Long Text" ||
+															q.type === "Text Editor" ? (
 															<textarea
 																id={`custom-q-${q.id}`}
 																required={q.isMandatory}
@@ -502,7 +504,9 @@ export default function EventRsvpPage(): JSX.Element {
 																	onChange={(e) =>
 																		setCustomAnswers((prev) => ({
 																			...prev,
-																			[q.id]: e.target.checked ? "true" : "false",
+																			[q.id]: e.target.checked
+																				? "true"
+																				: "false",
 																		}))
 																	}
 																	className="w-4 h-4 rounded border-perforation text-stamp focus:ring-stamp"
