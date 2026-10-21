@@ -38,7 +38,10 @@ function ChainCheckin(): JSX.Element {
 
 	const [banner, setBanner] = useState<ClaimBanner>(null);
 	const [scannerOpen, setScannerOpen] = useState(false);
-	const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+	const [qrDataUrl, setQrDataUrl] = useState<{
+		token: string;
+		dataUrl: string;
+	} | null>(null);
 	const handledToken = useRef<string | null>(null);
 
 	const utils = trpc.useUtils();
@@ -94,17 +97,16 @@ function ChainCheckin(): JSX.Element {
 	// Draw my personal QR; the token is re-issued on every poll.
 	const myToken = myQr?.state === "ready" ? myQr.token : null;
 	useEffect(() => {
-		if (!myToken) {
-			setQrDataUrl(null);
-			return;
-		}
+		if (!myToken) return;
 		QRCode.toDataURL(
 			`${window.location.origin}/events/${slug}/chain?t=${myToken}`,
-			{ width: 320, margin: 2 },
+			{ width: 320, margin: 2, errorCorrectionLevel: "H" },
 		)
-			.then(setQrDataUrl)
+			.then((dataUrl) => setQrDataUrl({ token: myToken, dataUrl }))
 			.catch((err) => console.error("QR Code Error:", err));
 	}, [myToken, slug]);
+	const visibleQrDataUrl =
+		qrDataUrl?.token === myToken ? qrDataUrl.dataUrl : null;
 
 	const bannerStyle =
 		banner?.tone === "success"
@@ -191,17 +193,23 @@ function ChainCheckin(): JSX.Element {
 					{myQr?.state === "ready" && (
 						<div className="space-y-3">
 							<p className="text-sm text-ink/70">
-								You are #{myQr.position} in the chain. Let the next person scan
-								this QR.
+								You are #{myQr.position}. Attendee #{myQr.position + 1} scans
+								this QR next.
 							</p>
-							{qrDataUrl && (
-								<div className="mx-auto w-fit bg-white p-3 rounded-xl border border-perforation shadow-md">
+							{visibleQrDataUrl && (
+								<div className="relative mx-auto w-fit rounded-xl border border-perforation bg-white p-3 shadow-md">
 									{/* biome-ignore lint/performance/noImgElement: Client-side generated QR data URL */}
 									<img
-										src={qrDataUrl}
-										alt="Your QR code for the next person in the chain"
+										src={visibleQrDataUrl}
+										alt={`Your chain QR code, with attendee number ${myQr.position + 1} in the center`}
 										className="w-64 h-64 object-contain"
 									/>
+									<span
+										aria-hidden="true"
+										className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border-2 border-perforation bg-paper font-mono text-xl font-bold text-stamp shadow-md"
+									>
+										{myQr.position + 1}
+									</span>
 								</div>
 							)}
 							<p className="text-[11px] text-ink/50">

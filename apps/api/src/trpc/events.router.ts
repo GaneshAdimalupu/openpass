@@ -2724,7 +2724,6 @@ export const eventsRouter = router({
 					valid: false,
 					alreadyCheckedIn: false,
 					attendeeName: null,
-					attendeeEmail: null,
 					ticketCode: null,
 					tierName: null,
 					checkedInAt: null,
@@ -2736,7 +2735,6 @@ export const eventsRouter = router({
 			return {
 				...outcome,
 				attendeeName: ticket.attendeeName,
-				attendeeEmail: ticket.attendeeEmail,
 				ticketCode: ticket.ticketCode,
 				tierName: ticket.ticket.name,
 			};

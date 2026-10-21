@@ -4,6 +4,10 @@ import type { PrismaClient } from "db";
 import { z } from "zod";
 import { assertEventAccess, checkInIssuedTicket } from "./events.router";
 import type { CheckInOutcome } from "./events.router";
+import {
+	chainParticipationPercent,
+	orderChainNodes,
+} from "./checkin-chain.utils";
 import { authedProcedure, publicProcedure, router } from "./trpc";
 
 /**
@@ -169,6 +173,19 @@ function fail(code: ClaimFailureCode, message: string) {
 }
 
 export const checkinChainRouter = router({
+	/** Check-in staff: event-scoped access check for the minimal scanner page. */
+	staffAccess: authedProcedure
+		.input(z.object({ slug: z.string() }))
+		.query(async ({ ctx, input }) => {
+			const event = await assertEventAccess(
+				ctx.prisma,
+				input.slug,
+				ctx.userId,
+				["OWNER", "ADMIN", "EDITOR", "COORDINATOR", "VOLUNTEER", "DEVICE"],
+			);
+			return { title: event.title };
+		}),
+
 	/** Organizer: start a chain for the event (returns the running one if there already is one). */
 	start: authedProcedure
 		.input(z.object({ slug: z.string() }))
@@ -210,28 +227,34 @@ export const checkinChainRouter = router({
 			const session = await findActiveSession(ctx.prisma, event.id);
 			if (!session) return { active: false as const };
 
-			const [root, checkedInCount, recent] = await Promise.all([
-				ctx.prisma.checkinChainNode.findFirst({
-					where: { sessionId: session.id, parentNodeId: null },
-					select: { id: true, child: { select: { id: true } } },
-				}),
-				ctx.prisma.checkinChainNode.count({
-					where: { sessionId: session.id, issuedTicketId: { not: null } },
-				}),
+			const [nodes, eligibleAttendeeCount] = await Promise.all([
 				ctx.prisma.checkinChainNode.findMany({
-					where: { sessionId: session.id, issuedTicketId: { not: null } },
-					orderBy: { createdAt: "desc" },
-					take: 5,
 					select: {
+						id: true,
+						parentNodeId: true,
 						depth: true,
 						createdAt: true,
-						issuedTicket: { select: { attendeeName: true } },
+						issuedTicket: {
+							select: { attendeeName: true, status: true, checkedInAt: true },
+						},
+					},
+					where: { sessionId: session.id },
+				}),
+				ctx.prisma.issuedTicket.count({
+					where: {
+						eventId: event.id,
+						status: { in: ["CONFIRMED", "CHECKED_IN"] },
 					},
 				}),
 			]);
+			// Follow actual parent links from ROOT and ignore any unconnected rows.
+			const chain = orderChainNodes(nodes);
+			const root = chain[0];
+			const attendees = chain.filter((node) => node.issuedTicket !== null);
+			const checkedInCount = attendees.length;
 
 			const rootQr =
-				root && !root.child
+				root && chain.length === 1
 					? issueToken(session.secret, session.id, root.id)
 					: null;
 
@@ -241,13 +264,28 @@ export const checkinChainRouter = router({
 				startedAt: session.createdAt,
 				expiresAt: session.expiresAt,
 				checkedInCount,
+				eligibleAttendeeCount,
+				participationPercent: chainParticipationPercent(
+					checkedInCount,
+					eligibleAttendeeCount,
+				),
 				rootToken: rootQr?.token ?? null,
 				rootTokenExpiresAt: rootQr?.expiresAt ?? null,
-				recent: recent.map((n) => ({
-					position: n.depth,
-					name: n.issuedTicket?.attendeeName ?? "",
-					at: n.createdAt,
+				chain: chain.map((node) => ({
+					id: node.id,
+					position: node.depth,
+					name: node.issuedTicket?.attendeeName ?? null,
+					at: node.issuedTicket
+						? (node.issuedTicket.checkedInAt ?? node.createdAt)
+						: null,
 				})),
+				checkinsOverTime: attendees.map(
+					(node) => node.issuedTicket?.checkedInAt ?? node.createdAt,
+				),
+				latestCheckin:
+					attendees.at(-1)?.issuedTicket?.checkedInAt ??
+					attendees.at(-1)?.createdAt ??
+					null,
 			};
 		}),
 

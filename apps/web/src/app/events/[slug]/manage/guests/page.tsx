@@ -3,6 +3,7 @@
 import { CheckinChainDialog } from "@/components/events/checkin-chain-dialog";
 import { CheckinScannerDialog } from "@/components/events/checkin-scanner-dialog";
 import { trpc } from "@/lib/trpc";
+import Link from "next/link";
 import {
 	Check,
 	CheckCircle2,
@@ -298,6 +299,12 @@ export function GuestsPage(): JSX.Element {
 				</div>
 
 				<div className="flex items-center gap-2.5">
+					<Link
+						href={`/events/${slug}/check-in`}
+						className="px-3.5 py-2 text-xs font-semibold border border-perforation rounded-lg hover:bg-ink/5 transition-colors"
+					>
+						Staff scanner
+					</Link>
 					<button
 						type="button"
 						onClick={() => setIsScannerOpen(true)}

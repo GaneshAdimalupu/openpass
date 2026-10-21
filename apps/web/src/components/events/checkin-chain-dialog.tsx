@@ -3,7 +3,7 @@
 import { trpc } from "@/lib/trpc";
 import { Check, Copy, Link2, Square, X } from "lucide-react";
 import QRCode from "qrcode";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { JSX } from "react";
 
 interface CheckinChainDialogProps {
@@ -21,7 +21,10 @@ export function CheckinChainDialog({
 	onRosterChange,
 }: CheckinChainDialogProps): JSX.Element | null {
 	const utils = trpc.useUtils();
-	const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+	const [qrDataUrl, setQrDataUrl] = useState<{
+		url: string;
+		dataUrl: string;
+	} | null>(null);
 	const [copied, setCopied] = useState(false);
 	const lastCount = useRef<number | null>(null);
 
@@ -57,14 +60,17 @@ export function CheckinChainDialog({
 
 	// The token is re-signed on every poll, so re-draw the QR whenever it changes.
 	useEffect(() => {
-		if (!rootUrl) {
-			setQrDataUrl(null);
-			return;
-		}
-		QRCode.toDataURL(rootUrl, { width: 320, margin: 2 })
-			.then(setQrDataUrl)
+		if (!rootUrl) return;
+		QRCode.toDataURL(rootUrl, {
+			width: 320,
+			margin: 2,
+			errorCorrectionLevel: "H",
+		})
+			.then((dataUrl) => setQrDataUrl({ url: rootUrl, dataUrl }))
 			.catch((err) => console.error("QR Code Error:", err));
 	}, [rootUrl]);
+	const visibleQrDataUrl =
+		qrDataUrl?.url === rootUrl ? qrDataUrl.dataUrl : null;
 
 	// Keep the guest roster in step as people check in through the chain.
 	const checkedInCount = status?.active ? status.checkedInCount : null;
@@ -75,6 +81,24 @@ export function CheckinChainDialog({
 		}
 		lastCount.current = checkedInCount;
 	}, [checkedInCount, onRosterChange]);
+
+	const checkinBuckets = useMemo(() => {
+		if (!status?.active) return [];
+		const grouped = new Map<string, { label: string; count: number }>();
+		for (const timestamp of status.checkinsOverTime) {
+			const date = new Date(timestamp);
+			const key = `${date.toLocaleDateString()} ${date.getHours()}`;
+			const label = date.toLocaleString([], {
+				month: "short",
+				day: "numeric",
+				hour: "numeric",
+			});
+			const bucket = grouped.get(key);
+			if (bucket) bucket.count += 1;
+			else grouped.set(key, { label, count: 1 });
+		}
+		return [...grouped.values()].slice(-6);
+	}, [status]);
 
 	const handleCopy = () => {
 		if (!rootUrl) return;
@@ -87,7 +111,7 @@ export function CheckinChainDialog({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-			<div className="relative w-full max-w-lg rounded-xl border border-perforation bg-paper shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+			<div className="relative w-full max-w-2xl rounded-xl border border-perforation bg-paper shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 				<div className="flex items-center justify-between px-6 py-4 border-b border-perforation bg-stamp/30">
 					<div className="flex items-center space-x-2">
 						<Link2 className="h-5 w-5 text-stamp-dark dark:text-stamp-light" />
@@ -150,16 +174,22 @@ export function CheckinChainDialog({
 							{rootToken ? (
 								<div className="space-y-3 text-center">
 									<p className="text-sm text-ink/70">
-										Root QR. The first attendee scans this to start the chain.
+										Root QR. Attendee 1 scans this to start the chain.
 									</p>
-									{qrDataUrl ? (
-										<div className="mx-auto w-fit bg-white p-3 rounded-xl border border-perforation shadow-md">
+									{visibleQrDataUrl ? (
+										<div className="relative mx-auto w-fit rounded-xl border border-perforation bg-white p-3 shadow-md">
 											{/* biome-ignore lint/performance/noImgElement: Client-side generated QR data URL */}
 											<img
-												src={qrDataUrl}
-												alt="Root QR code for QR chain check-in"
+												src={visibleQrDataUrl}
+												alt="Root QR code for QR chain check-in, with attendee number 1 in the center"
 												className="w-56 h-56 object-contain"
 											/>
+											<span
+												aria-hidden="true"
+												className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border-2 border-perforation bg-paper font-mono text-xl font-bold text-stamp shadow-md"
+											>
+												1
+											</span>
 										</div>
 									) : (
 										<div className="mx-auto w-56 h-56 rounded-xl border border-dashed border-perforation" />
@@ -188,31 +218,126 @@ export function CheckinChainDialog({
 								</div>
 							)}
 
-							<div className="rounded-lg border border-perforation p-4 space-y-2">
-								<div className="flex items-baseline justify-between">
-									<span className="text-xs font-mono uppercase tracking-wider text-ink/60">
-										Checked in via chain
-									</span>
-									<span className="text-2xl font-bold font-display text-stamp">
+							<div className="grid gap-3 sm:grid-cols-3">
+								<div className="rounded-lg border border-perforation p-4">
+									<p className="text-xs font-mono uppercase tracking-wider text-ink/60">
+										Chain check-ins
+									</p>
+									<p className="mt-1 text-2xl font-bold font-display text-stamp">
 										{status.checkedInCount}
-									</span>
+									</p>
 								</div>
-								{status.recent.length > 0 && (
-									<ul className="text-xs text-ink/70 divide-y divide-perforation">
-										{status.recent.map((r) => (
+								<div className="rounded-lg border border-perforation p-4">
+									<p className="text-xs font-mono uppercase tracking-wider text-ink/60">
+										Eligible tickets
+									</p>
+									<p className="mt-1 text-2xl font-bold font-display text-ink">
+										{status.eligibleAttendeeCount}
+									</p>
+								</div>
+								<div className="rounded-lg border border-perforation p-4">
+									<p className="text-xs font-mono uppercase tracking-wider text-ink/60">
+										Chain participation
+									</p>
+									<p className="mt-1 text-2xl font-bold font-display text-ink">
+										{status.participationPercent === null
+											? "—"
+											: `${status.participationPercent.toFixed(1)}%`}
+									</p>
+								</div>
+							</div>
+
+							<div className="rounded-lg border border-perforation p-4 space-y-3">
+								<h3 className="text-sm font-semibold text-ink">
+									Check-ins over time
+								</h3>
+								{checkinBuckets.length === 0 ? (
+									<p className="text-xs text-ink/60">No chain check-ins yet.</p>
+								) : (
+									<ul className="space-y-2">
+										{checkinBuckets.map((bucket) => (
 											<li
-												key={`${r.position}-${r.name}`}
-												className="flex justify-between py-1.5"
+												key={bucket.label}
+												className="flex items-center gap-3 text-xs"
 											>
-												<span>
-													#{r.position} {r.name}
+												<span className="w-16 shrink-0 font-mono text-ink/60">
+													{bucket.label}
 												</span>
-												<span className="font-mono text-ink/50">
-													{new Date(r.at).toLocaleTimeString()}
+												<div className="h-2 flex-1 overflow-hidden rounded-full bg-perforation">
+													<div
+														className="h-full rounded-full bg-stamp"
+														style={{
+															width: `${Math.max(8, (bucket.count / Math.max(...checkinBuckets.map((item) => item.count))) * 100)}%`,
+														}}
+													/>
+												</div>
+												<span className="w-5 text-right font-mono text-ink">
+													{bucket.count}
 												</span>
 											</li>
 										))}
 									</ul>
+								)}
+								<p className="text-xs text-ink/60">
+									Latest successful check-in:{" "}
+									{status.latestCheckin
+										? new Date(status.latestCheckin).toLocaleString()
+										: "None yet"}
+								</p>
+							</div>
+
+							<div className="rounded-lg border border-perforation p-4 space-y-3">
+								<div className="flex items-baseline justify-between">
+									<h3 className="text-sm font-semibold text-ink">
+										Chain progression
+									</h3>
+								</div>
+								{status.chain.length === 0 ? (
+									<p className="text-xs text-ink/60">
+										No chain nodes have been recorded.
+									</p>
+								) : (
+									<ol className="ml-3 border-l border-perforation">
+										{status.chain.map((node, index) => {
+											const isRoot = node.name === null;
+											const isEnd = index === status.chain.length - 1;
+											return (
+												<li
+													key={node.id}
+													className="relative ml-5 pb-4 last:pb-0"
+												>
+													<span
+														className={`absolute -left-[27px] top-1 h-3 w-3 rounded-full border ${isEnd ? "border-stamp bg-stamp" : "border-perforation bg-paper"}`}
+													/>
+													<div className="flex flex-wrap items-center justify-between gap-2">
+														<div className="flex items-center gap-2">
+															<span className="text-sm font-semibold text-ink">
+																{isRoot ? "ROOT" : node.name}
+															</span>
+															<span className="rounded border border-perforation px-2 py-0.5 text-xs text-ink/60">
+																{isRoot ? "Start" : `#${node.position}`}
+															</span>
+															{!isRoot && !isEnd && (
+																<span className="rounded bg-perforation/40 px-2 py-0.5 text-xs text-ink/70">
+																	Completed
+																</span>
+															)}
+															{isEnd && (
+																<span className="rounded bg-stamp/10 px-2 py-0.5 text-xs font-medium text-stamp">
+																	Current end
+																</span>
+															)}
+														</div>
+														{node.at && (
+															<time className="text-xs font-mono text-ink/60">
+																{new Date(node.at).toLocaleString()}
+															</time>
+														)}
+													</div>
+												</li>
+											);
+										})}
+									</ol>
 								)}
 							</div>
 
