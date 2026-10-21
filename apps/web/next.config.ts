@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+	allowedDevOrigins: ["attribute-frost-organized-think.trycloudflare.com"],
 	images: {
 		remotePatterns: [
 			{
