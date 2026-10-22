@@ -101,6 +101,85 @@ export async function assertEventAccess(
 	});
 }
 
+export interface CheckInOutcome {
+	valid: boolean;
+	alreadyCheckedIn: boolean;
+	checkedInAt: Date | null;
+	message: string;
+}
+
+/**
+ * Shared check-in rules for an issued ticket: status validation plus the atomic
+ * CONFIRMED -> CHECKED_IN transition (race-safe across multiple scanners).
+ * Used by ticketVerifyCheckIn (staff scan) and the QR chain claim.
+ * Pass a transaction client as `client` to make the check-in part of a larger transaction.
+ */
+export async function checkInIssuedTicket(
+	client: Pick<PrismaClient, "issuedTicket">,
+	ticket: { id: string; status: string; checkedInAt: Date | null },
+): Promise<CheckInOutcome> {
+	if (ticket.status === "CHECKED_IN") {
+		return {
+			valid: false,
+			alreadyCheckedIn: true,
+			checkedInAt: ticket.checkedInAt,
+			message: `Already checked in at ${ticket.checkedInAt?.toLocaleTimeString()}`,
+		};
+	}
+
+	if (ticket.status === "DROPPED" || ticket.status === "CANCELLED") {
+		return {
+			valid: false,
+			alreadyCheckedIn: false,
+			checkedInAt: null,
+			message: `This ticket was ${ticket.status.toLowerCase()} and is invalid.`,
+		};
+	}
+
+	if (ticket.status === "WAITLISTED") {
+		return {
+			valid: false,
+			alreadyCheckedIn: false,
+			checkedInAt: null,
+			message: "This attendee is on the waitlist and has not been confirmed.",
+		};
+	}
+
+	// Atomic State Transition (Eliminates Multi-Scanner Race Conditions)
+	const now = new Date();
+	const updateResult = await client.issuedTicket.updateMany({
+		where: {
+			id: ticket.id,
+			status: "CONFIRMED", // Strictly matches only if still CONFIRMED
+		},
+		data: {
+			status: "CHECKED_IN",
+			checkedInAt: now,
+		},
+	});
+
+	if (updateResult.count === 0) {
+		// Another scanner checked in this exact ticket milliseconds ago!
+		const reChecked = await client.issuedTicket.findUnique({
+			where: { id: ticket.id },
+		});
+		const checkedInAt = reChecked?.checkedInAt || now;
+		return {
+			valid: false,
+			alreadyCheckedIn: true,
+			checkedInAt,
+			message: `Already checked in at ${checkedInAt.toLocaleTimeString()}`,
+		};
+	}
+
+	return {
+		valid: true,
+		alreadyCheckedIn: false,
+		checkedInAt: now,
+		message: "Checked in successfully!",
+	};
+}
+
 export const eventsRouter = router({
 	list: publicProcedure.query(({ ctx }) => {
 		const now = new Date();
@@ -1823,6 +1902,27 @@ export const eventsRouter = router({
 			const effectiveVolunteers =
 				event.volunteers.length > 0 ? event.volunteers : defaultVolunteers;
 
+			// Fetch the RSVP form so the public registration page can render
+			// organizer-defined custom questions (only when the form is published).
+			const rsvpForm = await ctx.prisma.rsvpForm.findUnique({
+				where: { eventId: event.id },
+				select: {
+					isPublished: true,
+					description: true,
+					customQuestions: {
+						orderBy: { order: "asc" },
+						select: {
+							id: true,
+							question: true,
+							type: true,
+							isMandatory: true,
+							options: true,
+							description: true,
+						},
+					},
+				},
+			});
+
 			return {
 				event: {
 					...event,
@@ -1836,6 +1936,7 @@ export const eventsRouter = router({
 					totalDropped,
 					eventCapacity: event.capacity,
 				},
+				rsvpForm: rsvpForm?.isPublished ? rsvpForm : null,
 			};
 		}),
 
@@ -1897,6 +1998,19 @@ export const eventsRouter = router({
 				include: { issuedTickets: true },
 			});
 
+			// Only tiers that belong to this event may be updated. Previously any id
+			// starting with "cm" was updated directly, which could edit another
+			// event's tier, and an unrecognised id was silently created as a
+			// duplicate.
+			const existingIds = new Set(existingTiers.map((tier) => tier.id));
+			if (input.tiers.some((t) => t.id && !existingIds.has(t.id))) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						"A ticket type in this request no longer exists for this event. Reload the page and try again.",
+				});
+			}
+
 			for (const existing of existingTiers) {
 				if (!incomingIds.includes(existing.id)) {
 					if (existing.issuedTickets.length === 0) {
@@ -1929,7 +2043,7 @@ export const eventsRouter = router({
 					order: i,
 				};
 
-				if (t.id?.startsWith("cm")) {
+				if (t.id) {
 					await ctx.prisma.ticket.update({
 						where: { id: t.id },
 						data: tierData,
@@ -2610,7 +2724,6 @@ export const eventsRouter = router({
 					valid: false,
 					alreadyCheckedIn: false,
 					attendeeName: null,
-					attendeeEmail: null,
 					ticketCode: null,
 					tierName: null,
 					checkedInAt: null,
@@ -2618,86 +2731,12 @@ export const eventsRouter = router({
 				};
 			}
 
-			if (ticket.status === "CHECKED_IN") {
-				return {
-					valid: false,
-					alreadyCheckedIn: true,
-					attendeeName: ticket.attendeeName,
-					attendeeEmail: ticket.attendeeEmail,
-					ticketCode: ticket.ticketCode,
-					tierName: ticket.ticket.name,
-					checkedInAt: ticket.checkedInAt,
-					message: `Already checked in at ${ticket.checkedInAt?.toLocaleTimeString()}`,
-				};
-			}
-
-			if (ticket.status === "DROPPED" || ticket.status === "CANCELLED") {
-				return {
-					valid: false,
-					alreadyCheckedIn: false,
-					attendeeName: ticket.attendeeName,
-					attendeeEmail: ticket.attendeeEmail,
-					ticketCode: ticket.ticketCode,
-					tierName: ticket.ticket.name,
-					checkedInAt: null,
-					message: `This ticket was ${ticket.status.toLowerCase()} and is invalid.`,
-				};
-			}
-
-			if (ticket.status === "WAITLISTED") {
-				return {
-					valid: false,
-					alreadyCheckedIn: false,
-					attendeeName: ticket.attendeeName,
-					attendeeEmail: ticket.attendeeEmail,
-					ticketCode: ticket.ticketCode,
-					tierName: ticket.ticket.name,
-					checkedInAt: null,
-					message:
-						"This attendee is on the waitlist and has not been confirmed.",
-				};
-			}
-
-			// Atomic State Transition (Eliminates Multi-Scanner Race Conditions)
-			const now = new Date();
-			const updateResult = await ctx.prisma.issuedTicket.updateMany({
-				where: {
-					id: ticket.id,
-					status: "CONFIRMED", // Strictly matches only if still CONFIRMED
-				},
-				data: {
-					status: "CHECKED_IN",
-					checkedInAt: now,
-				},
-			});
-
-			if (updateResult.count === 0) {
-				// Another scanner checked in this exact ticket milliseconds ago!
-				const reChecked = await ctx.prisma.issuedTicket.findUnique({
-					where: { id: ticket.id },
-				});
-
-				return {
-					valid: false,
-					alreadyCheckedIn: true,
-					attendeeName: ticket.attendeeName,
-					attendeeEmail: ticket.attendeeEmail,
-					ticketCode: ticket.ticketCode,
-					tierName: ticket.ticket.name,
-					checkedInAt: reChecked?.checkedInAt || now,
-					message: `Already checked in at ${(reChecked?.checkedInAt || now).toLocaleTimeString()}`,
-				};
-			}
-
+			const outcome = await checkInIssuedTicket(ctx.prisma, ticket);
 			return {
-				valid: true,
-				alreadyCheckedIn: false,
+				...outcome,
 				attendeeName: ticket.attendeeName,
-				attendeeEmail: ticket.attendeeEmail,
 				ticketCode: ticket.ticketCode,
 				tierName: ticket.ticket.name,
-				checkedInAt: now,
-				message: "Checked in successfully!",
 			};
 		}),
 

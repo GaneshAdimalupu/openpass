@@ -365,6 +365,17 @@ export default function AttendeeTicketPage(): JSX.Element {
 								? "This event has ended. Pass is no longer active for venue entry."
 								: "Show this QR code at the event check-in desk for entry."}
 						</p>
+
+						{(ticket.status === "CONFIRMED" ||
+							ticket.status === "CHECKED_IN") &&
+							!isExpired && (
+								<Link
+									href={`/events/${ticket.event.slug}/chain`}
+									className="text-xs underline underline-offset-2 opacity-70 hover:opacity-100"
+								>
+									Checking in with QR chain? Open chain check-in
+								</Link>
+							)}
 					</div>
 
 					{/* Bottom Action Footer */}

@@ -1,7 +1,9 @@
 "use client";
 
+import { CheckinChainDialog } from "@/components/events/checkin-chain-dialog";
 import { CheckinScannerDialog } from "@/components/events/checkin-scanner-dialog";
 import { trpc } from "@/lib/trpc";
+import Link from "next/link";
 import {
 	Check,
 	CheckCircle2,
@@ -10,6 +12,7 @@ import {
 	Clock,
 	Copy,
 	Download,
+	Link2,
 	QrCode,
 	RefreshCw,
 	Search,
@@ -57,6 +60,7 @@ export function GuestsPage(): JSX.Element {
 	const [expandedGuestId, setExpandedGuestId] = useState<string | null>(null);
 	const [copiedCode, setCopiedCode] = useState<string | null>(null);
 	const [isScannerOpen, setIsScannerOpen] = useState(false);
+	const [isChainOpen, setIsChainOpen] = useState(false);
 
 	const utils = trpc.useUtils();
 
@@ -295,6 +299,12 @@ export function GuestsPage(): JSX.Element {
 				</div>
 
 				<div className="flex items-center gap-2.5">
+					<Link
+						href={`/events/${slug}/check-in`}
+						className="px-3.5 py-2 text-xs font-semibold border border-perforation rounded-lg hover:bg-ink/5 transition-colors"
+					>
+						Staff scanner
+					</Link>
 					<button
 						type="button"
 						onClick={() => setIsScannerOpen(true)}
@@ -302,6 +312,15 @@ export function GuestsPage(): JSX.Element {
 					>
 						<QrCode className="w-4 h-4" />
 						<span>Scan Ticket QR</span>
+					</button>
+
+					<button
+						type="button"
+						onClick={() => setIsChainOpen(true)}
+						className="px-3.5 py-2 text-xs font-semibold border border-perforation rounded-lg hover:bg-ink/5 transition-colors flex items-center gap-1.5 cursor-pointer"
+					>
+						<Link2 className="w-4 h-4" />
+						<span>QR Chain Check-In</span>
 					</button>
 
 					<button
@@ -675,6 +694,13 @@ export function GuestsPage(): JSX.Element {
 				onClose={() => setIsScannerOpen(false)}
 				eventSlug={slug}
 				onSuccessCheckIn={() => refetch()}
+			/>
+
+			<CheckinChainDialog
+				isOpen={isChainOpen}
+				onClose={() => setIsChainOpen(false)}
+				eventSlug={slug}
+				onRosterChange={() => refetch()}
 			/>
 		</div>
 	);
