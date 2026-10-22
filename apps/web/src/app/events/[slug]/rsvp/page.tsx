@@ -2,6 +2,7 @@
 
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { TicketPassModal } from "@/components/tickets/ticket-pass-modal";
 import { trpc } from "@/lib/trpc";
 import {
 	AlertCircle,
@@ -36,6 +37,7 @@ export default function EventRsvpPage(): JSX.Element {
 	const [completedTicketCode, setCompletedTicketCode] = useState<string | null>(
 		null,
 	);
+	const [isPassModalOpen, setIsPassModalOpen] = useState<boolean>(false);
 
 	// Query Event data and ticket tiers
 	const { data: ticketData, isLoading: ticketsLoading } =
@@ -206,12 +208,14 @@ export default function EventRsvpPage(): JSX.Element {
 							</p>
 						</div>
 						<div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-							<Link
-								href={`/tickets/${completedTicketCode}`}
-								className="px-6 py-3 bg-stamp text-paper rounded-xl font-display font-semibold text-xs uppercase tracking-wider font-mono shadow-xs hover:opacity-90 transition-opacity"
+							<button
+								type="button"
+								onClick={() => setIsPassModalOpen(true)}
+								className="px-6 py-3 bg-stamp text-paper rounded-xl font-display font-semibold text-xs uppercase tracking-wider font-mono shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-2"
 							>
-								View Digital Ticket Pass ↗
-							</Link>
+								<TicketIcon className="w-4 h-4" />
+								View Digital Ticket Pass
+							</button>
 							<Link
 								href={`/events/${event.slug}`}
 								className="px-6 py-3 border border-perforation text-ink rounded-xl font-display font-semibold text-xs uppercase tracking-wider font-mono hover:bg-ink/5 transition-colors"
@@ -401,6 +405,11 @@ export default function EventRsvpPage(): JSX.Element {
 			</div>
 
 			<SiteFooter />
+
+			<TicketPassModal
+				ticketCode={isPassModalOpen ? completedTicketCode : null}
+				onClose={() => setIsPassModalOpen(false)}
+			/>
 		</div>
 	);
 }

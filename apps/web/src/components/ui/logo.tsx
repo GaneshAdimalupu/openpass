@@ -61,23 +61,13 @@ export function Logo({
 	}
 
 	return (
-		<div className="relative inline-flex items-center justify-center">
-			<Image
-				src="/makemyevent-light.svg"
-				alt="makemyevent logo"
-				width={width}
-				height={height}
-				className={`dark:hidden ${className}`}
-				priority={priority}
-			/>
-			<Image
-				src="/makemyevent-dark.svg"
-				alt="makemyevent logo"
-				width={width}
-				height={height}
-				className={`hidden dark:block ${className}`}
-				priority={priority}
-			/>
-		</div>
+		<Image
+			src="/makemyevent-symbol-467x512.svg"
+			alt="makemyevent logo"
+			width={width}
+			height={height}
+			className={className}
+			priority={priority}
+		/>
 	);
 }
