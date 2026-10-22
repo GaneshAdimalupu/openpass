@@ -210,6 +210,7 @@ model Event {
   scheduleItems     ScheduleItem[]
   partners          EventPartner[]
   volunteers        EventVolunteer[]
+  checkinChains     CheckinChainSession[]
 
   @@index([organizerId])
   @@index([communityId])
@@ -264,6 +265,8 @@ model IssuedTicket {
   event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   transfers     TicketTransfer[]
+  chainNodes    CheckinChainNode[]
+  guestToken    GuestTicketToken?
 
   @@index([eventId])
   @@index([ticketId])
@@ -403,6 +406,21 @@ model RsvpCheckIn {
   submission       RsvpSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submissionId])
+}
+
+// Stores the SHA-256 hash of a guest's UUID v4 cookie, linked to an IssuedTicket.
+// The raw UUID lives only in the guest's HttpOnly browser cookie and is never stored in the DB.
+// Guests who booked a ticket without signing in can use this cookie to participate in
+// QR chain check-in in the same browser they used to book.
+model GuestTicketToken {
+  id             String       @id @default(cuid())
+  tokenHash      String       @unique // SHA-256(rawUuid) stored as hex
+  issuedTicketId String       @unique
+  createdAt      DateTime     @default(now())
+
+  issuedTicket   IssuedTicket @relation(fields: [issuedTicketId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
 }
 
 model CfpForm {
@@ -560,3 +578,36 @@ model EventVolunteer {
 
 
 
+
+// QR chain check-in: ROOT -> A -> B -> C ... Each node's QR can be consumed exactly once.
+model CheckinChainSession {
+  id          String   @id @default(cuid())
+  eventId     String
+  startedById String
+  secret      String   // HMAC key for this session's QR tokens. Never returned to clients.
+  expiresAt   DateTime
+  endedAt     DateTime?
+  createdAt   DateTime @default(now())
+
+  event       Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  nodes       CheckinChainNode[]
+
+  @@index([eventId])
+}
+
+model CheckinChainNode {
+  id             String   @id @default(cuid())
+  sessionId      String
+  parentNodeId   String?  @unique // node whose QR created this one; unique = a QR is consumed once
+  issuedTicketId String?  // null only for the ROOT node
+  depth          Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  session        CheckinChainSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  parent         CheckinChainNode?   @relation("ChainLink", fields: [parentNodeId], references: [id], onDelete: Cascade)
+  child          CheckinChainNode?   @relation("ChainLink")
+  issuedTicket   IssuedTicket?       @relation(fields: [issuedTicketId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, issuedTicketId])
+  @@index([sessionId])
+}
