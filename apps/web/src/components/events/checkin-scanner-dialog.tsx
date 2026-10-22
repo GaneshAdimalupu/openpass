@@ -19,6 +19,9 @@ interface CheckinScannerDialogProps {
 	onClose: () => void;
 	eventSlug: string;
 	onSuccessCheckIn?: () => void;
+	/** When set, scanned/typed codes are handed to the caller instead of ticket check-in (used by QR chain). */
+	onCode?: (code: string) => void;
+	title?: string;
 }
 
 type ScanResultState = {
@@ -35,11 +38,16 @@ export function CheckinScannerDialog({
 	onClose,
 	eventSlug,
 	onSuccessCheckIn,
+	onCode,
+	title = "Ticket Check-In Scanner",
 }: CheckinScannerDialogProps): JSX.Element | null {
 	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const animFrameIdRef = useRef<number | null>(null);
 	const streamRef = useRef<MediaStream | null>(null);
+	// Latest callbacks, read inside processCode so the camera effect isn't restarted on every parent render.
+	const handlersRef = useRef({ onCode, onClose });
+	handlersRef.current = { onCode, onClose };
 
 	const [manualCode, setManualCode] = useState("");
 	const [cameraError, setCameraError] = useState<string | null>(null);
@@ -88,6 +96,13 @@ export function CheckinScannerDialog({
 		(rawCode: string) => {
 			const cleaned = rawCode.trim();
 			if (!cleaned || cooldown || isVerifying) return;
+
+			const handlers = handlersRef.current;
+			if (handlers.onCode) {
+				handlers.onCode(cleaned);
+				handlers.onClose();
+				return;
+			}
 
 			setLastScannedCode(cleaned);
 			setCooldown(true);
@@ -218,9 +233,7 @@ export function CheckinScannerDialog({
 				<div className="flex items-center justify-between px-6 py-4 border-b border-perforation bg-stamp/30">
 					<div className="flex items-center space-x-2">
 						<QrCode className="h-5 w-5 text-stamp-dark dark:text-stamp-light" />
-						<h2 className="font-heading text-lg font-bold text-ink">
-							Ticket Check-In Scanner
-						</h2>
+						<h2 className="font-heading text-lg font-bold text-ink">{title}</h2>
 					</div>
 					<button
 						type="button"
