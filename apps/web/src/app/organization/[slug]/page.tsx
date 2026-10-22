@@ -19,8 +19,6 @@ type RoleOption =
 	| "VIEWER"
 	| "DEVICE";
 
-type RoleFilter = "ALL" | RoleOption;
-
 const ROLE_DESCRIPTIONS: Record<RoleOption, string> = {
 	ADMIN: "Can manage members, edit organization details, and publish events",
 	EDITOR: "Can create, edit, and publish events",
@@ -49,8 +47,6 @@ export default function OrganizationOverviewPage(): JSX.Element {
 		"overview",
 	);
 	const [searchQuery, setSearchQuery] = useState<string>("");
-	const [selectedRoleFilter, setSelectedRoleFilter] =
-		useState<RoleFilter>("ALL");
 	const [toastMessage, setToastMessage] = useState<string | null>(null);
 
 	// Modals & Drawer State
@@ -63,6 +59,15 @@ export default function OrganizationOverviewPage(): JSX.Element {
 		role: RoleOption;
 	} | null>(null);
 	const [isEmbedOpen, setIsEmbedOpen] = useState<boolean>(false);
+
+	// Form States - Add Sub-Community
+	const [isCreateCommunityOpen, setIsCreateCommunityOpen] =
+		useState<boolean>(false);
+	const [commName, setCommName] = useState<string>("");
+	const [commSlug, setCommSlug] = useState<string>("");
+	const [commDescription, setCommDescription] = useState<string>("");
+	const [commCategory, setCommCategory] = useState<string>("tech");
+	const [createCommError, setCreateCommError] = useState<string | null>(null);
 
 	// Form States - Edit Organization
 	const [orgTitle, setOrgTitle] = useState<string>("");
@@ -98,10 +103,17 @@ export default function OrganizationOverviewPage(): JSX.Element {
 		{ enabled: Boolean(slug) },
 	);
 
+	const { data: communities, refetch: refetchCommunities } =
+		trpc.communities.listByOrganizer.useQuery(
+			{ organizerId: org?.id || "" },
+			{ enabled: Boolean(org?.id) },
+		);
+
 	const updateOrgMutation = trpc.organizers.updateOrganization.useMutation();
 	const addMemberMutation = trpc.organizers.addMember.useMutation();
 	const updateRoleMutation = trpc.organizers.updateMemberRole.useMutation();
 	const removeMemberMutation = trpc.organizers.removeMember.useMutation();
+	const createCommunityMutation = trpc.communities.create.useMutation();
 
 	// Populate organization edit inputs when data arrives
 	useEffect(() => {
@@ -124,23 +136,17 @@ export default function OrganizationOverviewPage(): JSX.Element {
 
 	// Filtered member list
 	const filteredMembers = useMemo(() => {
-		if (!org) return [];
-		let list = org.members;
-
-		if (selectedRoleFilter !== "ALL") {
-			list = list.filter((m) => m.role === selectedRoleFilter);
-		}
-
+		if (!org?.members) return [];
 		const q = searchQuery.trim().toLowerCase();
-		if (!q) return list;
+		if (!q) return org.members;
 
-		return list.filter(
+		return org.members.filter(
 			(m) =>
 				m.email.toLowerCase().includes(q) ||
 				m.name?.toLowerCase().includes(q) ||
 				m.role.toLowerCase().includes(q),
 		);
-	}, [org, searchQuery, selectedRoleFilter]);
+	}, [org, searchQuery]);
 
 	// Actions
 	const handleSaveOrganization = async (e: React.FormEvent) => {
@@ -228,6 +234,37 @@ export default function OrganizationOverviewPage(): JSX.Element {
 					err instanceof Error ? err.message : "Failed to remove member",
 				);
 			}
+		}
+	};
+
+	const handleCreateCommunity = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!org) return;
+		setCreateCommError(null);
+
+		try {
+			await createCommunityMutation.mutateAsync({
+				organizerId: org.id,
+				name: commName.trim(),
+				slug:
+					commSlug.trim() ||
+					commName
+						.trim()
+						.toLowerCase()
+						.replace(/[^a-z0-9-]/g, "-"),
+				description: commDescription.trim() || undefined,
+				category: commCategory,
+			});
+			await refetchCommunities();
+			setIsCreateCommunityOpen(false);
+			setCommName("");
+			setCommSlug("");
+			setCommDescription("");
+			showToast("Sub-community created successfully");
+		} catch (err: unknown) {
+			setCreateCommError(
+				err instanceof Error ? err.message : "Failed to create sub-community",
+			);
 		}
 	};
 
@@ -810,165 +847,217 @@ export default function OrganizationOverviewPage(): JSX.Element {
 							</div>
 						)}
 
-						{/* ──────────────── 4. Organization Members Section ──────────────── */}
-						{(activeTab === "overview" || activeTab === "team") && (
+						{/* ──────────────── 4. Sub-Communities & Chapters ──────────────── */}
+						{(activeTab === "overview" || activeTab === "events") && (
 							<div className="border border-perforation rounded-lg p-6 bg-paper/60 shadow-xs space-y-4">
-								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+								<div className="flex items-center justify-between">
 									<div>
 										<h3 className="font-display font-semibold text-base text-ink">
-											Organization Members
+											Sub-Communities & Chapters ({communities?.length || 0})
 										</h3>
 										<p className="text-[11px] font-mono opacity-60">
-											{(org.members?.length || 0) + 1} Total Team Members
+											Specialized groups and community chapters under {org.name}
 										</p>
 									</div>
 
 									{isOwnerOrAdmin && (
 										<button
 											type="button"
-											onClick={() => setIsAddMemberOpen(true)}
-											className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+											onClick={() => setIsCreateCommunityOpen(true)}
+											className="bg-stamp text-paper label text-xs px-3.5 py-1.5 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer"
 										>
+											<span>+ Add Sub-Community</span>
+										</button>
+									)}
+								</div>
+
+								{communities && communities.length > 0 ? (
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+										{communities.map((comm) => (
+											<Link
+												key={comm.id}
+												href={`/organization/${org.slug}/community/${comm.slug}`}
+												className="p-4 rounded-lg border border-perforation bg-paper hover:border-ink/50 transition-all shadow-xs flex flex-col justify-between gap-3 group"
+											>
+												<div className="space-y-1.5">
+													<div className="flex items-center justify-between gap-2">
+														<span className="px-2 py-0.5 rounded text-[9px] font-mono font-semibold uppercase bg-stamp/10 text-stamp border border-stamp/20">
+															{comm.category || "Community"}
+														</span>
+														<span className="font-mono text-[10px] opacity-60">
+															{comm._count?.events || 0} Events
+														</span>
+													</div>
+													<h4 className="font-display font-semibold text-sm text-ink group-hover:text-stamp transition-colors">
+														{comm.name}
+													</h4>
+													{comm.description && (
+														<p className="text-xs text-body opacity-70 line-clamp-2 leading-relaxed">
+															{comm.description}
+														</p>
+													)}
+												</div>
+
+												<div className="pt-2 border-t border-perforation flex items-center justify-between text-[11px] font-mono opacity-70">
+													<span>
+														{comm._count?.members || 0} Leads & Members
+													</span>
+													<span className="text-stamp group-hover:translate-x-0.5 transition-transform">
+														View Chapter →
+													</span>
+												</div>
+											</Link>
+										))}
+									</div>
+								) : (
+									<div className="p-6 text-center border border-dashed border-perforation rounded-lg bg-paper/40">
+										<p className="text-xs text-ink opacity-70 mb-2">
+											No sub-communities created yet.
+										</p>
+										{isOwnerOrAdmin && (
+											<button
+												type="button"
+												onClick={() => setIsCreateCommunityOpen(true)}
+												className="text-stamp label text-xs hover:underline cursor-pointer"
+											>
+												+ Create your first sub-community chapter
+											</button>
+										)}
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* ──────────────── 5. Organization Members Section ──────────────── */}
+						{(activeTab === "overview" || activeTab === "team") && (
+							<div className="border border-perforation rounded-lg p-6 bg-paper/60 shadow-xs space-y-4">
+								{/* Header Matching User Sketch */}
+								<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-perforation pb-4">
+									<div>
+										<h3 className="font-display font-semibold text-lg text-ink">
+											Organization Members
+										</h3>
+										<p className="text-xs font-mono opacity-60 mt-0.5">
+											{(org.members?.length || 0) + 1} Total Team Members
+										</p>
+									</div>
+
+									<div className="flex items-center gap-3 w-full md:w-auto">
+										{/* Search Bar */}
+										<div className="relative flex-1 md:w-64">
 											<svg
 												aria-hidden="true"
 												xmlns="http://www.w3.org/2000/svg"
-												width="12"
-												height="12"
+												width="14"
+												height="14"
 												viewBox="0 0 24 24"
 												fill="none"
 												stroke="currentColor"
-												strokeWidth="2.5"
+												strokeWidth="2"
 												strokeLinecap="round"
 												strokeLinejoin="round"
+												className="absolute left-3 top-1/2 -translate-y-1/2 text-ink opacity-40 pointer-events-none"
 											>
-												<line x1="12" x2="12" y1="5" y2="19" />
-												<line x1="5" x2="19" y1="12" y2="12" />
+												<circle cx="11" cy="11" r="8" />
+												<path d="m21 21-4.3-4.3" />
 											</svg>
-											<span>Add Member</span>
-										</button>
-									)}
-								</div>
-
-								{/* Role Filter Pills */}
-								<div className="flex flex-wrap items-center gap-2 pt-1">
-									{(
-										[
-											"ALL",
-											"ADMIN",
-											"EDITOR",
-											"COORDINATOR",
-											"VOLUNTEER",
-											"VIEWER",
-										] as RoleFilter[]
-									).map((role) => (
-										<button
-											key={role}
-											type="button"
-											onClick={() => setSelectedRoleFilter(role)}
-											className={`px-3 py-1 rounded-full text-[10px] font-mono transition-all cursor-pointer border ${
-												selectedRoleFilter === role
-													? "bg-ink text-paper border-ink font-semibold"
-													: "bg-paper border-perforation text-ink opacity-70 hover:opacity-100 hover:border-ink/40"
-											}`}
-										>
-											{role === "ALL"
-												? `All (${(org.members?.length || 0) + 1})`
-												: `${role.charAt(0) + role.slice(1).toLowerCase()} (${
-														org.members.filter((m) => m.role === role).length
-													})`}
-										</button>
-									))}
-								</div>
-
-								{/* Search Event Hosts Bar */}
-								<div className="relative flex items-center">
-									<svg
-										aria-hidden="true"
-										xmlns="http://www.w3.org/2000/svg"
-										width="14"
-										height="14"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										strokeWidth="2"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										className="absolute left-3 text-ink opacity-40 pointer-events-none"
-									>
-										<circle cx="11" cy="11" r="8" />
-										<path d="m21 21-4.3-4.3" />
-									</svg>
-									<input
-										type="text"
-										value={searchQuery}
-										onChange={(e) => setSearchQuery(e.target.value)}
-										placeholder="Search Event Hosts by name, email, or role..."
-										className="w-full bg-paper border border-perforation rounded-md pl-9 pr-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
-									/>
-								</div>
-
-								{/* Members List */}
-								<div className="space-y-2.5 pt-2">
-									{/* 1. Primary Owner Row */}
-									{(selectedRoleFilter === "ALL" ||
-										selectedRoleFilter === "ADMIN") && (
-										<div className="p-3.5 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4">
-											<div className="flex items-center gap-3">
-												<div className="w-8 h-8 rounded-full bg-stamp/20 border border-stamp/40 text-stamp flex items-center justify-center font-display font-semibold text-xs shrink-0">
-													{org.owner.name?.charAt(0).toUpperCase() || "O"}
-												</div>
-												<div>
-													<p className="font-medium text-xs text-ink">
-														{org.owner.name || org.title || org.name}
-													</p>
-													<p className="text-[11px] font-mono opacity-60">
-														Host
-													</p>
-												</div>
-											</div>
-
-											<span
-												className={`px-2.5 py-0.5 rounded text-[10px] font-semibold font-mono border ${ROLE_BADGE_STYLES.OWNER}`}
-											>
-												Owner
-											</span>
+											<input
+												type="text"
+												value={searchQuery}
+												onChange={(e) => setSearchQuery(e.target.value)}
+												placeholder="search..."
+												className="w-full bg-paper border border-perforation rounded-md pl-9 pr-3 py-1.5 text-xs text-body focus:outline-none focus:border-stamp font-mono"
+											/>
 										</div>
-									)}
 
-									{/* 2. Team Members Rows */}
+										{/* Add Member Button */}
+										{isOwnerOrAdmin && (
+											<button
+												type="button"
+												onClick={() => setIsAddMemberOpen(true)}
+												className="bg-stamp text-paper label text-xs px-4 py-2 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
+											>
+												<svg
+													aria-hidden="true"
+													xmlns="http://www.w3.org/2000/svg"
+													width="12"
+													height="12"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2.5"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+												>
+													<line x1="12" x2="12" y1="5" y2="19" />
+													<line x1="5" x2="19" y1="12" y2="12" />
+												</svg>
+												<span>add member</span>
+											</button>
+										)}
+									</div>
+								</div>
+
+								{/* Members Card Grid Matching Sketch */}
+								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+									{/* 1. Primary Owner Card */}
+									<div className="p-4 rounded-lg border border-perforation bg-paper flex items-center justify-between gap-3 shadow-2xs hover:border-ink/40 transition-all">
+										<div className="flex items-center gap-3.5 min-w-0">
+											<div className="w-11 h-11 rounded-full bg-stamp/15 border border-stamp/30 text-stamp font-display font-semibold text-sm flex items-center justify-center shrink-0">
+												{org.owner.image ? (
+													<Image
+														src={org.owner.image}
+														alt={org.owner.name || "Owner"}
+														width={44}
+														height={44}
+														unoptimized
+														className="w-full h-full rounded-full object-cover"
+													/>
+												) : (
+													(org.owner.name || org.title || org.name)
+														.charAt(0)
+														.toUpperCase()
+												)}
+											</div>
+											<div className="truncate">
+												<p className="font-semibold text-xs text-ink truncate">
+													{org.owner.name || org.title || org.name}
+												</p>
+												<span className="px-2 py-0.5 rounded text-[9px] font-mono font-semibold uppercase bg-stamp/15 text-stamp border border-stamp/20 inline-block mt-1">
+													Owner
+												</span>
+											</div>
+										</div>
+									</div>
+
+									{/* 2. Team Member Cards */}
 									{filteredMembers.map((member) => (
 										<div
 											key={member.id}
-											className="p-3.5 rounded-md border border-perforation bg-paper flex items-center justify-between gap-4"
+											className="p-4 rounded-lg border border-perforation bg-paper flex items-center justify-between gap-3 shadow-2xs hover:border-ink/40 transition-all group"
 										>
-											<div className="flex items-center gap-3">
-												<div className="w-8 h-8 rounded-full bg-perforation/30 border border-perforation text-ink flex items-center justify-center font-display font-semibold text-xs shrink-0">
-													{member.name?.charAt(0).toUpperCase() ||
-														member.email.charAt(0).toUpperCase()}
+											<div className="flex items-center gap-3.5 min-w-0">
+												<div className="w-11 h-11 rounded-full bg-perforation/30 border border-perforation text-ink font-display font-semibold text-xs flex items-center justify-center shrink-0 overflow-hidden">
+													{member.user?.image ? (
+														<Image
+															src={member.user.image}
+															alt={member.name || member.email}
+															width={44}
+															height={44}
+															unoptimized
+															className="w-full h-full rounded-full object-cover"
+														/>
+													) : (
+														(member.name || member.email)
+															.charAt(0)
+															.toUpperCase()
+													)}
 												</div>
-												<div>
-													<p className="font-medium text-xs text-ink">
+												<div className="truncate">
+													<p className="font-semibold text-xs text-ink truncate">
 														{member.name || member.email.split("@")[0]}
 													</p>
-													<p className="text-[11px] font-mono opacity-60">
-														{member.email}
-													</p>
-												</div>
-											</div>
-
-											<div className="flex items-center gap-3">
-												<span
-													className={`px-2.5 py-0.5 rounded text-[10px] font-semibold font-mono border ${
-														ROLE_BADGE_STYLES[member.role] ||
-														ROLE_BADGE_STYLES.VIEWER
-													}`}
-												>
-													{member.role.charAt(0) +
-														member.role.slice(1).toLowerCase()}
-												</span>
-
-												{isOwnerOrAdmin && (
-													<div className="flex items-center gap-1.5">
+													{isOwnerOrAdmin ? (
 														<button
 															type="button"
 															onClick={() =>
@@ -979,64 +1068,94 @@ export default function OrganizationOverviewPage(): JSX.Element {
 																	role: member.role as RoleOption,
 																})
 															}
-															aria-label={`Edit role for ${member.email}`}
-															title="Edit Role"
-															className="p-1.5 rounded text-ink opacity-60 hover:opacity-100 hover:text-stamp hover:bg-perforation/20 transition-all cursor-pointer"
+															title="Click to Change Role"
+															className={`px-2 py-0.5 rounded text-[9px] font-mono font-semibold uppercase border inline-flex items-center gap-1 mt-1 hover:opacity-80 transition-opacity cursor-pointer ${
+																ROLE_BADGE_STYLES[member.role] ||
+																ROLE_BADGE_STYLES.VIEWER
+															}`}
 														>
-															<svg
-																aria-hidden="true"
-																xmlns="http://www.w3.org/2000/svg"
-																width="13"
-																height="13"
-																viewBox="0 0 24 24"
-																fill="none"
-																stroke="currentColor"
-																strokeWidth="2"
-																strokeLinecap="round"
-																strokeLinejoin="round"
-															>
-																<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-																<path d="m15 5 4 4" />
-															</svg>
+															<span>{member.role}</span>
+															<span className="text-[8px] opacity-70">✎</span>
 														</button>
-														<button
-															type="button"
-															onClick={() =>
-																handleRemoveMember(member.id, member.email)
-															}
-															aria-label={`Remove member ${member.email}`}
-															title="Remove Member"
-															className="p-1.5 rounded text-alert opacity-70 hover:opacity-100 hover:bg-alert/10 transition-all cursor-pointer"
+													) : (
+														<span
+															className={`px-2 py-0.5 rounded text-[9px] font-mono font-semibold uppercase border inline-block mt-1 ${
+																ROLE_BADGE_STYLES[member.role] ||
+																ROLE_BADGE_STYLES.VIEWER
+															}`}
 														>
-															<svg
-																aria-hidden="true"
-																xmlns="http://www.w3.org/2000/svg"
-																width="13"
-																height="13"
-																viewBox="0 0 24 24"
-																fill="none"
-																stroke="currentColor"
-																strokeWidth="2"
-																strokeLinecap="round"
-																strokeLinejoin="round"
-															>
-																<path d="M3 6h18" />
-																<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-																<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-															</svg>
-														</button>
-													</div>
-												)}
+															{member.role}
+														</span>
+													)}
+												</div>
 											</div>
+
+											{isOwnerOrAdmin && (
+												<div className="flex items-center gap-1 shrink-0">
+													<button
+														type="button"
+														onClick={() =>
+															setEditingMember({
+																id: member.id,
+																email: member.email,
+																name: member.name,
+																role: member.role as RoleOption,
+															})
+														}
+														title="Change Role"
+														className="p-1.5 rounded text-ink opacity-60 hover:opacity-100 hover:text-stamp hover:bg-perforation/20 transition-all cursor-pointer"
+													>
+														<svg
+															aria-hidden="true"
+															className="w-3.5 h-3.5"
+															xmlns="http://www.w3.org/2000/svg"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															strokeWidth="2"
+															strokeLinecap="round"
+															strokeLinejoin="round"
+														>
+															<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+															<path d="m15 5 4 4" />
+														</svg>
+													</button>
+													<button
+														type="button"
+														onClick={() =>
+															handleRemoveMember(member.id, member.email)
+														}
+														title="Remove Member from Organization"
+														className="p-1.5 rounded text-alert opacity-60 hover:opacity-100 hover:bg-alert/15 transition-all cursor-pointer"
+													>
+														<svg
+															aria-hidden="true"
+															className="w-3.5 h-3.5"
+															xmlns="http://www.w3.org/2000/svg"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															strokeWidth="2"
+															strokeLinecap="round"
+															strokeLinejoin="round"
+														>
+															<path d="M3 6h18" />
+															<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+															<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+														</svg>
+													</button>
+												</div>
+											)}
 										</div>
 									))}
 
-									{filteredMembers.length === 0 &&
-										(selectedRoleFilter !== "ALL" || searchQuery) && (
-											<p className="text-xs font-mono opacity-50 text-center py-4">
-												No members match the selected filter.
+									{filteredMembers.length === 0 && searchQuery && (
+										<div className="col-span-full text-center py-6 border border-dashed border-perforation rounded-lg">
+											<p className="text-xs font-mono opacity-60">
+												No members match "{searchQuery}".
 											</p>
-										)}
+										</div>
+									)}
 								</div>
 							</div>
 						)}
@@ -1484,6 +1603,148 @@ export default function OrganizationOverviewPage(): JSX.Element {
 								Copy Snippet
 							</button>
 						</div>
+					</div>
+				</div>
+			)}
+
+			{/* ──────────────── MODAL 5: Create Sub-Community Chapter ──────────────── */}
+			{isCreateCommunityOpen && (
+				<div
+					role="dialog"
+					aria-modal="true"
+					className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-xs flex items-center justify-center p-4"
+				>
+					<div className="w-full max-w-md bg-paper border border-perforation rounded-lg p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+						<div className="flex items-center justify-between border-b border-perforation pb-3">
+							<h3 className="font-display font-semibold text-base text-ink">
+								Create Sub-Community Chapter
+							</h3>
+							<button
+								type="button"
+								onClick={() => setIsCreateCommunityOpen(false)}
+								className="text-ink opacity-60 hover:opacity-100 p-1 text-sm cursor-pointer"
+								aria-label="Close modal"
+							>
+								<X className="w-4 h-4" />
+							</button>
+						</div>
+
+						{createCommError && (
+							<div className="p-3 bg-alert/10 border border-alert/30 rounded text-alert text-xs">
+								{createCommError}
+							</div>
+						)}
+
+						<form onSubmit={handleCreateCommunity} className="space-y-4">
+							<div>
+								<label
+									htmlFor="commNameInput"
+									className="block label text-xs mb-1"
+								>
+									Community Name *
+								</label>
+								<input
+									id="commNameInput"
+									type="text"
+									required
+									value={commName}
+									onChange={(e) => {
+										setCommName(e.target.value);
+										if (!commSlug) {
+											setCommSlug(
+												e.target.value
+													.toLowerCase()
+													.replace(/[^a-z0-9-]/g, "-")
+													.replace(/-+/g, "-"),
+											);
+										}
+									}}
+									placeholder="e.g. Playfest Gaming, FOSS Design Guild"
+									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
+								/>
+							</div>
+
+							<div>
+								<label
+									htmlFor="commSlugInput"
+									className="block label text-xs mb-1"
+								>
+									URL Slug *
+								</label>
+								<div className="flex items-center">
+									<span className="bg-perforation/30 border border-r-0 border-perforation rounded-l-md px-3 py-2 text-[11px] font-mono opacity-70">
+										/community/
+									</span>
+									<input
+										id="commSlugInput"
+										type="text"
+										required
+										value={commSlug}
+										onChange={(e) => setCommSlug(e.target.value)}
+										placeholder="playfest-gaming"
+										className="w-full bg-paper border border-perforation rounded-r-md px-3 py-2 text-xs font-mono text-body focus:outline-none focus:border-stamp"
+									/>
+								</div>
+							</div>
+
+							<div>
+								<label
+									htmlFor="commCategoryInput"
+									className="block label text-xs mb-1"
+								>
+									Category
+								</label>
+								<select
+									id="commCategoryInput"
+									value={commCategory}
+									onChange={(e) => setCommCategory(e.target.value)}
+									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
+								>
+									<option value="tech">Technology & Developers</option>
+									<option value="gaming">Gaming & Esports</option>
+									<option value="design">Design & Creative Arts</option>
+									<option value="business">Business & Entrepreneurship</option>
+									<option value="education">Student & Academic</option>
+									<option value="hobby">Hobby & Recreation</option>
+								</select>
+							</div>
+
+							<div>
+								<label
+									htmlFor="commDescInput"
+									className="block label text-xs mb-1"
+								>
+									Description
+								</label>
+								<textarea
+									id="commDescInput"
+									rows={3}
+									value={commDescription}
+									onChange={(e) => setCommDescription(e.target.value)}
+									placeholder="What is the mission of this community chapter?"
+									className="w-full bg-paper border border-perforation rounded-md px-3 py-2 text-xs text-body focus:outline-none focus:border-stamp"
+								/>
+							</div>
+
+							<div className="flex items-center justify-end gap-3 pt-3 border-t border-perforation">
+								<button
+									type="button"
+									onClick={() => setIsCreateCommunityOpen(false)}
+									className="px-4 py-2 rounded text-xs label text-ink opacity-70 hover:opacity-100 cursor-pointer"
+								>
+									Cancel
+								</button>
+								<button
+									type="submit"
+									disabled={createCommunityMutation.isPending}
+									className="bg-stamp text-paper label text-xs px-5 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+								>
+									{createCommunityMutation.isPending
+										? "Creating..."
+										: "Create Sub-Community"}
+								</button>
+							</div>
+						</form>
 					</div>
 				</div>
 			)}

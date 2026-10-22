@@ -602,7 +602,7 @@ export function OnboardingFlow(): JSX.Element {
 								<span className="px-3 py-3 text-sm text-ink opacity-50 bg-perforation/20 font-mono border-r border-perforation">
 									{typeof window !== "undefined"
 										? `${window.location.host}/`
-										: "openpass.me/"}
+										: "makemyevent.org/"}
 								</span>
 								<input
 									id="orgSlug"

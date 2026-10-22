@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { MemberRole, PrismaClient } from "db";
 import { z } from "zod";
+import { sendInviteEmail } from "../services/email.service";
 import { authedProcedure, publicProcedure, router } from "./trpc";
 
 /**
@@ -48,7 +49,7 @@ async function assertOrganizerAdmin(
 ) {
 	const organizer = await client.organizer.findUnique({
 		where: { id: organizerId },
-		select: { id: true, ownerId: true },
+		select: { id: true, ownerId: true, name: true, slug: true },
 	});
 	if (!organizer) {
 		throw new TRPCError({
@@ -147,33 +148,47 @@ export const organizersRouter = router({
 			});
 		}),
 
-	myOrganizers: authedProcedure.query(({ ctx }) => {
-		return ctx.prisma.organizer.findMany({
-			where: {
-				OR: [
-					{ ownerId: ctx.userId },
-					{
-						members: {
-							some: { userId: ctx.userId },
-						},
+	myOrganizers: authedProcedure.query(async ({ ctx }) => {
+		const select = {
+			id: true,
+			name: true,
+			title: true,
+			slug: true,
+			type: true,
+			category: true,
+			logoUrl: true,
+			createdAt: true,
+			_count: {
+				select: { events: true, members: true },
+			},
+		};
+
+		const [owned, memberOf] = await Promise.all([
+			ctx.prisma.organizer.findMany({
+				where: { ownerId: ctx.userId },
+				select,
+			}),
+			ctx.prisma.organizer.findMany({
+				where: {
+					members: {
+						some: { userId: ctx.userId },
 					},
-				],
-			},
-			orderBy: { createdAt: "desc" },
-			select: {
-				id: true,
-				name: true,
-				title: true,
-				slug: true,
-				type: true,
-				category: true,
-				logoUrl: true,
-				createdAt: true,
-				_count: {
-					select: { events: true, members: true },
 				},
-			},
-		});
+				select,
+			}),
+		]);
+
+		const seen = new Set<string>();
+		const result: typeof owned = [];
+
+		for (const org of [...owned, ...memberOf]) {
+			if (!seen.has(org.id)) {
+				seen.add(org.id);
+				result.push(org);
+			}
+		}
+
+		return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 	}),
 
 	getOverview: publicProcedure
@@ -362,7 +377,7 @@ export const organizersRouter = router({
 				select: { id: true, name: true },
 			});
 
-			return ctx.prisma.organizerMember.upsert({
+			const member = await ctx.prisma.organizerMember.upsert({
 				where: {
 					organizerId_email: {
 						organizerId: input.organizerId,
@@ -382,6 +397,22 @@ export const organizersRouter = router({
 					userId: existingUser?.id || null,
 				},
 			});
+
+			// Dispatch transactional invitation email via Resend
+			const appUrl =
+				process.env.NEXT_PUBLIC_APP_URL ||
+				process.env.APP_URL ||
+				"http://localhost:3000";
+			sendInviteEmail({
+				toEmail: normalizedEmail,
+				recipientName: input.name || existingUser?.name,
+				role: input.role,
+				targetName: org.name,
+				type: "organization",
+				actionUrl: `${appUrl}/organization/${org.slug}`,
+			}).catch((err) => console.error("Failed to send org invite email:", err));
+
+			return member;
 		}),
 
 	updateMemberRole: authedProcedure

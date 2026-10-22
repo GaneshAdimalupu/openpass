@@ -1,7 +1,5 @@
 <div align="center">
-  <img src="apps/web/public/makemyevent-light.svg" alt="makemyevent Icon" width="100" />
-  <br />
-  <img src="apps/web/public/makemyevent-wordmark-light.svg" alt="makemyevent Logo" width="340" />
+  <img src="apps/web/public/makemyevent-symbol-467x512.svg" alt="makemyevent" width="100" />
   <br />
   <br />
   <a href="https://turbo.build/">

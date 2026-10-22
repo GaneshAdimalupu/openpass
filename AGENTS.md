@@ -77,6 +77,33 @@ just the enforcement rule:
 - `apps/api` is the only thing that talks to the database. Nothing
   in `apps/web` or `apps/mobile` imports `packages/db` directly.
 
+## Security-critical code
+
+Read `docs/security.md` in full before touching anything in this list.
+These rules are not suggestions.
+
+- **Auth changes require a security review.** Any PR that modifies
+  `apps/web/src/lib/auth.ts`, NextAuth callbacks, session handling,
+  or OAuth provider configuration must be reviewed against
+  `docs/security.md` before merge. "It fixes the bug" is not
+  sufficient — it must fix the bug without weakening security.
+- **Never bypass session revocation.** The `Session` table supports
+  remote device revocation (`logoutDevice`, `logoutAllDevices` in
+  `users.router.ts`). Any "self-healing" or retry logic for missing
+  session records must distinguish "never created" from "explicitly
+  revoked." The `sessionRecordedAt` JWT flag exists for this —
+  read its comments in `auth.ts` before changing session logic.
+- **Select only what you need.** Every `prisma.*.findUnique` /
+  `findFirst` / `findMany` must use an explicit `select` with only
+  the fields the calling code actually reads. Never select `email`,
+  `passwordHash`, or relations you don't use. This is enforced in
+  `docs/security.md` § Data exposure.
+- **OAuth `allowDangerousEmailAccountLinking`** is enabled because
+  both Google and GitHub verify email ownership. If adding a new
+  OAuth provider, verify it also guarantees email verification
+  before enabling this flag — document the justification in a
+  comment next to the flag.
+
 ## File & naming conventions
 
 - Files: `kebab-case.ts`. Components: `PascalCase` for the export,
@@ -106,3 +133,12 @@ just the enforcement rule:
   contract as a side effect of an unrelated fix.
 - Do not use the `browser_subagent` for purely capturing screenshots of complex React state or multi-step modal workflows (it is prone to infinite loops and timeouts). Verify UI changes manually or ask the user to verify.
 - Do not use emojis in UI components, documentation, or code. Use clean SVG icons or Lucide icons (`lucide-react`) per `docs/design-system.md`.
+- Do not `return null` from NextAuth's `jwt` callback without
+  understanding the consequences — it destroys the user's session
+  cookie and can cause login loops if the trigger condition recurs.
+- Do not recreate deleted `Session` records unconditionally. Deleted
+  sessions may be intentional revocations. Always check the
+  `sessionRecordedAt` token flag first.
+- Do not catch and silently swallow errors in auth callbacks without
+  logging them. Use `console.error` with a descriptive prefix so
+  issues are traceable in production logs.

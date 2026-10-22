@@ -56,7 +56,7 @@ export const metadata: Metadata = {
 		siteName: "makemyevent",
 		images: [
 			{
-				url: "/og-image.png",
+				url: "/makemyevent-symbol-575x630.png",
 				width: 1200,
 				height: 630,
 				alt: "makemyevent preview",
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
 		card: "summary_large_image",
 		title: "makemyevent | Find and host community events",
 		description: "Open-source event ticketing and management platform.",
-		images: ["/og-image.png"],
+		images: ["/makemyevent-symbol-575x630.png"],
 	},
 	verification: {
 		google: "EO9SG-z--GhL_8DQ1ywwXUUHJPIIGJiLKhQITqxbdOQ",
@@ -78,22 +78,16 @@ export const metadata: Metadata = {
 	},
 	icons: {
 		icon: [
-			{ url: "/makemyevent.svg", type: "image/svg+xml" },
-			{
-				url: "/makemyevent-light.svg",
-				media: "(prefers-color-scheme: light)",
-				type: "image/svg+xml",
-			},
-			{
-				url: "/makemyevent-dark.svg",
-				media: "(prefers-color-scheme: dark)",
-				type: "image/svg+xml",
-			},
+			{ url: "/makemyevent-symbol-467x512.svg", type: "image/svg+xml" },
 			{ url: "/favicon.ico", sizes: "any" },
 		],
 		shortcut: "/favicon.ico",
 		apple: [
-			{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+			{
+				url: "/makemyevent-symbol-164x180.png",
+				sizes: "180x180",
+				type: "image/png",
+			},
 		],
 	},
 	manifest: "/manifest.json",
@@ -116,23 +110,11 @@ export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
 			<head>
 				<link
 					rel="icon"
-					href="/makemyevent.svg"
+					href="/makemyevent-symbol-467x512.svg"
 					type="image/svg+xml"
 					sizes="any"
 				/>
-				<link
-					rel="icon"
-					href="/makemyevent-light.svg"
-					type="image/svg+xml"
-					media="(prefers-color-scheme: light)"
-				/>
-				<link
-					rel="icon"
-					href="/makemyevent-dark.svg"
-					type="image/svg+xml"
-					media="(prefers-color-scheme: dark)"
-				/>
-				<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+				<link rel="apple-touch-icon" href="/makemyevent-symbol-164x180.png" />
 			</head>
 			<body
 				className={`${archivo.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}
