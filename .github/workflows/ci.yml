@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [development, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+          POSTGRES_DB: openevents_ci
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:${{ secrets.CI_POSTGRES_PASSWORD }}@localhost:5432/openevents_ci
+      DIRECT_URL: postgresql://postgres:${{ secrets.CI_POSTGRES_PASSWORD }}@localhost:5432/openevents_ci
+      RUN_DB_TESTS: "1"
+      AUTH_SECRET: test-auth-secret-for-ci
+      NEXTAUTH_SECRET: test-auth-secret-for-ci
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: test-supabase-service-role-key
+      RESEND_API_KEY: test-resend-api-key
+      EMAIL_FROM: test@example.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint and format (Biome)
+        run: pnpm biome ci .
+
+      - name: Prisma schema valid and client generated
+        run: |
+          pnpm --filter db exec prisma validate
+          pnpm --filter db exec prisma generate
+
+      - name: Migrations build a fresh DB that matches schema.prisma
+        run: |
+          pnpm --filter db exec prisma migrate deploy
+          pnpm --filter db exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+      - name: Type check
+        run: |
+          pnpm --filter web exec tsc --noEmit
+          pnpm --filter api exec tsc --noEmit
+
+      - name: Tests
+        run: |
+          pnpm --filter web exec vitest run
+          pnpm --filter api exec vitest run
+
+      - name: Build web
+        run: pnpm --filter web build
