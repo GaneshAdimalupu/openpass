@@ -18,6 +18,7 @@ import {
 import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { JSX, MouseEvent, TouchEvent } from "react";
+import { Toast, useToast } from "@/components/ui/toast";
 
 export interface TicketLayer {
 	id: string;
@@ -173,6 +174,7 @@ export function TicketDesignerModal({
 	location,
 	codePrefix = "OPT",
 }: TicketDesignerModalProps): JSX.Element | null {
+	const { toast, showToast, dismissToast } = useToast();
 	const [layers, setLayers] = useState<TicketLayer[]>(() => {
 		if (initialLayout?.layers && initialLayout.layers.length > 0) {
 			return initialLayout.layers;
@@ -344,7 +346,7 @@ export function TicketDesignerModal({
 
 	const handleAddQrLayer = () => {
 		if (layers.some((l) => l.type === "qr")) {
-			alert("A QR layer already exists on this ticket pass.");
+			showToast("A QR layer already exists on this ticket pass.", "error");
 			return;
 		}
 		const newId = `qr_${Date.now()}`;
@@ -363,7 +365,7 @@ export function TicketDesignerModal({
 
 	const handleDeleteLayer = (layerId: string) => {
 		if (layers.length <= 1) {
-			alert("Ticket must contain at least one layer.");
+			showToast("Ticket must contain at least one layer.", "error");
 			return;
 		}
 		setLayers((prev) => prev.filter((l) => l.id !== layerId));
@@ -1066,6 +1068,7 @@ export function TicketDesignerModal({
 						</button>
 					</div>
 				</div>
+				<Toast toast={toast} onDismiss={dismissToast} />
 			</div>
 		</div>
 	);

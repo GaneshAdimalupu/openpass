@@ -2,6 +2,7 @@
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { TicketPassModal } from "@/components/tickets/ticket-pass-modal";
+import { Toast, useToast } from "@/components/ui/toast";
 import { trpc } from "@/lib/trpc";
 import {
 	CopyPlus,
@@ -49,6 +50,7 @@ export default function DashboardPage(): JSX.Element {
 
 function DashboardContent(): JSX.Element {
 	const { data: session, status } = useSession();
+	const { toast, showToast, dismissToast } = useToast();
 	const searchParams = useSearchParams();
 	const actionParam = searchParams.get("action");
 	const tabParam = searchParams.get("tab");
@@ -94,9 +96,10 @@ function DashboardContent(): JSX.Element {
 			utils.events.byOrganizer.invalidate();
 			utils.organizers.myOrganizers.invalidate();
 			setDeletingEvent(null);
+			showToast("Event deleted.");
 		},
 		onError: (err) => {
-			alert(err.message);
+			showToast(err.message || "Could not delete event.", "error");
 		},
 	});
 
@@ -164,7 +167,10 @@ function DashboardContent(): JSX.Element {
 					: [{ name: "General Pass", price: 0, quantity: 300 }],
 			});
 		} catch (err: unknown) {
-			alert(err instanceof Error ? err.message : "Failed to duplicate event");
+			showToast(
+				err instanceof Error ? err.message : "Failed to duplicate event",
+				"error",
+			);
 		} finally {
 			setDuplicatingEventId(null);
 		}
@@ -1034,6 +1040,8 @@ function DashboardContent(): JSX.Element {
 				ticketCode={selectedTicketCode}
 				onClose={() => setSelectedTicketCode(null)}
 			/>
+
+			<Toast toast={toast} onDismiss={dismissToast} />
 		</div>
 	);
 }

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { use, useState } from "react";
 import type { JSX } from "react";
+import { Toast, useToast } from "@/components/ui/toast";
 
 interface CommunityPageProps {
 	params: Promise<{
@@ -24,6 +25,7 @@ export default function SubCommunityPage({
 
 	const { data: session } = useSession();
 	const userId = session?.user?.id;
+	const { toast, showToast, dismissToast } = useToast();
 
 	const [isAddLeadOpen, setIsAddLeadOpen] = useState<boolean>(false);
 	const [newLeadEmail, setNewLeadEmail] = useState<string>("");
@@ -32,13 +34,6 @@ export default function SubCommunityPage({
 		"ADMIN" | "COORDINATOR" | "VOLUNTEER"
 	>("ADMIN");
 	const [addLeadError, setAddLeadError] = useState<string | null>(null);
-
-	const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-	const showToast = (msg: string) => {
-		setToastMessage(msg);
-		setTimeout(() => setToastMessage(null), 3000);
-	};
 
 	const {
 		data: community,
@@ -146,13 +141,7 @@ export default function SubCommunityPage({
 	return (
 		<div className="min-h-screen bg-paper flex flex-col">
 			<SiteHeader />
-
-			{/* Floating Toast Notification */}
-			{toastMessage && (
-				<div className="fixed bottom-6 right-6 z-50 bg-ink text-paper px-4 py-3 rounded-lg shadow-lg border border-perforation text-xs font-mono animate-in fade-in slide-in-from-bottom-2">
-					{toastMessage}
-				</div>
-			)}
+			<Toast toast={toast} onDismiss={dismissToast} />
 
 			<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-8 space-y-6">
 				{/* Top Navigation & Breadcrumb */}

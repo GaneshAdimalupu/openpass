@@ -6,6 +6,7 @@ import {
 	toPreviewAmount,
 } from "@/lib/numeric-field";
 import { trpc } from "@/lib/trpc";
+import { Toast, useToast } from "@/components/ui/toast";
 import {
 	AlertCircle,
 	Calendar,
@@ -62,6 +63,7 @@ interface LocalTier {
 export default function ManageTicketsPage(): JSX.Element {
 	const params = useParams();
 	const slug = params.slug as string;
+	const { toast, showToast, dismissToast } = useToast();
 
 	// Query event tickets & stats
 	const { data, isLoading } = trpc.events.ticketsGet.useQuery(
@@ -88,14 +90,15 @@ export default function ManageTicketsPage(): JSX.Element {
 				// to replace the local copy.
 				markChanges(false);
 				utils.events.ticketsGet.invalidate({ slug });
-				setToastMessage("Ticket configuration saved successfully!");
-				setTimeout(() => setToastMessage(null), 3000);
+				showToast("Ticket configuration saved successfully!");
 			},
 			onError: (err) => {
-				alert(err.message);
+				showToast(
+					err.message || "Could not save ticket configuration.",
+					"error",
+				);
 			},
 		});
-	const [toastMessage, setToastMessage] = useState<string | null>(null);
 	const [copiedLinkTierId, setCopiedLinkTierId] = useState<string | null>(null);
 
 	// Modal & Panel state
@@ -360,8 +363,9 @@ export default function ManageTicketsPage(): JSX.Element {
 	const handleDeleteTier = (index: number) => {
 		const t = tiers[index];
 		if (t.confirmedCount && t.confirmedCount > 0) {
-			alert(
+			showToast(
 				"Cannot delete this tier because attendees already hold confirmed passes. You can unpublish/close it instead.",
+				"error",
 			);
 			return;
 		}
@@ -404,6 +408,7 @@ export default function ManageTicketsPage(): JSX.Element {
 			? `${origin}/events/${slug}?ticket=${tierId}`
 			: `${origin}/events/${slug}`;
 		navigator.clipboard.writeText(link);
+		showToast("Ticket link copied to clipboard.");
 		setCopiedLinkTierId(tierId || "default");
 		setTimeout(() => setCopiedLinkTierId(null), 2000);
 	};
@@ -432,14 +437,6 @@ export default function ManageTicketsPage(): JSX.Element {
 
 	return (
 		<div className="flex-1 overflow-y-auto bg-paper text-ink pb-24">
-			{/* Toast Notification */}
-			{toastMessage && (
-				<div className="fixed bottom-6 right-6 z-50 bg-stamp text-paper px-4 py-3 rounded-lg shadow-xl flex items-center gap-2 text-sm font-medium animate-in fade-in slide-in-from-bottom-2">
-					<Check className="w-4 h-4 text-paper" />
-					{toastMessage}
-				</div>
-			)}
-
 			<div className="max-w-6xl mx-auto p-6 md:p-8 space-y-8">
 				{/* Top Header */}
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-perforation pb-6">
@@ -1624,8 +1621,7 @@ export default function ManageTicketsPage(): JSX.Element {
 							setTiers(updated);
 							markChanges(true);
 						}
-						setToastMessage("Ticket pass design saved successfully!");
-						setTimeout(() => setToastMessage(null), 3000);
+						showToast("Ticket pass design saved successfully!");
 					}}
 					initialLayout={
 						designerTierIndex !== null
@@ -1650,6 +1646,7 @@ export default function ManageTicketsPage(): JSX.Element {
 					codePrefix={codePrefix}
 				/>
 			)}
+			<Toast toast={toast} onDismiss={dismissToast} />
 		</div>
 	);
 }

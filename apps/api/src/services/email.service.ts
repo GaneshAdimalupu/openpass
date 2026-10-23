@@ -33,8 +33,9 @@ export async function sendTicketEmail(params: TicketEmailParams) {
 		const appUrl =
 			process.env.NEXT_PUBLIC_APP_URL ||
 			process.env.APP_URL ||
-			"http://localhost:3000";
+			"https://makemyevent.org";
 		const passUrl = `${appUrl}/tickets/${params.ticketCode}`;
+		const brandLogoUrl = `${appUrl}/makemyevent-symbol-467x512.svg`;
 
 		// 1. Render PNG Buffer for inline QR code verification token
 		const qrBuffer = await QRCode.toBuffer(params.qrToken, {
@@ -82,6 +83,7 @@ export async function sendTicketEmail(params: TicketEmailParams) {
 
 						<!-- Header Banner -->
 						<div style="background-color: #1f7a4d; padding: 24px; text-align: center; color: #ffffff;">
+							<img src="${brandLogoUrl}" alt="makemyevent logo" style="width: 48px; height: 48px; display: block; margin: 0 auto 10px; border-radius: 12px; background: rgba(255,255,255,0.12); padding: 6px;" />
 							<h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">makemyevent</h1>
 							<p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;">Your Event Pass is Confirmed!</p>
 						</div>

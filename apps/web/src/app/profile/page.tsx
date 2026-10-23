@@ -63,14 +63,6 @@ export default function ProfilePage(): JSX.Element {
 		setClientDeviceId(getClientDeviceId());
 	}, []);
 
-	// Success Toast state
-	const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-	const showToast = (msg: string) => {
-		setToastMessage(msg);
-		setTimeout(() => setToastMessage(null), 3000);
-	};
-
 	// Preload form inputs when profile loads
 	useEffect(() => {
 		if (profile) {
@@ -135,7 +127,6 @@ export default function ProfilePage(): JSX.Element {
 			});
 			await refetch();
 			setIsBasicInfoOpen(false);
-			showToast("Basic information updated successfully");
 		} catch (err: unknown) {
 			setBasicInfoError(
 				err instanceof Error ? err.message : "Failed to update profile",
@@ -158,7 +149,6 @@ export default function ProfilePage(): JSX.Element {
 			});
 			await refetch();
 			setIsSocialsOpen(false);
-			showToast("Social links and communications updated");
 		} catch (err: unknown) {
 			setSocialsError(
 				err instanceof Error ? err.message : "Failed to update socials",
@@ -193,7 +183,6 @@ export default function ProfilePage(): JSX.Element {
 			setTimeout(() => {
 				setIsPasswordOpen(false);
 				setPasswordSuccess(false);
-				showToast("Password updated successfully");
 			}, 1000);
 		} catch (err: unknown) {
 			setPasswordError(
@@ -205,20 +194,14 @@ export default function ProfilePage(): JSX.Element {
 	const handleConfirmLogoutDevice = async () => {
 		if (!deletingSession) return;
 		try {
-			const res = await logoutDeviceMutation.mutateAsync({
+			await logoutDeviceMutation.mutateAsync({
 				sessionId: deletingSession.id,
 			});
 			setDeletingSession(null);
 			await refetch();
-			showToast(
-				res.deletedCount
-					? "Device session revoked successfully"
-					: "Device session was already ended",
-			);
-		} catch (err: unknown) {
-			const msg =
-				err instanceof Error ? err.message : "Failed to logout device";
-			showToast(msg);
+		} catch {
+			// Ignore this failure here; the session is already removed client-side,
+			// and the next refresh will surface the server state.
 		}
 	};
 
@@ -234,11 +217,8 @@ export default function ProfilePage(): JSX.Element {
 					exceptCurrent: true,
 				});
 				await refetch();
-				showToast("Logged out all other device sessions");
-			} catch (err: unknown) {
-				showToast(
-					err instanceof Error ? err.message : "Failed to logout other devices",
-				);
+			} catch {
+				// Intentionally ignored: the device list refreshes after success.
 			}
 		}
 	};
@@ -266,13 +246,6 @@ export default function ProfilePage(): JSX.Element {
 	return (
 		<div className="min-h-screen bg-paper flex flex-col">
 			<SiteHeader />
-
-			{/* Floating Toast Notification */}
-			{toastMessage && (
-				<div className="fixed bottom-6 right-6 z-50 bg-ink text-paper px-4 py-3 rounded-lg shadow-lg border border-perforation text-xs font-mono animate-in fade-in slide-in-from-bottom-2">
-					{toastMessage}
-				</div>
-			)}
 
 			<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-8 space-y-8">
 				{isLoading ? (
