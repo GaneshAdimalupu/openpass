@@ -128,7 +128,7 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 					<Link
 						href={
 							status === "authenticated"
-								? "/dashboard?action=create"
+								? "/dashboard"
 								: "/login?callbackUrl=/dashboard"
 						}
 						className="group inline-flex items-center gap-2 px-3 sm:pl-4 sm:pr-1 py-1 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs"
