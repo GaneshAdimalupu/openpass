@@ -1,26 +1,161 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { trpc } from "@/lib/trpc";
 import {
-	Eye,
-	EyeOff,
+	Copy,
 	Edit3,
 	ExternalLink,
-	Copy,
-	Trash2,
+	Eye,
+	EyeOff,
 	ImagePlus,
+	Trash2,
 	X,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Toast, useToast } from "@/components/ui/toast";
+import { trpc } from "@/lib/trpc";
+
+const FORMAT_OPTIONS = [
+	{ value: "meetup", label: "Meetup" },
+	{ value: "conference", label: "Conference" },
+	{ value: "workshop", label: "Workshop" },
+	{ value: "hackathon", label: "Hackathon" },
+	{ value: "webinar", label: "Webinar" },
+] as const;
+
+const TOPIC_OPTIONS = [
+	{ value: "technology", label: "Technology" },
+	{ value: "opensource", label: "Open Source" },
+	{ value: "business", label: "Business" },
+	{ value: "design", label: "Design" },
+	{ value: "science", label: "Science" },
+	{ value: "arts", label: "Arts" },
+	{ value: "social", label: "Social" },
+	{ value: "campus", label: "Campus" },
+	{ value: "other", label: "Other" },
+] as const;
+
+type EventFormat = (typeof FORMAT_OPTIONS)[number]["value"];
+type EventTopic = (typeof TOPIC_OPTIONS)[number]["value"];
+type EventStatus = "draft" | "published" | "cancelled" | "completed";
+
+const STATUS_META: Record<
+	EventStatus,
+	{ label: string; className: string; pulse?: boolean }
+> = {
+	published: {
+		label: "Live",
+		className: "border-stamp text-stamp bg-stamp/10",
+		pulse: true,
+	},
+	draft: {
+		label: "Draft",
+		className: "border-perforation text-ink/70 bg-ink/5",
+	},
+	cancelled: {
+		label: "Cancelled",
+		className: "border-alert text-alert bg-alert/10",
+	},
+	completed: {
+		label: "Completed",
+		className: "border-perforation text-ink/70 bg-ink/5",
+	},
+};
+
+/* ---------- date helpers (module level, so effects don't depend on them) ---------- */
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const toDateInput = (d: Date) =>
+	`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const toTimeInput = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+function splitDateTime(value?: string | Date | null): [string, string] {
+	if (!value) return ["", ""];
+	const d = new Date(value);
+	if (Number.isNaN(d.getTime())) return ["", ""];
+	return [toDateInput(d), toTimeInput(d)];
+}
+
+const combineDateTime = (date: string, time: string) =>
+	date && time ? new Date(`${date}T${time}:00`) : null;
+
+const browserTimezone = () =>
+	(typeof Intl !== "undefined" &&
+		Intl.DateTimeFormat().resolvedOptions().timeZone) ||
+	"UTC";
+
+/* ---------- form snapshot (used to detect unsaved changes) ---------- */
+
+type FormValues = {
+	title: string;
+	description: string;
+	shortDescription: string;
+	format: string;
+	topic: string;
+	isOnline: boolean;
+	location: string;
+	onlineLink: string;
+	showSpeakers: boolean;
+	recordingLink: string;
+	mapLink: string;
+	isPaid: boolean;
+	ticketDescription: string;
+	timezone: string;
+	eventStartDate: string;
+	eventStartTime: string;
+	eventEndDate: string;
+	eventEndTime: string;
+	registrationStartDate: string;
+	registrationStartTime: string;
+	closeRegistration: boolean;
+	registrationEndDate: string;
+	registrationEndTime: string;
+};
+
+// Fixed key order, so the same values always serialize identically.
+const serialize = (v: FormValues) =>
+	JSON.stringify([
+		v.title,
+		v.description,
+		v.shortDescription,
+		v.format,
+		v.topic,
+		v.isOnline,
+		v.location,
+		v.onlineLink,
+		v.showSpeakers,
+		v.recordingLink,
+		v.mapLink,
+		v.isPaid,
+		v.ticketDescription,
+		v.timezone,
+		v.eventStartDate,
+		v.eventStartTime,
+		v.eventEndDate,
+		v.eventEndTime,
+		v.registrationStartDate,
+		v.registrationStartTime,
+		v.closeRegistration,
+		v.registrationEndDate,
+		v.registrationEndTime,
+	]);
+
+type SaveAction = "saved" | "published" | "unpublished";
+
+const SUCCESS_MESSAGES: Record<SaveAction, string> = {
+	saved: "Changes saved.",
+	published: "Event published. It is now live.",
+	unpublished: "Event moved back to draft.",
+};
 
 export default function EventManagePage() {
 	const params = useParams();
 	const slug = params.slug as string;
 	const router = useRouter();
+	const { toast, showToast, dismissToast } = useToast();
 
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -45,12 +180,7 @@ export default function EventManagePage() {
 	const [eventStartTime, setEventStartTime] = useState("");
 	const [eventEndDate, setEventEndDate] = useState("");
 	const [eventEndTime, setEventEndTime] = useState("");
-	const [timezone, setTimezone] = useState(
-		() =>
-			(typeof Intl !== "undefined" &&
-				Intl.DateTimeFormat().resolvedOptions().timeZone) ||
-			"UTC",
-	);
+	const [timezone, setTimezone] = useState(browserTimezone);
 
 	// Registration
 	const [registrationStartDate, setRegistrationStartDate] = useState("");
@@ -59,26 +189,67 @@ export default function EventManagePage() {
 	const [registrationEndDate, setRegistrationEndDate] = useState("");
 	const [registrationEndTime, setRegistrationEndTime] = useState("");
 
+	// Banner (saved by its own upload/delete mutations, not by "Save Changes")
+	const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+	const [bannerUploading, setBannerUploading] = useState(false);
+	const [bannerError, setBannerError] = useState<string | null>(null);
+
+	// Unsaved-changes tracking
+	const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+	const hydratedEventId = useRef<string | null>(null);
+	const pendingSnapshot = useRef<string | null>(null);
+	const pendingAction = useRef<SaveAction>("saved");
+
+	const currentValues: FormValues = {
+		title,
+		description,
+		shortDescription,
+		format,
+		topic,
+		isOnline,
+		location,
+		onlineLink,
+		showSpeakers,
+		recordingLink,
+		mapLink,
+		isPaid,
+		ticketDescription,
+		timezone,
+		eventStartDate,
+		eventStartTime,
+		eventEndDate,
+		eventEndTime,
+		registrationStartDate,
+		registrationStartTime,
+		closeRegistration,
+		registrationEndDate,
+		registrationEndTime,
+	};
+	const isDirty =
+		savedSnapshot !== null && serialize(currentValues) !== savedSnapshot;
+
 	const {
 		data: event,
 		isLoading,
+		isError,
+		error,
 		refetch: refetchEvent,
 	} = trpc.events.manageGetBySlug.useQuery({ slug }, { enabled: !!slug });
 
-	// Banner upload state
-	const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-	const [bannerUploading, setBannerUploading] = useState(false);
-	const [bannerError, setBannerError] = useState<string | null>(null);
 	const bannerUploadUrl = trpc.events.bannerUploadUrl.useMutation();
 	const bannerConfirm = trpc.events.bannerConfirm.useMutation();
 	const bannerDeleteMut = trpc.events.bannerDelete.useMutation();
 
 	const updateEvent = trpc.events.update.useMutation({
 		onSuccess: () => {
-			alert("Event updated successfully!");
+			if (pendingSnapshot.current !== null) {
+				setSavedSnapshot(pendingSnapshot.current);
+			}
+			showToast(SUCCESS_MESSAGES[pendingAction.current], "success");
+			void refetchEvent();
 		},
 		onError: (err: { message: string }) => {
-			alert(err.message);
+			showToast(err.message || "Could not save changes.", "error");
 		},
 	});
 
@@ -87,76 +258,99 @@ export default function EventManagePage() {
 			router.push("/dashboard");
 		},
 		onError: (err: { message: string }) => {
-			alert(err.message);
+			showToast(err.message || "Could not delete the event.", "error");
 			setIsDeleting(false);
 		},
 	});
 
-	const handleDeleteEvent = () => {
-		if (!event) return;
-		setIsDeleting(true);
-		deleteEvent.mutate({ id: event.id });
-	};
-
+	// Fill the form ONCE per event. Later refetches (after save, banner upload,
+	// window focus) must not overwrite what the user is typing.
 	useEffect(() => {
-		if (event) {
-			setTitle(event.title);
-			setDescription(event.description || "");
-			setShortDescription(event.shortDescription || "");
-			setFormat(event.format || "meetup");
-			setTopic(event.topic || "technology");
-			setIsOnline(event.isOnline);
-			setLocation(event.location || "");
-			setOnlineLink(event.onlineLink || "");
-			setShowSpeakers(event.showSpeakers ?? true);
-			setRecordingLink(event.recordingLink || "");
-			setMapLink(event.mapLink || "");
-			setIsPaid(event.isPaid ?? false);
-			setTicketDescription(event.ticketDescription || "");
-			if (event.timezone) {
-				setTimezone(event.timezone);
-			}
+		if (!event) return;
+		const id = String(event.id);
+		if (hydratedEventId.current === id) return;
+		hydratedEventId.current = id;
 
-			const formatLocalDate = (d: Date) => {
-				const year = d.getFullYear();
-				const month = String(d.getMonth() + 1).padStart(2, "0");
-				const day = String(d.getDate()).padStart(2, "0");
-				return `${year}-${month}-${day}`;
-			};
-			const formatLocalTime = (d: Date) => {
-				const hours = String(d.getHours()).padStart(2, "0");
-				const minutes = String(d.getMinutes()).padStart(2, "0");
-				return `${hours}:${minutes}`;
-			};
+		const [startDate, startTime] = splitDateTime(event.eventStart);
+		const [endDate, endTime] = splitDateTime(event.eventEnd);
+		const [regStartDate, regStartTime] = splitDateTime(event.registrationStart);
+		const [regEndDate, regEndTime] = splitDateTime(event.registrationEnd);
 
-			if (event.eventStart) {
-				const start = new Date(event.eventStart);
-				setEventStartDate(formatLocalDate(start));
-				setEventStartTime(formatLocalTime(start));
-			}
+		const v: FormValues = {
+			title: event.title,
+			description: event.description || "",
+			shortDescription: event.shortDescription || "",
+			format: event.format || "meetup",
+			topic: event.topic || "technology",
+			isOnline: event.isOnline ?? false,
+			location: event.location || "",
+			onlineLink: event.onlineLink || "",
+			showSpeakers: event.showSpeakers ?? true,
+			recordingLink: event.recordingLink || "",
+			mapLink: event.mapLink || "",
+			isPaid: event.isPaid ?? false,
+			ticketDescription: event.ticketDescription || "",
+			timezone: event.timezone || browserTimezone(),
+			eventStartDate: startDate,
+			eventStartTime: startTime,
+			eventEndDate: endDate,
+			eventEndTime: endTime,
+			registrationStartDate: regStartDate,
+			registrationStartTime: regStartTime,
+			closeRegistration: Boolean(event.registrationEnd),
+			registrationEndDate: regEndDate,
+			registrationEndTime: regEndTime,
+		};
 
-			if (event.eventEnd) {
-				const end = new Date(event.eventEnd);
-				setEventEndDate(formatLocalDate(end));
-				setEventEndTime(formatLocalTime(end));
-			}
-
-			if (event.registrationStart) {
-				const regStart = new Date(event.registrationStart);
-				setRegistrationStartDate(formatLocalDate(regStart));
-				setRegistrationStartTime(formatLocalTime(regStart));
-			}
-
-			if (event.registrationEnd) {
-				const regEnd = new Date(event.registrationEnd);
-				setRegistrationEndDate(formatLocalDate(regEnd));
-				setRegistrationEndTime(formatLocalTime(regEnd));
-				setCloseRegistration(true);
-			}
-		}
+		setTitle(v.title);
+		setDescription(v.description);
+		setShortDescription(v.shortDescription);
+		setFormat(v.format);
+		setTopic(v.topic);
+		setIsOnline(v.isOnline);
+		setLocation(v.location);
+		setOnlineLink(v.onlineLink);
+		setShowSpeakers(v.showSpeakers);
+		setRecordingLink(v.recordingLink);
+		setMapLink(v.mapLink);
+		setIsPaid(v.isPaid);
+		setTicketDescription(v.ticketDescription);
+		setTimezone(v.timezone);
+		setEventStartDate(v.eventStartDate);
+		setEventStartTime(v.eventStartTime);
+		setEventEndDate(v.eventEndDate);
+		setEventEndTime(v.eventEndTime);
+		setRegistrationStartDate(v.registrationStartDate);
+		setRegistrationStartTime(v.registrationStartTime);
+		setCloseRegistration(v.closeRegistration);
+		setRegistrationEndDate(v.registrationEndDate);
+		setRegistrationEndTime(v.registrationEndTime);
+		setBannerUrl(event.bannerUrl ?? null);
+		setSavedSnapshot(serialize(v));
 	}, [event]);
 
-	if (isLoading || !event) {
+	// Warn before closing/reloading the tab with unsaved changes.
+	useEffect(() => {
+		if (!isDirty) return;
+		const handler = (e: BeforeUnloadEvent) => {
+			e.preventDefault();
+			e.returnValue = "";
+		};
+		window.addEventListener("beforeunload", handler);
+		return () => window.removeEventListener("beforeunload", handler);
+	}, [isDirty]);
+
+	// Escape closes the delete dialog.
+	useEffect(() => {
+		if (!showDeleteModal) return;
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === "Escape" && !isDeleting) setShowDeleteModal(false);
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [showDeleteModal, isDeleting]);
+
+	if (isLoading) {
 		return (
 			<div className="w-full flex items-center justify-center min-h-[50vh]">
 				<div className="text-gray-500">Loading event details...</div>
@@ -164,51 +358,73 @@ export default function EventManagePage() {
 		);
 	}
 
-	const handleSave = (
-		customStatus?: "draft" | "published" | "cancelled" | "completed",
-	) => {
-		let evStart = null;
-		let evEnd = null;
-		let regStart = null;
-		let regEnd = null;
+	if (isError || !event) {
+		return (
+			<div className="w-full flex flex-col items-center justify-center gap-3 min-h-[50vh] px-4 text-center">
+				<p className="text-ink font-medium">Couldn't load this event.</p>
+				<p className="text-sm text-ink/60">
+					{error?.message ??
+						"It may have been deleted, or you may not have access."}
+				</p>
+				<Link
+					href="/dashboard"
+					className="px-4 py-2 text-sm border border-perforation rounded-md hover:bg-ink/5"
+				>
+					Back to dashboard
+				</Link>
+			</div>
+		);
+	}
 
-		if (eventStartDate && eventStartTime) {
-			evStart = new Date(`${eventStartDate}T${eventStartTime}:00`);
+	const status = (event.status as EventStatus) ?? "draft";
+	const statusMeta = STATUS_META[status] ?? STATUS_META.draft;
+	const canTogglePublish = status === "draft" || status === "published";
+
+	const handleDeleteEvent = () => {
+		setIsDeleting(true);
+		deleteEvent.mutate({ id: event.id });
+	};
+
+	const handleSave = (customStatus?: EventStatus) => {
+		const evStart = combineDateTime(eventStartDate, eventStartTime);
+		const evEnd = combineDateTime(eventEndDate, eventEndTime);
+		const regStart = combineDateTime(
+			registrationStartDate,
+			registrationStartTime,
+		);
+		const regEnd = closeRegistration
+			? combineDateTime(registrationEndDate, registrationEndTime)
+			: null;
+
+		if (!title.trim()) {
+			showToast("Event name is required.", "error");
+			return;
 		}
-		if (eventEndDate && eventEndTime) {
-			evEnd = new Date(`${eventEndDate}T${eventEndTime}:00`);
+		if (evStart && evEnd && evEnd < evStart) {
+			showToast("The event can't end before it starts.", "error");
+			return;
 		}
-		if (registrationStartDate && registrationStartTime) {
-			regStart = new Date(
-				`${registrationStartDate}T${registrationStartTime}:00`,
-			);
+		if (regStart && regEnd && regEnd < regStart) {
+			showToast("Registration can't close before it opens.", "error");
+			return;
 		}
-		if (closeRegistration && registrationEndDate && registrationEndTime) {
-			regEnd = new Date(`${registrationEndDate}T${registrationEndTime}:00`);
-		}
+
+		pendingSnapshot.current = serialize(currentValues);
+		pendingAction.current =
+			customStatus === "published"
+				? "published"
+				: customStatus === "draft"
+					? "unpublished"
+					: "saved";
 
 		updateEvent.mutate({
 			id: event.id,
-			title,
+			title: title.trim(),
 			description,
 			shortDescription,
 			showSpeakers,
-			format: format as
-				| "conference"
-				| "meetup"
-				| "workshop"
-				| "hackathon"
-				| "webinar",
-			topic: topic as
-				| "other"
-				| "technology"
-				| "business"
-				| "opensource"
-				| "design"
-				| "science"
-				| "arts"
-				| "social"
-				| "campus",
+			format: format as EventFormat,
+			topic: topic as EventTopic,
 			isOnline,
 			location,
 			onlineLink,
@@ -221,13 +437,8 @@ export default function EventManagePage() {
 			timezone,
 			registrationStart: regStart ? regStart.toISOString() : null,
 			registrationEnd: regEnd ? regEnd.toISOString() : null,
-			bannerUrl:
-				bannerPreview !== null ? bannerPreview : event.bannerUrl || null,
-			status: (customStatus || event.status) as
-				| "draft"
-				| "published"
-				| "cancelled"
-				| "completed",
+			bannerUrl,
+			status: customStatus ?? status,
 		});
 	};
 
@@ -238,14 +449,12 @@ export default function EventManagePage() {
 	const handleBannerUpload = async (file: File) => {
 		setBannerError(null);
 
-		// Client-side type check
 		const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
 		if (!allowedTypes.includes(file.type)) {
 			setBannerError("Only PNG, JPG, or WebP images are accepted.");
 			return;
 		}
 
-		// Client-side size check (pre-resize)
 		if (file.size > 10 * 1024 * 1024) {
 			setBannerError("File too large. Max 10MB before resize.");
 			return;
@@ -256,8 +465,10 @@ export default function EventManagePage() {
 		try {
 			// 1. Resize on canvas
 			const resizedBlob = await new Promise<Blob>((resolve, reject) => {
+				const objectUrl = URL.createObjectURL(file);
 				const img = new window.Image();
 				img.onload = () => {
+					URL.revokeObjectURL(objectUrl);
 					const MAX_W = 1920;
 					const MAX_H = 1080;
 					let w = img.width;
@@ -290,16 +501,17 @@ export default function EventManagePage() {
 						0.85,
 					);
 				};
-				img.onerror = () => reject(new Error("Failed to load image"));
-				img.src = URL.createObjectURL(file);
+				img.onerror = () => {
+					URL.revokeObjectURL(objectUrl);
+					reject(new Error("Failed to load image"));
+				};
+				img.src = objectUrl;
 			});
 
-			// Check resized size
 			if (resizedBlob.size > 5 * 1024 * 1024) {
 				setBannerError(
 					"Image still exceeds 5MB after resize. Try a smaller image.",
 				);
-				setBannerUploading(false);
 				return;
 			}
 
@@ -313,9 +525,7 @@ export default function EventManagePage() {
 			// 3. Upload directly to Supabase
 			const uploadRes = await fetch(uploadData.signedUrl, {
 				method: "PUT",
-				headers: {
-					"Content-Type": "image/webp",
-				},
+				headers: { "Content-Type": "image/webp" },
 				body: resizedBlob,
 			});
 
@@ -329,13 +539,14 @@ export default function EventManagePage() {
 				publicUrl: uploadData.publicUrl,
 			});
 
-			// 5. Optimistic UI update
-			setBannerPreview(uploadData.publicUrl);
-			refetchEvent();
+			setBannerUrl(uploadData.publicUrl);
+			showToast("Banner uploaded.");
+			void refetchEvent();
 		} catch (err) {
-			setBannerError(
-				err instanceof Error ? err.message : "Upload failed. Try again.",
-			);
+			const message =
+				err instanceof Error ? err.message : "Upload failed. Try again.";
+			setBannerError(message);
+			showToast(message, "error");
 		} finally {
 			setBannerUploading(false);
 		}
@@ -346,12 +557,14 @@ export default function EventManagePage() {
 		setBannerUploading(true);
 		try {
 			await bannerDeleteMut.mutateAsync({ eventId: event.id });
-			setBannerPreview(null);
-			refetchEvent();
+			setBannerUrl(null);
+			showToast("Banner removed.");
+			void refetchEvent();
 		} catch (err) {
-			setBannerError(
-				err instanceof Error ? err.message : "Failed to remove banner.",
-			);
+			const message =
+				err instanceof Error ? err.message : "Failed to remove banner.";
+			setBannerError(message);
+			showToast(message, "error");
 		} finally {
 			setBannerUploading(false);
 		}
@@ -369,16 +582,12 @@ export default function EventManagePage() {
 							</h1>
 						</div>
 						<div
-							className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-								event.status === "published"
-									? "border-stamp text-stamp bg-stamp/10"
-									: "border-perforation text-ink/70 bg-ink/5"
-							}`}
+							className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusMeta.className}`}
 						>
-							{event.status === "published" && (
+							{statusMeta.pulse && (
 								<span className="w-2 h-2 rounded-full bg-stamp animate-pulse" />
 							)}
-							<span>{event.status === "published" ? "Live" : "Draft"}</span>
+							<span>{statusMeta.label}</span>
 						</div>
 					</div>
 					<div className="flex gap-2 items-center text-base text-ink/60">
@@ -407,29 +616,29 @@ export default function EventManagePage() {
 					</div>
 				</div>
 
-				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						onClick={() => {
-							const nextStatus =
-								event.status === "published" ? "draft" : "published";
-							handleSave(nextStatus);
-						}}
-						disabled={updateEvent.isPending}
-						className={`w-fit px-4 py-2 text-sm rounded-md flex items-center gap-2 font-medium transition-colors border cursor-pointer ${
-							event.status === "published"
-								? "bg-alert/10 text-alert border-alert hover:bg-alert/20"
-								: "bg-stamp/10 text-stamp border-stamp hover:bg-stamp/20"
-						}`}
-					>
-						{event.status === "published" ? (
-							<EyeOff size={16} />
-						) : (
-							<Eye size={16} />
-						)}
-						{event.status === "published" ? "Unpublish Event" : "Publish Event"}
-					</button>
-				</div>
+				{canTogglePublish && (
+					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={() =>
+								handleSave(status === "published" ? "draft" : "published")
+							}
+							disabled={updateEvent.isPending}
+							className={`w-fit px-4 py-2 text-sm rounded-md flex items-center gap-2 font-medium transition-colors border cursor-pointer disabled:opacity-50 ${
+								status === "published"
+									? "bg-alert/10 text-alert border-alert hover:bg-alert/20"
+									: "bg-stamp/10 text-stamp border-stamp hover:bg-stamp/20"
+							}`}
+						>
+							{status === "published" ? (
+								<EyeOff size={16} />
+							) : (
+								<Eye size={16} />
+							)}
+							{status === "published" ? "Unpublish Event" : "Publish Event"}
+						</button>
+					</div>
+				)}
 			</div>
 
 			{/* Banner Upload Section */}
@@ -438,10 +647,10 @@ export default function EventManagePage() {
 					Event Banner
 				</div>
 				<div className="mt-4 max-w-xl">
-					{bannerPreview || event.bannerUrl ? (
+					{bannerUrl ? (
 						<div className="relative rounded-lg overflow-hidden border border-perforation w-full h-36 sm:h-40">
 							<Image
-								src={bannerPreview || event.bannerUrl || ""}
+								src={bannerUrl}
 								alt="Event banner preview"
 								fill
 								unoptimized
@@ -544,16 +753,21 @@ export default function EventManagePage() {
 								/>
 								<button
 									type="button"
-									onClick={() => {
-										const fullUrl =
-											typeof window !== "undefined"
-												? `${window.location.origin}/events/${slug}`
-												: `/events/${slug}`;
-										navigator.clipboard.writeText(fullUrl);
-										alert("Event link copied to clipboard!");
+									onClick={async () => {
+										const fullUrl = `${window.location.origin}/events/${slug}`;
+										try {
+											await navigator.clipboard.writeText(fullUrl);
+											showToast("Event link copied to clipboard.");
+										} catch {
+											showToast(
+												"Couldn't copy. Copy the link manually.",
+												"error",
+											);
+										}
 									}}
 									className="bg-paper border border-l-0 border-perforation px-3 py-2 rounded-r-md hover:bg-ink/5 transition-colors flex items-center justify-center"
 									title="Copy event link"
+									aria-label="Copy event link"
 								>
 									<Copy size={16} className="text-ink/60" />
 								</button>
@@ -596,7 +810,7 @@ export default function EventManagePage() {
 							disabled
 							className="w-full bg-ink/5 border border-perforation px-3 py-2 rounded-md text-sm text-ink/60 focus:outline-none"
 						>
-							<option>{event.status === "published" ? "Live" : "Draft"}</option>
+							<option>{statusMeta.label}</option>
 						</select>
 						<p className="text-xs text-ink/50 mt-1">
 							Current status of the event.
@@ -616,12 +830,37 @@ export default function EventManagePage() {
 							onChange={(e) => setFormat(e.target.value)}
 							className="w-full bg-paper border border-perforation px-3 py-2 rounded-md text-sm focus:ring-1 focus:ring-ink focus:border-ink focus:outline-none"
 						>
-							<option value="meetup">Meetup</option>
-							<option value="conference">Conference</option>
-							<option value="workshop">Workshop</option>
-							<option value="hackathon">Hackathon</option>
+							{FORMAT_OPTIONS.map((o) => (
+								<option key={o.value} value={o.value}>
+									{o.label}
+								</option>
+							))}
 						</select>
 					</div>
+					<div>
+						<label
+							htmlFor="event-topic-select"
+							className="block text-[0.81rem] uppercase tracking-[0.04em] font-medium text-ink mb-2"
+						>
+							Topic
+						</label>
+						<select
+							id="event-topic-select"
+							value={topic}
+							onChange={(e) => setTopic(e.target.value)}
+							className="w-full bg-paper border border-perforation px-3 py-2 rounded-md text-sm focus:ring-1 focus:ring-ink focus:border-ink focus:outline-none"
+						>
+							{TOPIC_OPTIONS.map((o) => (
+								<option key={o.value} value={o.value}>
+									{o.label}
+								</option>
+							))}
+						</select>
+						<p className="text-xs text-ink/50 mt-1">
+							Helps people find your event when browsing by topic.
+						</p>
+					</div>
+
 					<div>
 						<label
 							htmlFor="event-short-desc-input"
@@ -713,6 +952,7 @@ export default function EventManagePage() {
 								id="event-end-date"
 								type="date"
 								value={eventEndDate}
+								min={eventStartDate || undefined}
 								onChange={(e) => setEventEndDate(e.target.value)}
 								className="w-full bg-paper border border-perforation px-3 py-2 rounded-md text-sm focus:ring-1 focus:ring-ink focus:border-ink focus:outline-none font-mono"
 							/>
@@ -777,6 +1017,20 @@ export default function EventManagePage() {
 					Location Details
 				</div>
 				<div className="p-2 my-1 grid sm:grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
+					<div className="col-span-1 md:col-span-2">
+						<label className="block text-[0.81rem] uppercase tracking-[0.04em] font-medium text-ink mb-2 flex items-center gap-2 cursor-pointer">
+							<input
+								type="checkbox"
+								checked={isOnline}
+								onChange={(e) => setIsOnline(e.target.checked)}
+								className="rounded border-perforation text-stamp focus:ring-stamp h-4 w-4"
+							/>
+							Online Event
+						</label>
+						<p className="text-xs text-ink/50 mt-1">
+							Tick this if attendees join remotely instead of at a venue.
+						</p>
+					</div>
 					<div>
 						<label
 							htmlFor="event-location-input"
@@ -883,14 +1137,22 @@ export default function EventManagePage() {
 
 			{/* Delete Confirmation Modal */}
 			{showDeleteModal && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-xs">
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-xs"
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby="delete-event-title"
+				>
 					<div className="bg-paper border border-perforation rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
 						<div className="flex items-center gap-3 text-alert">
 							<div className="w-10 h-10 rounded-full bg-alert/10 flex items-center justify-center shrink-0">
 								<Trash2 className="w-5 h-5 text-alert" />
 							</div>
 							<div>
-								<h3 className="font-display font-semibold text-base text-ink">
+								<h3
+									id="delete-event-title"
+									className="font-display font-semibold text-base text-ink"
+								>
 									Delete Event
 								</h3>
 								<p className="text-xs text-ink/60">
@@ -930,16 +1192,32 @@ export default function EventManagePage() {
 				</div>
 			)}
 
+			{/* Toast Notification */}
+			<Toast toast={toast} onDismiss={dismissToast} />
+
 			{/* Form Action Bar at bottom */}
 			<div className="fixed bottom-0 right-0 left-0 md:left-64 bg-paper/95 backdrop-blur-xs border-t border-perforation px-4 sm:px-8 py-3.5 flex justify-between items-center z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-				<div className="text-xs sm:text-sm text-ink/60 font-medium">
-					{updateEvent.isPending ? "Saving..." : "Unsaved changes"}
+				<div className="flex items-center gap-2 text-xs sm:text-sm text-ink/60 font-medium">
+					<span
+						className={`w-2 h-2 rounded-full ${
+							updateEvent.isPending
+								? "bg-ink/40 animate-pulse"
+								: isDirty
+									? "bg-alert"
+									: "bg-stamp"
+						}`}
+					/>
+					{updateEvent.isPending
+						? "Saving..."
+						: isDirty
+							? "Unsaved changes"
+							: "All changes saved"}
 				</div>
 				<button
 					type="button"
 					onClick={() => handleSave()}
-					disabled={updateEvent.isPending}
-					className="px-4 sm:px-6 py-2 text-xs sm:text-sm bg-stamp text-paper rounded-md hover:opacity-90 transition-opacity font-medium flex items-center gap-2 disabled:opacity-50 shadow-xs cursor-pointer"
+					disabled={updateEvent.isPending || !isDirty}
+					className="px-4 sm:px-6 py-2 text-xs sm:text-sm bg-stamp text-paper rounded-md hover:opacity-90 transition-opacity font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs cursor-pointer"
 				>
 					<Edit3 size={16} />
 					{updateEvent.isPending ? "Saving..." : "Save Changes"}

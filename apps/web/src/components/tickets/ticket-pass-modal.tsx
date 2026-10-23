@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
+import { Toast, useToast } from "@/components/ui/toast";
 import {
 	AlertCircle,
 	Calendar,
@@ -28,6 +29,7 @@ export function TicketPassModal({
 	ticketCode,
 	onClose,
 }: TicketPassModalProps): JSX.Element | null {
+	const { toast, showToast, dismissToast } = useToast();
 	const {
 		data: ticket,
 		isLoading,
@@ -64,7 +66,7 @@ export function TicketPassModal({
 				setIsDropOpen(false);
 			},
 			onError: (err) => {
-				alert(err.message);
+				showToast(err.message || "Could not drop this ticket.", "error");
 			},
 		});
 
@@ -119,6 +121,7 @@ export function TicketPassModal({
 	const handleCopyTransferLink = () => {
 		if (transferSuccessUrl) {
 			navigator.clipboard.writeText(transferSuccessUrl);
+			showToast("Transfer link copied to clipboard.");
 			setCopiedTransferLink(true);
 			setTimeout(() => setCopiedTransferLink(false), 2000);
 		}
@@ -532,6 +535,8 @@ export function TicketPassModal({
 					</div>
 				</div>
 			)}
+
+			<Toast toast={toast} onDismiss={dismissToast} />
 		</div>
 	);
 }

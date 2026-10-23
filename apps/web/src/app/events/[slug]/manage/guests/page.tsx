@@ -2,6 +2,7 @@
 
 import { CheckinChainDialog } from "@/components/events/checkin-chain-dialog";
 import { CheckinScannerDialog } from "@/components/events/checkin-scanner-dialog";
+import { Toast, useToast } from "@/components/ui/toast";
 import { trpc } from "@/lib/trpc";
 import Link from "next/link";
 import {
@@ -53,6 +54,7 @@ interface UnifiedGuest {
 export function GuestsPage(): JSX.Element {
 	const params = useParams();
 	const slug = params.slug as string;
+	const { toast, showToast, dismissToast } = useToast();
 
 	const [searchTerm, setSearchTerm] = useState("");
 	const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
@@ -79,7 +81,7 @@ export function GuestsPage(): JSX.Element {
 				utils.events.manageGuestsList.invalidate({ slug });
 			},
 			onError: (err) => {
-				alert(err.message);
+				showToast(err.message || "Could not update guest check-in.", "error");
 			},
 		});
 
@@ -232,6 +234,7 @@ export function GuestsPage(): JSX.Element {
 	// Copy ticket code
 	const handleCopyCode = (code: string) => {
 		navigator.clipboard.writeText(code);
+		showToast("Ticket code copied to clipboard.");
 		setCopiedCode(code);
 		setTimeout(() => setCopiedCode(null), 2000);
 	};
@@ -702,6 +705,8 @@ export function GuestsPage(): JSX.Element {
 				eventSlug={slug}
 				onRosterChange={() => refetch()}
 			/>
+
+			<Toast toast={toast} onDismiss={dismissToast} />
 		</div>
 	);
 }

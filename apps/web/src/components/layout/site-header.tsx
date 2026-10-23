@@ -124,7 +124,7 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 				</div>
 
 				<div className="flex items-center gap-2 sm:gap-4">
-					{/* Host an Event — icon-only on xs, full on sm+ */}
+					{/* Dashboard — icon-only on xs, full on sm+ */}
 					<Link
 						href={
 							status === "authenticated"
@@ -133,8 +133,8 @@ export function SiteHeader({ activeNav }: SiteHeaderProps): JSX.Element {
 						}
 						className="group inline-flex items-center gap-2 px-3 sm:pl-4 sm:pr-1 py-1 bg-stamp text-paper rounded-full font-medium text-xs sm:text-sm hover:opacity-95 transition-all shadow-xs"
 					>
-						<span className="hidden sm:inline">Host an event</span>
-						<span className="sm:hidden text-sm font-semibold">+</span>
+						<span className="hidden sm:inline">Dashboard</span>
+						<span className="sm:hidden text-sm font-semibold">D</span>
 						<span className="hidden sm:flex w-6 h-6 rounded-full bg-ink items-center justify-center text-paper transition-transform duration-200 group-hover:translate-x-0.5">
 							<svg
 								aria-hidden="true"

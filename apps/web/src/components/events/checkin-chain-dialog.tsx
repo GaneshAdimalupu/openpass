@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
+import { Toast, useToast } from "@/components/ui/toast";
 import { Check, Copy, Link2, Square, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -21,6 +22,7 @@ export function CheckinChainDialog({
 	onRosterChange,
 }: CheckinChainDialogProps): JSX.Element | null {
 	const utils = trpc.useUtils();
+	const { toast, showToast, dismissToast } = useToast();
 	const [qrDataUrl, setQrDataUrl] = useState<{
 		url: string;
 		dataUrl: string;
@@ -39,9 +41,12 @@ export function CheckinChainDialog({
 
 	const { mutate: startChain, isPending: isStarting } =
 		trpc.checkinChain.start.useMutation({
-			onSuccess: () =>
-				utils.checkinChain.status.invalidate({ slug: eventSlug }),
-			onError: (err) => alert(err.message),
+			onSuccess: () => {
+				utils.checkinChain.status.invalidate({ slug: eventSlug });
+				showToast("QR chain check-in started.");
+			},
+			onError: (err) =>
+				showToast(err.message || "Could not start QR chain check-in.", "error"),
 		});
 
 	const { mutate: endChain, isPending: isEnding } =
@@ -49,8 +54,10 @@ export function CheckinChainDialog({
 			onSuccess: () => {
 				utils.checkinChain.status.invalidate({ slug: eventSlug });
 				onRosterChange?.();
+				showToast("QR chain check-in ended.");
 			},
-			onError: (err) => alert(err.message),
+			onError: (err) =>
+				showToast(err.message || "Could not end QR chain check-in.", "error"),
 		});
 
 	const rootToken = status?.active ? status.rootToken : null;
@@ -362,6 +369,7 @@ export function CheckinChainDialog({
 					)}
 				</div>
 			</div>
+			<Toast toast={toast} onDismiss={dismissToast} />
 		</div>
 	);
 }

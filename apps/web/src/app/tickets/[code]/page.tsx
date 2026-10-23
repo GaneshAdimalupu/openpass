@@ -1,6 +1,7 @@
 "use client";
 
 import { SiteHeader } from "@/components/layout/site-header";
+import { Toast, useToast } from "@/components/ui/toast";
 import { trpc } from "@/lib/trpc";
 import {
 	AlertCircle,
@@ -27,6 +28,7 @@ import type { JSX } from "react";
 export default function AttendeeTicketPage(): JSX.Element {
 	const params = useParams();
 	const ticketCode = params.code as string;
+	const { toast, showToast, dismissToast } = useToast();
 
 	// Query ticket details
 	const {
@@ -66,7 +68,7 @@ export default function AttendeeTicketPage(): JSX.Element {
 				setIsDropOpen(false);
 			},
 			onError: (err) => {
-				alert(err.message);
+				showToast(err.message || "Could not drop this ticket.", "error");
 			},
 		});
 
@@ -631,6 +633,8 @@ export default function AttendeeTicketPage(): JSX.Element {
 					</div>
 				</div>
 			)}
+
+			<Toast toast={toast} onDismiss={dismissToast} />
 		</div>
 	);
 }

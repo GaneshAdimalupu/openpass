@@ -2,6 +2,7 @@
 
 import { SiteHeader } from "@/components/layout/site-header";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Toast, useToast } from "@/components/ui/toast";
 import { trpc } from "@/lib/trpc";
 import { X } from "lucide-react";
 import Image from "next/image";
@@ -42,12 +43,12 @@ export default function OrganizationOverviewPage(): JSX.Element {
 	const params = useParams();
 	const slug = (params?.slug as string) || "";
 	const { status } = useSession();
+	const { toast, showToast, dismissToast } = useToast();
 
 	const [activeTab, setActiveTab] = useState<"overview" | "events" | "team">(
 		"overview",
 	);
 	const [searchQuery, setSearchQuery] = useState<string>("");
-	const [toastMessage, setToastMessage] = useState<string | null>(null);
 
 	// Modals & Drawer State
 	const [isEditOrgOpen, setIsEditOrgOpen] = useState<boolean>(false);
@@ -87,11 +88,6 @@ export default function OrganizationOverviewPage(): JSX.Element {
 	// Form States - Edit Member
 	const [editMemberRole, setEditMemberRole] = useState<RoleOption>("VOLUNTEER");
 	const [editMemberError, setEditMemberError] = useState<string | null>(null);
-
-	const showToast = (msg: string) => {
-		setToastMessage(msg);
-		setTimeout(() => setToastMessage(null), 3000);
-	};
 
 	// tRPC Queries & Mutations
 	const {
@@ -299,14 +295,7 @@ export default function OrganizationOverviewPage(): JSX.Element {
 	return (
 		<div className="min-h-screen bg-paper flex flex-col">
 			<SiteHeader />
-
-			{/* Floating Toast Notification */}
-			{toastMessage && (
-				<div className="fixed bottom-6 right-6 z-50 bg-ink text-paper px-4 py-3 rounded-lg shadow-lg border border-perforation text-xs font-mono animate-in fade-in slide-in-from-bottom-2">
-					{toastMessage}
-				</div>
-			)}
-
+			<Toast toast={toast} onDismiss={dismissToast} />
 			<main className="flex-1 max-w-[1280px] w-full mx-auto px-4 md:px-6 lg:px-8 py-8 space-y-6">
 				{/* Top Navigation & Breadcrumb */}
 				<div className="flex items-center justify-between">
