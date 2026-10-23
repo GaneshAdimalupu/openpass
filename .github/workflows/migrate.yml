@@ -1,0 +1,22 @@
+name: Deploy migrations
+
+on:
+  workflow_dispatch:   # manual trigger; switch to push on main once you trust it
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production   # add required reviewers in repo settings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter db exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
