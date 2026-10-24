@@ -46,9 +46,11 @@ By eliminating the friction of event management, makemyevent empowers community 
 - **Modern UI**: Built with Next.js App Router and design system components.
 - **Robust Auth**: Integrated authentication.
 - **Database Power**: Prisma ORM with PostgreSQL (hosted on [Supabase](https://supabase.com)).
+- **Safe Deployments**: Versioned database migrations, CI checks, and encrypted pre-migration backups.
 - **Developer-First**: Automated setup scripts and Docker-ready environment.
 
 ### 🚧 Current Development Status
+
 - **Dashboard UI Phase 1**: Core dashboard framework matching FOSS United UI completed (RSVP, CFP, Schedule, Volunteers). Waitlisted for database integration.
 
 ---
@@ -108,10 +110,10 @@ Ensure you have the following installed:
    pnpm docker:up
    ```
 
-5. **Sync Database Schema**:
+5. **Create the Database Tables**:
 
    ```bash
-   pnpm turbo run db:push
+   pnpm --filter db exec prisma migrate deploy
    ```
 
 6. **Launch Development Server**:
@@ -133,9 +135,11 @@ Ensure you have the following installed:
 ├── packages/
 │   ├── auth/         # Authentication logic & providers
 │   ├── core/         # Shared business logic
-│   ├── db/           # Prisma schema & database client
+│   ├── db/           # Prisma schema, migrations & database client
 │   ├── ui/           # Shared React component library
 │   └── types/        # Common TypeScript definitions
+├── docs/
+│   └── DATABASE.md   # Database, migrations & backups guide
 └── scripts/          # Automation and setup scripts
 ```
 
@@ -143,13 +147,19 @@ Ensure you have the following installed:
 
 ## 💾 Database Management
 
-The project uses **Prisma** for database operations and **Supabase** for PostgreSQL hosting in production.
+The project uses **Prisma migrations** on **Supabase (PostgreSQL)**. Every schema change is a
+SQL file in `packages/db/prisma/migrations/`, committed to git and applied in order.
 
-| Command            | Script                                      |
-| ------------------ | ------------------------------------------- |
-| Generate Client    | `pnpm turbo run db:generate` |
-| Push Schema        | `pnpm --filter db prisma db push` |
-| Open Prisma Studio | `pnpm --filter db prisma studio`  |
+> **Never use `prisma db push` or `prisma migrate reset` on staging or production.**
+
+| Task                   | Command                                       |
+| ---------------------- | --------------------------------------------- |
+| Generate client        | `pnpm turbo run db:generate`                  |
+| Open Prisma Studio     | `pnpm --filter db exec prisma studio`         |
+| Check migration status | `pnpm --filter db exec prisma migrate status` |
+
+To change the schema, deploy migrations, or restore a backup, read the full
+**[Database guide](./docs/DATABASE.md)**.
 
 ---
 
@@ -168,6 +178,7 @@ We use Docker Compose to manage local services (PostgreSQL). If you use a remote
 ## 🤝 Contributing
 
 We love contributions! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed instructions.
+Database changes must follow the [Database guide](./docs/DATABASE.md).
 
 ---
 
