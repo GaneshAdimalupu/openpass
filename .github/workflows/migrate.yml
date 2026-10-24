@@ -2,11 +2,42 @@ name: Deploy migrations
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which database to migrate"
+        type: choice
+        options:
+          - staging
+          - Production
+        default: staging
+
+permissions:
+  contents: read
+
+# Never run two migrations against the same environment at once
+concurrency:
+  group: migrate-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  # Match your Supabase Postgres major version (Dashboard -> Settings -> Infrastructure)
+  PG_CLIENT_VERSION: "17"
 
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    environment: production
+    timeout-minutes: 30
+    # Secrets and required reviewers are set per environment in
+    # GitHub: Settings -> Environments (staging, Production)
+    environment: ${{ inputs.environment }}
+
+    env:
+      # DATABASE_URL = pooled connection (port 6543)
+      # DIRECT_URL   = direct connection (port 5432), used for migrations and backups
+      # No fallback on purpose: a missing secret should fail loudly.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,7 +52,46 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --filter db exec prisma migrate deploy
+      - name: Show pending migrations
+        run: pnpm --filter db exec prisma migrate status
+        continue-on-error: true # exits non-zero when migrations are pending, which is expected
+
+      - name: Install matching pg_dump
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-${PG_CLIENT_VERSION}
+
+      - name: Backup database before migrating
+        run: |
+          /usr/lib/postgresql/${PG_CLIENT_VERSION}/bin/pg_dump "$DIRECT_URL" \
+            --schema=public --format=custom --no-owner \
+            --file=backup.dump
+
+      # The repo is public, so artifacts are downloadable by anyone.
+      # Never upload the raw dump: encrypt it first.
+      - name: Encrypt backup
+        run: |
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+            --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --output "backup-${{ inputs.environment }}-$(date +%Y%m%d-%H%M%S).dump.gpg" \
+            backup.dump
+          rm backup.dump
+          ls -lh backup-*.dump.gpg
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-migration-backup-${{ inputs.environment }}
+          path: backup-*.dump.gpg
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Apply migrations
+        run: pnpm --filter db exec prisma migrate deploy
+
+      - name: Confirm everything is applied
+        run: pnpm --filter db exec prisma migrate status
